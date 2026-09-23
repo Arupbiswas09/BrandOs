@@ -40,7 +40,7 @@ export function NewModal() {
       {options.map((o, i) => (
         <button key={o.label} type="button" data-autofocus={i === 0 ? "" : undefined} onClick={o.run} className="w-full rounded-[10px] p-3 text-left hover:bg-hover focus-visible:bg-hover">
           <span className="mb-0.5 block text-[14px] font-semibold">{o.label}</span>
-          <span className="block text-[12px] text-mute-2">{o.sub}</span>
+          <span className="block text-[13px] text-mute-2">{o.sub}</span>
         </button>
       ))}
     </Modal>
@@ -71,8 +71,8 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
   };
   return (
     <Modal title={`Delete ${label}?`} width={420} onSubmit={go} footer={<Footer saveLabel="Delete" pending={pending} saveVariant="danger-solid" />}>
-      <div className="text-[13px] leading-[1.6] text-mute-1 text-pretty">{CONFIRM_BODY[item]}</div>
-      {(item === "brand" || item === "client") && <div className="text-[12.5px] text-mute-3">If you might want it back, archive it instead.</div>}
+      <div className="text-[14px] leading-[1.6] text-mute-1 text-pretty">{CONFIRM_BODY[item]}</div>
+      {(item === "brand" || item === "client") && <div className="text-[13.5px] text-mute-3">If you might want it back, archive it instead.</div>}
     </Modal>
   );
 }
@@ -95,8 +95,8 @@ export function ShortcutsModal() {
     <Modal title="Keyboard shortcuts" width={440} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-0 py-3">
       {KEYS.map(([k, v]) => (
         <div key={k} className="flex items-center gap-3 border-t border-divider py-2.5 first:border-t-0">
-          <kbd className="w-[110px] flex-none font-mono text-[11.5px] font-semibold text-ink-3">{k}</kbd>
-          <span className="text-[13px] text-mute-1">{v}</span>
+          <kbd className="w-[110px] flex-none font-mono text-[12.5px] font-semibold text-ink-3">{k}</kbd>
+          <span className="text-[14px] text-mute-1">{v}</span>
         </div>
       ))}
     </Modal>

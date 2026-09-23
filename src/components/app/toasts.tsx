@@ -12,7 +12,7 @@ export function Toasts() {
           key={t.id}
           role={t.tone === "error" ? "alert" : "status"}
           className={cx(
-            "pointer-events-auto max-w-[520px] animate-pop rounded-[10px] px-4 py-2.5 text-[12.5px] font-medium shadow-[0_12px_32px_rgba(16,22,20,.18)]",
+            "pointer-events-auto max-w-[520px] animate-pop rounded-[10px] px-4 py-2.5 text-[13.5px] font-medium shadow-[0_12px_32px_rgba(16,22,20,.18)]",
             t.tone === "error" ? "bg-[#7A3211] text-white" : "bg-ink text-white",
           )}
         >

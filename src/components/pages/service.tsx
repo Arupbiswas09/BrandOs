@@ -30,7 +30,7 @@ export function ServicePage({ id }: { id: string }) {
         <div className="min-w-0 flex-1">
           <Eyebrow className="mb-[9px] tracking-[0.13em]">Service · {b?.name}</Eyebrow>
           <h1 className="m-0 mb-1.5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.022em] sm:text-[38px]">{v.name}</h1>
-          <p className="m-0 text-[14px] text-[#71807A]">{v.short}</p>
+          <p className="m-0 text-[14px] text-[#566560]">{v.short}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[34px]">
           {canEdit && <Btn onClick={() => open({ kind: "service", draft: v })}>Edit</Btn>}
@@ -39,7 +39,7 @@ export function ServicePage({ id }: { id: string }) {
       </div>
       {v.archived && <ArchivedNote className="mt-[22px]">Archived. Its offers still exist and are reachable from the offers tab.</ArchivedNote>}
       {v.description && <p className="m-0 mt-[22px] max-w-[62ch] text-[15px] leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
-      <div className="mb-[38px] mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[12.5px] text-[#71807A]">
+      <div className="mb-[38px] mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[13.5px] text-[#566560]">
         <span>{plural(liveOffers.length, "offer")}</span>
         <span>{plural(live(ws.assetsOfService(v.id)).length, "asset")} across them</span>
         <span className="text-mute-5">Updated {ws.ago(v.updatedAt)} by {ws.user(v.ownerId).name}</span>
@@ -49,14 +49,14 @@ export function ServicePage({ id }: { id: string }) {
         <div key={g.name} className="mb-[34px]">
           <div className="mb-3.5 flex items-center gap-2.5">
             <Chip color={g.color} size="md">{g.name}</Chip>
-            <span className="text-[12px] text-mute-3">{g.list.length ? plural(g.list.length, "offer") : "Nothing written for this segment"}</span>
+            <span className="text-[13px] text-mute-3">{g.list.length ? plural(g.list.length, "offer") : "Nothing written for this segment"}</span>
           </div>
           <div className="grid gap-3.5 md:grid-cols-2">
             {g.list.map((o) => <OfferCard key={o.id} o={o} variant="service" />)}
             {!g.list.length && (
               <button type="button" disabled={!canEdit} onClick={() => newOffer(g.name)} className="rounded-[13px] border border-dashed border-line-strong px-5 py-6 text-left hover:border-accent disabled:cursor-default disabled:hover:border-line-strong">
-                <span className="mb-1 block text-[13.5px] font-semibold text-mute-1">No {g.name} version yet</span>
-                <span className="block text-[12.5px] text-mute-3">{canEdit ? "Write the positioning for this segment →" : "Nobody has written one yet."}</span>
+                <span className="mb-1 block text-[14.5px] font-semibold text-mute-1">No {g.name} version yet</span>
+                <span className="block text-[13.5px] text-mute-3">{canEdit ? "Write the positioning for this segment →" : "Nobody has written one yet."}</span>
               </button>
             )}
           </div>
@@ -64,12 +64,12 @@ export function ServicePage({ id }: { id: string }) {
       ))}
       {orphans.length > 0 && (
         <div className="mb-[34px]">
-          <div className="mb-3.5 text-[12px] text-mute-3">Offers whose segment is no longer in the Brand Kit</div>
+          <div className="mb-3.5 text-[13px] text-mute-3">Offers whose segment is no longer in the Brand Kit</div>
           <div className="grid gap-3.5 md:grid-cols-2">{orphans.map((o) => <OfferCard key={o.id} o={o} variant="service" />)}</div>
         </div>
       )}
       {so.some((o) => o.archived) && (
-        <div className="mb-8 text-[12px] text-mute-3">
+        <div className="mb-8 text-[13px] text-mute-3">
           {plural(so.filter((o) => o.archived).length, "archived offer")} hidden. Find {so.filter((o) => o.archived).length === 1 ? "it" : "them"} under <a className="underline hover:text-ink" href={href.brand(v.brandId, "offers")}>Offers</a>.
         </div>
       )}

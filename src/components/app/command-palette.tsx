@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { hexA } from "@/lib/color";
+import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { NEUTRAL } from "@/lib/constants";
 import { useApp } from "./provider";
@@ -105,7 +105,7 @@ function Palette({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex gap-0.5 overflow-x-auto border-b border-line px-3.5 py-[9px]">
           {SCOPES.map((k) => (
-            <button key={k} type="button" onClick={() => { setScope(k); setSel(0); }} className={cx("flex-none rounded-md px-2.5 py-1 text-[11.5px] font-medium transition", scope === k ? "bg-ink text-white" : "text-[#7C8A83] hover:text-ink")}>
+            <button key={k} type="button" onClick={() => { setScope(k); setSel(0); }} className={cx("flex-none rounded-md px-2.5 py-1 text-[12.5px] font-medium transition", scope === k ? "bg-ink text-white" : "text-[#5C6A64] hover:text-ink")}>
               {k === "All" ? "Everything" : k + "s"}
             </button>
           ))}
@@ -126,20 +126,20 @@ function Palette({ onClose }: { onClose: () => void }) {
                     onClick={r.run}
                     className={cx("flex w-full items-center gap-3 rounded-[9px] px-3 py-[9px] text-left", sel === idx && "bg-hover")}
                   >
-                    <span className="flex h-7 w-7 flex-none items-center justify-center rounded-[7px] text-[8.5px] font-bold" style={{ background: hexA(r.color, 0.12), color: r.color }}>{r.code}</span>
+                    <span className="flex h-7 w-7 flex-none items-center justify-center rounded-[7px] text-[9.5px] font-bold" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium">{r.title}</span>
-                      <span className="block truncate text-[12px] text-mute-2">{r.sub}</span>
+                      <span className="block truncate text-[14px] font-medium">{r.title}</span>
+                      <span className="block truncate text-[13px] text-mute-2">{r.sub}</span>
                     </span>
-                    {r.kind && <span className="flex-none text-[10px] font-semibold uppercase tracking-[0.05em] text-mute-5">{r.kind}</span>}
+                    {r.kind && <span className="flex-none text-[11px] font-semibold uppercase tracking-[0.05em] text-mute-5">{r.kind}</span>}
                   </button>
                 );
               })}
             </div>
           ))}
-          {q.trim() && total === 0 && <div className="p-10 text-center text-[13px] text-mute-2">Nothing matches that.</div>}
+          {q.trim() && total === 0 && <div className="p-10 text-center text-[14px] text-mute-2">Nothing matches that.</div>}
         </div>
-        <div className="flex items-center gap-3 border-t border-line bg-wash-2 px-[18px] py-[9px] text-[11px] text-mute-4">
+        <div className="flex items-center gap-3 border-t border-line bg-wash-2 px-[18px] py-[9px] text-[12px] text-mute-4">
           <span>{total ? `${total} result${total > 1 ? "s" : ""}` : "↑↓ to move · Enter to open · Tab to change scope"}</span>
           <span className="flex-1" />
           <span>Esc to close</span>

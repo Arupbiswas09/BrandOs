@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local database and uploads
 /.data
+
+# playwright
+/test-results
+/playwright-report

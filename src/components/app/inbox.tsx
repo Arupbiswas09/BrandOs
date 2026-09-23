@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { hexA } from "@/lib/color";
+import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { markMentionsRead } from "@/app/actions";
 import { useApp } from "./provider";
@@ -55,20 +55,20 @@ function Panel({ onClose }: { onClose: () => void }) {
           <Eyebrow className="mb-2.5">On you</Eyebrow>
           <div className="mb-7 flex flex-col gap-2">
             {mine.map((x) => {
-              const c = x.act === "review" ? "#C99A2E" : "#C2410C";
+              const c = x.act === "review" ? "#8A6A12" : "#C2410C";
               return (
                 <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left hover:border-mute-2">
                   <span className="mb-1.5 flex items-center gap-2">
-                    <span className="rounded-[5px] px-2 py-0.5 text-[10px] font-semibold" style={{ background: hexA(c, 0.15), color: x.act === "review" ? "#8A6A12" : "#A63A12" }}>{x.verb}</span>
-                    <span className="flex-1" /><span className="text-[11px] text-[#8B9791]">{x.ago}</span>
+                    <span className="rounded-[5px] px-2 py-0.5 text-[11px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
+                    <span className="flex-1" /><span className="text-[12px] text-[#64716B]">{x.ago}</span>
                   </span>
-                  <span className="block text-[13.5px] font-semibold leading-[1.35]">{x.name}</span>
-                  <span className="mt-0.5 block text-[12.5px] text-mute-2">{x.sub}</span>
-                  {x.note && <span className="mt-2 block border-t border-divider pt-2 text-[12px] leading-[1.5] text-change-ink">{x.note}</span>}
+                  <span className="block text-[14.5px] font-semibold leading-[1.35]">{x.name}</span>
+                  <span className="mt-0.5 block text-[13.5px] text-mute-2">{x.sub}</span>
+                  {x.note && <span className="mt-2 block border-t border-divider pt-2 text-[13px] leading-[1.5] text-change-ink">{x.note}</span>}
                 </button>
               );
             })}
-            {!mine.length && <div className="rounded-xl border border-dashed border-line-strong p-[30px] text-center text-[13px] text-mute-2">Nothing has your name on it.</div>}
+            {!mine.length && <div className="rounded-xl border border-dashed border-line-strong p-[30px] text-center text-[14px] text-mute-2">Nothing has your name on it.</div>}
           </div>
 
           {mentions.length > 0 && (
@@ -82,8 +82,8 @@ function Panel({ onClose }: { onClose: () => void }) {
                     <button key={m.id} type="button" onClick={() => openItem(m.kind, m.itemId)} className={cx("flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left hover:border-mute-2", isNew ? "border-accent/40 bg-soft" : "border-line bg-white")}>
                       <Avatar initials={ws.user(m.userId).initials} size={24} mono />
                       <span className="min-w-0 flex-1">
-                        <span className="line-clamp-3 block text-[12.5px] leading-[1.5] text-ink-3">{m.text}</span>
-                        <span className="mt-1 block text-[11px] text-mute-4">{ws.first(m.userId)} · on {where} · {ws.ago(m.createdAt)}</span>
+                        <span className="line-clamp-3 block text-[13.5px] leading-[1.5] text-ink-3">{m.text}</span>
+                        <span className="mt-1 block text-[12px] text-mute-4">{ws.first(m.userId)} · on {where} · {ws.ago(m.createdAt)}</span>
                       </span>
                       {isNew && <span className="mt-1.5 h-[7px] w-[7px] flex-none rounded-full bg-change" aria-label="New" />}
                     </button>
@@ -99,12 +99,12 @@ function Panel({ onClose }: { onClose: () => void }) {
               <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-[9px] text-left hover:bg-hover">
                 <Avatar initials={ws.user(x.who).initials} size={24} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] font-medium">{x.name}</span>
-                  <span className="block text-[11px] text-mute-4">{x.verb} · {ws.first(x.who)}</span>
+                  <span className="block truncate text-[13.5px] font-medium">{x.name}</span>
+                  <span className="block text-[12px] text-mute-4">{x.verb} · {ws.first(x.who)}</span>
                 </span>
               </button>
             ))}
-            {!others.length && <div className="px-0.5 py-2 text-[12.5px] text-mute-4">Nobody else is holding anything up.</div>}
+            {!others.length && <div className="px-0.5 py-2 text-[13.5px] text-mute-4">Nobody else is holding anything up.</div>}
           </div>
         </div>
       </div>

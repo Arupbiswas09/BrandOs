@@ -61,14 +61,14 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
           <Select value={d.brandId} onChange={(v) => setD((x) => ({ ...x, brandId: v, serviceId: "", segment: "All segments", goals: [], primaryCtaId: "", secondaryCtaId: "" }))} options={ws.d.brands.filter((x) => !x.archived).map((x) => ({ value: x.id, label: x.name }))} />
         </Field>
       )}
-      <Field label="Offer name"><input className="field text-[13.5px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" /></Field>
-      <Field label="Short description" hint={<span className="font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#84918B" }}>{shortLen}/30</span>}>
-        <input className="field text-[13.5px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Grow grant-funded traffic" />
+      <Field label="Offer name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" /></Field>
+      <Field label="Short description" hint={<span className="font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#62706A" }}>{shortLen}/30</span>}>
+        <input className="field text-[14.5px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Grow grant-funded traffic" />
       </Field>
-      <Field label="Positioning statement"><textarea rows={3} className="field text-[13.5px] leading-[1.55]" value={d.positioning} onChange={(e) => set("positioning", e.target.value)} placeholder="One sentence a stranger would understand." /></Field>
+      <Field label="Positioning statement"><textarea rows={3} className="field text-[14.5px] leading-[1.55]" value={d.positioning} onChange={(e) => set("positioning", e.target.value)} placeholder="One sentence a stranger would understand." /></Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Promise"><textarea rows={3} className="field text-[12.5px] leading-[1.5]" value={d.promise} onChange={(e) => set("promise", e.target.value)} placeholder="What the reader gets, with a number." /></Field>
-        <Field label="Proof"><textarea rows={3} className="field text-[12.5px] leading-[1.5]" value={d.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Why they should believe it." /></Field>
+        <Field label="Promise"><textarea rows={3} className="field text-[13.5px] leading-[1.5]" value={d.promise} onChange={(e) => set("promise", e.target.value)} placeholder="What the reader gets, with a number." /></Field>
+        <Field label="Proof"><textarea rows={3} className="field text-[13.5px] leading-[1.5]" value={d.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Why they should believe it." /></Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Service">
@@ -83,12 +83,12 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
             const on = d.goals.includes(g.name);
             return (
               <button key={g.name} type="button" aria-pressed={on} title={g.description} onClick={() => set("goals", on ? d.goals.filter((x) => x !== g.name) : [...d.goals, g.name])}
-                className={cx("rounded-full border px-[13px] py-[5px] text-[12px] font-medium transition", on ? "border-accent bg-soft text-accent" : "border-line bg-white text-mute-1 hover:border-mute-4")}>
+                className={cx("rounded-full border px-[13px] py-[5px] text-[13px] font-medium transition", on ? "border-accent bg-soft text-accent" : "border-line bg-white text-mute-1 hover:border-mute-4")}>
                 {g.name}
               </button>
             );
           })}
-          {!(b?.goals ?? []).length && <span className="text-[12.5px] text-mute-3">This brand has no goals yet. Add some in the Brand Kit.</span>}
+          {!(b?.goals ?? []).length && <span className="text-[13.5px] text-mute-3">This brand has no goals yet. Add some in the Brand Kit.</span>}
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Asset } from "@/db/schema";
-import { hexA } from "@/lib/color";
+import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY } from "@/lib/constants";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
@@ -82,20 +82,20 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       {step === 0 && (
         <div>
           {known && (
-            <div className="mb-3.5 rounded-[9px] bg-soft px-[13px] py-2.5 text-[12.5px] text-ink-2">
+            <div className="mb-3.5 rounded-[9px] bg-soft px-[13px] py-2.5 text-[13.5px] text-ink-2">
               Going into <span className="font-semibold">{brand?.name} · {ws.offer(d.offerIds[0])?.name}</span> — pick the kind and you are done.
             </div>
           )}
           {(["campaign", "master", "global"] as const).map((cat) => (
             <div key={cat} className="mb-3 last:mb-0">
-              <div className="eyebrow mb-2 text-[9.5px]">{cat === "campaign" ? "Campaign work" : cat === "master" ? "Master files for the Brand Kit" : "Process — usually in the Global Library"}</div>
+              <div className="eyebrow mb-2 text-[10.5px]">{cat === "campaign" ? "Campaign work" : cat === "master" ? "Master files for the Brand Kit" : "Process — usually in the Global Library"}</div>
               <div className="grid grid-cols-2 gap-[9px] sm:grid-cols-3">
                 {Object.entries(ASSET_TYPES).filter(([k, t]) => t.cat === cat && k !== "Newsletter ad").map(([k, t]) => (
                   <button key={k} type="button" aria-pressed={d.type === k}
                     onClick={() => { set("type", k); setStep(d.offerIds.length && d.brandId ? 3 : d.brandId === null && draft.brandId === null ? 3 : 1); }}
                     className={cx("rounded-[10px] border p-3 text-left transition hover:border-mute-2", d.type === k ? "border-accent bg-soft" : "border-line bg-white")}>
-                    <span className="mb-1.5 block font-mono text-[9.5px] font-bold tracking-[0.06em] text-mute-4">{t.code}</span>
-                    <span className="block text-[12.5px] font-semibold leading-[1.3]">{k}</span>
+                    <span className="mb-1.5 block font-mono text-[10.5px] font-bold tracking-[0.06em] text-mute-4">{t.code}</span>
+                    <span className="block text-[13.5px] font-semibold leading-[1.3]">{k}</span>
                   </button>
                 ))}
               </div>
@@ -106,50 +106,50 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
 
       {step === 1 && (
         <div>
-          <div className="mb-3.5 text-[13px] text-mute-1">A {d.type || "new asset"}. Which building does it belong to?</div>
+          <div className="mb-3.5 text-[14px] text-mute-1">A {d.type || "new asset"}. Which building does it belong to?</div>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {ws.d.brands.filter((b) => !b.archived).map((b) => (
               <button key={b.id} type="button" onClick={() => { setD((x) => ({ ...x, brandId: b.id, offerIds: x.brandId === b.id ? x.offerIds : [], ctaId: x.brandId === b.id ? x.ctaId : "" })); setStep(2); }}
                 className="flex items-center gap-3 rounded-[11px] border bg-white p-3.5 text-left hover:border-mute-2" style={{ borderColor: d.brandId === b.id ? b.primary : "var(--bos-border)" }}>
                 <Mark mark={b.mark} color={b.primary} size={32} radius={8} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold">{b.name}</span>
-                  <span className="mt-px block text-[12px] text-mute-2">{b.parentId ? `Sub-brand of ${ws.brand(b.parentId)?.name}` : ws.client(b.clientId)?.name}</span>
+                  <span className="block text-[14px] font-semibold">{b.name}</span>
+                  <span className="mt-px block text-[13px] text-mute-2">{b.parentId ? `Sub-brand of ${ws.brand(b.parentId)?.name}` : ws.client(b.clientId)?.name}</span>
                 </span>
               </button>
             ))}
           </div>
           <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-[11px] border border-dashed border-line-strong bg-white p-3.5 text-left hover:border-mute-2">
-            <span className="block text-[13px] font-semibold">No brand — put it in the Global Library</span>
-            <span className="mt-0.5 block text-[12px] text-mute-2">Checklists, prompts, templates, SOPs</span>
+            <span className="block text-[14px] font-semibold">No brand — put it in the Global Library</span>
+            <span className="mt-0.5 block text-[13px] text-mute-2">Checklists, prompts, templates, SOPs</span>
           </button>
         </div>
       )}
 
       {step === 2 && (
         <div>
-          <div className="mb-1.5 text-[13px] text-mute-1">Which offers does it support?</div>
-          <div className="mb-3.5 text-[12.5px] text-mute-3">Pick as many as apply. One asset, many rooms — nothing gets copied.</div>
+          <div className="mb-1.5 text-[14px] text-mute-1">Which offers does it support?</div>
+          <div className="mb-3.5 text-[13.5px] text-mute-3">Pick as many as apply. One asset, many rooms — nothing gets copied.</div>
           <div data-scroll className="flex max-h-[260px] flex-col gap-[7px] overflow-y-auto">
             {ws.offersOf(d.brandId ?? "").filter((o) => !o.archived).map((o) => (
               <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => set("offerIds", d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id])}>{o.name}</CheckRow>
             ))}
           </div>
-          {!ws.offersOf(d.brandId ?? "").length && <div className="rounded-[10px] border border-dashed border-line-strong p-[26px] text-center text-[12.5px] text-mute-2">No offers in this brand yet. You can link it later.</div>}
-          <div className="mt-3 text-[12px] text-mute-2">{d.offerIds.length ? `${d.offerIds.length} offer${d.offerIds.length > 1 ? "s" : ""} selected` : "No offers selected — it will sit in the library unlinked"}</div>
+          {!ws.offersOf(d.brandId ?? "").length && <div className="rounded-[10px] border border-dashed border-line-strong p-[26px] text-center text-[13.5px] text-mute-2">No offers in this brand yet. You can link it later.</div>}
+          <div className="mt-3 text-[13px] text-mute-2">{d.offerIds.length ? `${d.offerIds.length} offer${d.offerIds.length > 1 ? "s" : ""} selected` : "No offers selected — it will sit in the library unlinked"}</div>
         </div>
       )}
 
       {step === 3 && (
         <>
-          <div className="text-[12px] text-mute-2">{d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}</div>
-          <Field label="Asset name"><input className="field text-[13.5px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
+          <div className="text-[13px] text-mute-2">{d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}</div>
+          <Field label="Asset name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
           {dupes.length > 0 && (
             <div className="rounded-[10px] border border-[rgba(201,154,46,.4)] bg-[rgba(201,154,46,.07)] px-[15px] py-[13px]">
-              <div className="mb-2 text-[12.5px] font-semibold text-warn-ink">Similar assets already exist. Reuse before you rebuild.</div>
+              <div className="mb-2 text-[13.5px] font-semibold text-warn-ink">Similar assets already exist. Reuse before you rebuild.</div>
               <div className="flex flex-col gap-1">
                 {dupes.map((a) => (
-                  <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="py-0.5 text-left text-[12.5px] text-warn-ink hover:underline">
+                  <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="py-0.5 text-left text-[13.5px] text-warn-ink hover:underline">
                     {a.name} <span className="text-[#A08540]">· {ws.brand(a.brandId)?.name ?? "Global"} · {a.type}</span>
                   </button>
                 ))}
@@ -172,7 +172,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           <div className="grid items-end gap-3 sm:grid-cols-2">
             <Field label="Delivery"><Select value={d.delivery} onChange={(v) => set("delivery", v)} options={DELIVERY.map((x) => ({ value: x, label: x }))} /></Field>
-            <button type="button" role="checkbox" aria-checked={d.gated} onClick={() => set("gated", !d.gated)} className="flex items-center gap-[9px] py-[9px] text-left text-[13px] text-ink-3">
+            <button type="button" role="checkbox" aria-checked={d.gated} onClick={() => set("gated", !d.gated)} className="flex items-center gap-[9px] py-[9px] text-left text-[14px] text-ink-3">
               <Tick on={d.gated} />Gated — people request it
             </button>
           </div>
@@ -182,7 +182,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
             <div className="border-t border-divider pt-1.5">
               <Field label="Use for" className="mt-2"><input className="field" value={d.promptFor} onChange={(e) => set("promptFor", e.target.value)} placeholder="Copy, Creative, Strategy…" /></Field>
               <Field label="The prompt" className="mt-3" hint={<span className="font-normal text-mute-4">[BRACKETS] for the bits people swap</span>}>
-                <textarea rows={8} className="field font-mono text-[12px] leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
+                <textarea rows={8} className="field font-mono text-[13px] leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
               </Field>
             </div>
           )}
@@ -233,7 +233,7 @@ export function CloneModal({ srcId, brandId, name, offerIds }: { srcId: string; 
   };
   return (
     <Modal title="Clone and adapt" sub={`A real copy of ${src?.name}, with a reference back to the original.`} width={560} onSubmit={save} footer={<Footer saveLabel="Create clone" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="New name"><input className="field text-[13.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
+      <Field label="New name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
       <Field label="Target brand">
         <Select value={d.brandId ?? ""} onChange={(v) => setD({ ...d, brandId: v || null, offerIds: [] })}
           options={[{ value: "", label: "Global Library — no brand" }, ...ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name + (b.parentId ? ` (sub-brand of ${ws.brand(b.parentId)?.name})` : "") }))]} />
@@ -245,13 +245,13 @@ export function CloneModal({ srcId, brandId, name, offerIds }: { srcId: string; 
             {ws.offersOf(d.brandId).filter((o) => !o.archived).map((o) => (
               <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => setD({ ...d, offerIds: d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id] })}>{o.name}</CheckRow>
             ))}
-            {!ws.offersOf(d.brandId).length && <div className="text-[12.5px] text-mute-3">No offers in that brand yet.</div>}
+            {!ws.offersOf(d.brandId).length && <div className="text-[13.5px] text-mute-3">No offers in that brand yet.</div>}
           </div>
         </div>
       )}
       <div className="flex gap-[18px] pt-1.5">
-        <button type="button" role="checkbox" aria-checked={d.keepFiles} onClick={() => setD({ ...d, keepFiles: !d.keepFiles })} className="flex items-center gap-2 text-[13px] text-ink-3"><Tick on={d.keepFiles} />Keep files</button>
-        <button type="button" role="checkbox" aria-checked={d.keepCopy} onClick={() => setD({ ...d, keepCopy: !d.keepCopy })} className="flex items-center gap-2 text-[13px] text-ink-3"><Tick on={d.keepCopy} />Keep copy</button>
+        <button type="button" role="checkbox" aria-checked={d.keepFiles} onClick={() => setD({ ...d, keepFiles: !d.keepFiles })} className="flex items-center gap-2 text-[14px] text-ink-3"><Tick on={d.keepFiles} />Keep files</button>
+        <button type="button" role="checkbox" aria-checked={d.keepCopy} onClick={() => setD({ ...d, keepCopy: !d.keepCopy })} className="flex items-center gap-2 text-[14px] text-ink-3"><Tick on={d.keepCopy} />Keep copy</button>
       </div>
     </Modal>
   );
@@ -277,7 +277,7 @@ export function LinkModal({ offerId }: { offerId: string }) {
   const color = ws.brand(o.brandId)?.primary ?? "#6C7B74";
   return (
     <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and gains one more room." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
-      <input className="field text-[13px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
+      <input className="field text-[14px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
       <Pills tone="dark" value={scope} onChange={setScope} options={[{ value: "unlinked", label: "Not yet linked" }, { value: "linked", label: "Already linked" }, { value: "all", label: "Everything" }]} />
       <div data-scroll className="-mx-2 max-h-[340px] overflow-y-auto">
         {rows.slice(0, 60).map((a) => {
@@ -285,10 +285,10 @@ export function LinkModal({ offerId }: { offerId: string }) {
           const other = ws.linkedOfferIds(a.id).length;
           return (
             <div key={a.id} className="flex items-center gap-3 rounded-[9px] px-2 py-2.5">
-              <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[8.5px] font-bold" style={{ background: hexA(color, 0.12), color }}>{ws.codeOf(a)}</span>
+              <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[9.5px] font-bold" style={{ background: hexA(color, 0.12), color: readable(color) }}>{ws.codeOf(a)}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-medium">{a.name}</span>
-                <span className="block text-[12px] text-mute-2">{a.type} · {other ? `already in ${other} offer${other > 1 ? "s" : ""}` : "not linked anywhere"}</span>
+                <span className="block truncate text-[14px] font-medium">{a.name}</span>
+                <span className="block text-[13px] text-mute-2">{a.type} · {other ? `already in ${other} offer${other > 1 ? "s" : ""}` : "not linked anywhere"}</span>
               </span>
               <Btn size="sm" disabled={pending} variant={on ? "secondary" : "primary"} className="px-[13px] font-semibold"
                 onClick={async () => { const r = await run(toggleLink, a.id, offerId); if (r.ok && !on) { setNudge({ assetId: a.id, offerId }); close(); } }}>
@@ -297,7 +297,7 @@ export function LinkModal({ offerId }: { offerId: string }) {
             </div>
           );
         })}
-        {!rows.length && <div className="p-9 text-center text-[13px] text-mute-2">Nothing left to link here.</div>}
+        {!rows.length && <div className="p-9 text-center text-[14px] text-mute-2">Nothing left to link here.</div>}
       </div>
     </Modal>
   );
@@ -318,16 +318,16 @@ export function LinkAssetModal({ assetId }: { assetId: string }) {
         const on = linked.has(o.id);
         return (
           <div key={o.id} className="flex items-center gap-[11px] rounded-[10px] border border-line px-[13px] py-[11px]">
-            <span className="flex-1 text-[13px] font-medium">{o.name}</span>
+            <span className="flex-1 text-[14px] font-medium">{o.name}</span>
             <Chip color={ws.segColor(o.segment, o.brandId)} size="xs">{o.segment}</Chip>
             <button type="button" disabled={pending} aria-pressed={on} onClick={() => run(toggleLink, assetId, o.id)}
-              className={cx("flex-none rounded-[7px] border px-3 py-1 text-[11.5px] font-semibold", on ? "border-accent bg-soft text-accent" : "border-line bg-white text-mute-1 hover:border-mute-2")}>
+              className={cx("flex-none rounded-[7px] border px-3 py-1 text-[12.5px] font-semibold", on ? "border-accent bg-soft text-accent" : "border-line bg-white text-mute-1 hover:border-mute-2")}>
               {on ? "Linked" : "Link"}
             </button>
           </div>
         );
       })}
-      {!pool.length && <div className="p-8 text-center text-[13px] text-mute-2">This brand has no offers yet.</div>}
+      {!pool.length && <div className="p-8 text-center text-[14px] text-mute-2">This brand has no offers yet.</div>}
     </Modal>
   );
 }
