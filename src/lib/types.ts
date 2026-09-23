@@ -1,5 +1,5 @@
 import type {
-  Activity, Asset, Brand, Client, Comment, Cta, Group, Link, Offer, Service, User,
+  Activity, Asset, Brand, Client, Comment, Cta, Group, Link, Offer, Service, ShareLink, User,
 } from "@/db/schema";
 
 export type PublicUser = Omit<User, "passwordHash"> & { hasPassword: boolean };
@@ -29,6 +29,8 @@ export type Workspace = {
   comments: Comment[];
   activity: Activity[];
   recents: Recent[];
+  /** Live client share links for brands I can see. */
+  shareLinks: ShareLink[];
   /** How many items wait on each person, computed over the full data set. */
   queueCounts: Record<string, number>;
   /** Comment ids that mention me and that I have not opened yet. */

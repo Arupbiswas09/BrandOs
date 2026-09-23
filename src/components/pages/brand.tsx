@@ -161,6 +161,7 @@ function Home({ b }: { b: Brand }) {
 
         <div className="mt-11 flex flex-wrap items-center gap-2.5 border-t border-line pt-5">
           {canEdit && <Btn onClick={() => open({ kind: "brand", draft: b })}>Edit brand identity</Btn>}
+          {canEdit && <Btn onClick={() => open({ kind: "share", brandId: b.id })}>Share with the client{ws.d.shareLinks.some((l) => l.brandId === b.id) ? ` · ${ws.d.shareLinks.filter((l) => l.brandId === b.id).length} live` : ""}</Btn>}
           {ws.can("archive") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "brand", id: b.id, label: b.name, back: href.client(b.clientId) })}>Delete brand</Btn>}
           <span className="flex-1" />

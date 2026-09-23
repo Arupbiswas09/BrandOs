@@ -5,6 +5,7 @@ import { AssetModal, CloneModal, LinkAssetModal, LinkModal } from "./asset";
 import { BrandModal, ClientModal, CtaModal, GoalModal, GoalOffersModal, KitModal, MergeGoalModal, ServiceModal } from "./forms";
 import { ConfirmModal, NewModal, ShortcutsModal } from "./misc";
 import { OfferModal } from "./offer";
+import { ShareModal } from "./share";
 import { GroupModal, PersonModal, ReqChangesModal, SendReviewModal } from "./people";
 
 export function ModalHost() {
@@ -30,6 +31,7 @@ export function ModalHost() {
     case "sendReview": return <SendReviewModal item={m.item} id={m.id} />;
     case "reqChanges": return <ReqChangesModal item={m.item} id={m.id} />;
     case "confirm": return <ConfirmModal item={m.item} id={m.id} label={m.label} back={m.back} />;
+    case "share": return <ShareModal brandId={m.brandId} />;
     case "shortcuts": return <ShortcutsModal />;
   }
 }

@@ -504,7 +504,7 @@ function History({ a }: { a: Asset }) {
 }
 
 function Sharing({ a }: { a: Asset }) {
-  const { ws } = useApp();
+  const { ws, open } = useApp();
   const [run, pending] = useAction();
   const label = a.clientVisible ? "Visible to client" : "Internal only";
   return (
@@ -528,7 +528,8 @@ function Sharing({ a }: { a: Asset }) {
           <div className="mt-3 rounded-[9px] bg-[rgba(201,154,46,.08)] px-3 py-2 text-[12px] text-warn-ink">Cleared to send, but nobody has approved it yet.</div>
         )}
       </div>
-      <Hint className="mt-3.5">Clients do not log in — this is a readiness flag for your team, not a permission. Who can see what is set per person on the Team page.</Hint>
+      <Hint className="mt-3.5">Clients do not log in. Assets cleared to send appear on the brand&apos;s client share page, if one has been created — every other asset stays internal.</Hint>
+      {a.brandId && ws.can("edit") && <Btn className="mt-3" onClick={() => open({ kind: "share", brandId: a.brandId! })}>Manage client links</Btn>}
     </div>
   );
 }

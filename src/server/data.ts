@@ -80,7 +80,7 @@ function queueCounts(all: All): Record<string, number> {
 
 export async function buildWorkspace(
   meId: string,
-  extra: { recents: Workspace["recents"]; readIds: Set<string>; authMode: Workspace["authMode"] },
+  extra: { recents: Workspace["recents"]; readIds: Set<string>; authMode: Workspace["authMode"]; shareLinks: Workspace["shareLinks"] },
 ): Promise<Workspace> {
   const all = await loadAll();
   const scope = scopeFor(all, meId);
@@ -127,6 +127,7 @@ export async function buildWorkspace(
     comments,
     activity,
     recents: extra.recents,
+    shareLinks: extra.shareLinks.filter((l) => vis.brand(l.brandId)),
     queueCounts: queueCounts(all),
     unreadMentions,
   };

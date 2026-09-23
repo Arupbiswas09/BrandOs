@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb, schema as s } from "@/db";
 
@@ -67,11 +67,12 @@ export async function endSession() {
 
 export async function viewerExtras(userId: string) {
   const db = await getDb();
-  const [recents, reads] = await Promise.all([
+  const [recents, reads, shares] = await Promise.all([
     db.select({ kind: s.recents.kind, itemId: s.recents.itemId })
       .from(s.recents).where(eq(s.recents.userId, userId))
       .orderBy(desc(s.recents.visitedAt)).limit(8),
     db.select({ commentId: s.reads.commentId }).from(s.reads).where(eq(s.reads.userId, userId)),
+    db.select().from(s.shareLinks).where(isNull(s.shareLinks.revokedAt)).orderBy(desc(s.shareLinks.createdAt)),
   ]);
-  return { recents, readIds: new Set(reads.map((r) => r.commentId)) };
+  return { recents, readIds: new Set(reads.map((r) => r.commentId)), shareLinks: shares };
 }

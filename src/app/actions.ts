@@ -94,7 +94,7 @@ export async function resetDemo() {
     if (authMode() !== "demo") throw new Denied("Reset is only available in demo mode.");
     const db = await getDb();
     await db.transaction(async (tx) => {
-      for (const t of [s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
+      for (const t of [s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
         await tx.delete(t);
       }
       await tx.delete(s.sessions);
@@ -944,5 +944,30 @@ export async function removeFile(assetId: string, fileName: string) {
     await log(db, me.id, "removed a file from", "asset", assetId, a.name, fileName);
     // Keep the stored copy if an earlier version still points at it.
     if (gone?.key && !all.assets.some((x) => x.id !== assetId && x.files.some((f) => f.key === gone.key))) await removeStoredFile(gone.key);
+  });
+}
+
+/* ================================================================ client share links */
+
+export async function createShareLink(brandId: string, label: string) {
+  return run(async () => {
+    const { me, vis, db, all } = await context("edit");
+    need(vis.brand(brandId));
+    const { randomBytes } = await import("node:crypto");
+    const token = randomBytes(18).toString("base64url");
+    const b = all.brands.find((x) => x.id === brandId)!;
+    await db.insert(s.shareLinks).values({ token, brandId, label: label.trim().slice(0, 80), createdBy: me.id });
+    await log(db, me.id, "created a client link for", "brand", brandId, b.name, label.trim());
+    return ok(token);
+  });
+}
+
+export async function revokeShareLink(token: string) {
+  return run(async () => {
+    const { me, vis, db, all } = await context("edit");
+    const [l] = await db.select().from(s.shareLinks).where(eq(s.shareLinks.token, token));
+    need(l && vis.brand(l.brandId), "That link no longer exists.");
+    await db.update(s.shareLinks).set({ revokedAt: new Date() }).where(eq(s.shareLinks.token, token));
+    await log(db, me.id, "revoked a client link for", "brand", l.brandId, all.brands.find((b) => b.id === l.brandId)?.name ?? "", l.label);
   });
 }

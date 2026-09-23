@@ -247,6 +247,19 @@ export const invites = pgTable("invites", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** A secret, revocable link that shows a client the assets cleared to send for one brand. */
+export const shareLinks = pgTable("share_links", {
+  token: text("token").primaryKey(),
+  brandId: text("brand_id").notNull(),
+  label: text("label").notNull().default(""),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
+  views: integer("views").notNull().default(0),
+}, (t) => [index("share_links_brand_idx").on(t.brandId)]);
+
+export type ShareLink = typeof shareLinks.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Client = typeof clients.$inferSelect;
