@@ -55,7 +55,12 @@ export function AssetCard({ a, variant = "full" }: { a: Asset; variant?: AssetVa
         a.archived && "opacity-55",
       )}
     >
-      <CodeTile code={ws.codeOf(a)} color={color} height={tileH} className="w-full" style={{ fontSize: variant === "recent" ? 12.5 : variant === "kit" || variant === "font" ? 12 : 13 }} />
+      {ws.previewOf(a) ? (
+        // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; next/image would proxy it through the optimizer
+        <img src={ws.previewOf(a)!} alt="" loading="lazy" className="w-full bg-wash object-cover" style={{ height: tileH }} />
+      ) : (
+        <CodeTile code={ws.codeOf(a)} color={color} height={tileH} className="w-full" style={{ fontSize: variant === "recent" ? 14 : 15 }} />
+      )}
       <span className={cx("block", variant === "kit" || variant === "font" ? "px-3.5 py-[13px]" : variant === "recent" ? "px-3.5 pb-3.5 pt-[13px]" : "p-3.5")}>
         <span className={cx("block text-[15px] font-semibold leading-[1.35]", variant !== "kit" && variant !== "font" && "mb-[5px]")}>{a.name}</span>
         {variant === "kit" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.short}</span>}

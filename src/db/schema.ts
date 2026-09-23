@@ -208,6 +208,7 @@ export const comments = pgTable("comments", {
   refs: text("refs").array().notNull().default([]),
   mentions: text("mentions").array().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  editedAt: timestamp("edited_at", { withTimezone: true }),
 }, (t) => [index("comments_item_idx").on(t.kind, t.itemId)]);
 
 export const activity = pgTable("activity", {

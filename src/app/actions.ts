@@ -1013,3 +1013,29 @@ export async function setDue(kind: "offer" | "asset", id: string, date: string |
     await log(db, me.id, dueAt ? "set a due date on" : "cleared the due date on", kind, id, item.name, dueAt ? dueAt.toDateString() : "");
   });
 }
+
+export async function editComment(commentId: string, text: string) {
+  return run(async () => {
+    const { me, db, all } = await context("comment");
+    const c = all.comments.find((x) => x.id === commentId);
+    need(c, "That note no longer exists.");
+    if (c!.userId !== me.id) throw new Denied("You can only edit your own notes.");
+    const t = text.trim();
+    if (!t) throw new Denied("A note cannot be empty. Delete it instead.");
+    // Tags and mentions stay only while their text is still in the note.
+    const refs = c!.refs.filter((r) => t.includes("#" + (all.offers.find((o) => o.id === r)?.name ?? "\u0000")));
+    const mentions = c!.mentions.filter((m) => t.includes("@" + (all.users.find((u) => u.id === m)?.name ?? "\u0000")));
+    await db.update(s.comments).set({ text: t.slice(0, 8000), refs, mentions, editedAt: new Date() }).where(eq(s.comments.id, commentId));
+  });
+}
+
+export async function deleteComment(commentId: string) {
+  return run(async () => {
+    const { me, db, all } = await context("comment");
+    const c = all.comments.find((x) => x.id === commentId);
+    need(c, "That note no longer exists.");
+    if (c!.userId !== me.id && !can(me, "del")) throw new Denied("Only the author or an admin can delete a note.");
+    await db.delete(s.comments).where(eq(s.comments.id, commentId));
+    await db.delete(s.reads).where(eq(s.reads.commentId, commentId));
+  });
+}

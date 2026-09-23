@@ -17,6 +17,8 @@ import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, DueBadge, Eyebrow, Hint, c
 import { toDateInput } from "@/lib/time";
 import { AiDraftButton } from "@/components/ai";
 
+const IMAGE = /^image\/(png|jpe?g|gif|webp|avif)$/;
+
 type Tab = "overview" | "list" | "prompt" | "copy" | "files" | "discussion" | "history" | "sharing";
 
 export function AssetDrawer() {
@@ -92,7 +94,12 @@ function Drawer({ a }: { a: Asset }) {
 
         <div className="px-5 pb-10 pt-[26px] sm:px-7">
           <div className="mb-5 flex items-start gap-4">
-            <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[13px] text-[15px] font-bold tracking-[0.03em]" style={{ background: hexA(color, 0.12), color: readable(color) }}>{ws.codeOf(a)}</span>
+            {ws.previewOf(a) ? (
+              // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file
+              <img src={ws.previewOf(a)!} alt="" className="h-14 w-14 flex-none rounded-[13px] border border-line object-cover" />
+            ) : (
+              <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[13px] text-[15px] font-bold tracking-[0.03em]" style={{ background: hexA(color, 0.12), color: readable(color) }}>{ws.codeOf(a)}</span>
+            )}
             <span className="min-w-0 flex-1">
               <Eyebrow className="mb-1.5">{cat === "campaign" ? "Campaign asset" : cat === "master" ? "Master file" : "Global asset"}</Eyebrow>
               <span className="block text-[22px] font-semibold leading-[1.25] tracking-[-0.018em]">{a.name}</span>
@@ -436,6 +443,16 @@ function Files({ a }: { a: Asset }) {
       onDrop={(e) => { if (!canEdit) return; e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}
       className={cx("rounded-xl transition", drag && "outline-2 outline-dashed outline-accent outline-offset-4")}
     >
+      {files.some((f) => f.url && IMAGE.test(f.type ?? "")) && (
+        <div className="mb-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {files.filter((f) => f.url && IMAGE.test(f.type ?? "")).map((f) => (
+            <a key={f.name} href={`${f.url}?inline=1`} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-[10px] border border-line bg-wash" title={`Open ${f.name}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file */}
+              <img src={`${f.url}?inline=1`} alt={f.name} loading="lazy" className="aspect-[4/3] w-full object-cover transition group-hover:scale-[1.02]" />
+            </a>
+          ))}
+        </div>
+      )}
       {files.length > 0 && (
         <div className="rounded-xl border border-line px-[18px] py-1">
           {files.map((f) => (

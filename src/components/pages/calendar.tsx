@@ -101,7 +101,7 @@ export function Calendar() {
                 <span className={cx("self-start rounded-full px-1.5 text-[13px]", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-5")}>{d.getDate()}</span>
                 <span className="hidden flex-col gap-1 sm:flex">
                   {list.slice(0, 3).map((x) => (
-                    <span key={x.kind + x.id} className="truncate rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ background: hexA(x.color, 0.12), color: readable(x.color, 0.12), textDecoration: x.done ? "line-through" : undefined }}>{x.name}</span>
+                    <span key={x.kind + x.id} className="truncate rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ background: hexA(x.color, 0.12), color: readable(x.color, 0.3), textDecoration: x.done ? "line-through" : undefined }}>{x.name}</span>
                   ))}
                   {list.length > 3 && <span className="px-1 text-[12px] text-mute-3">+{list.length - 3} more</span>}
                 </span>

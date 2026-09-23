@@ -15,6 +15,7 @@ import { AssetCard, OfferCard, blocksFor } from "@/components/cards";
 import { CtaButton } from "@/components/drawer/asset-drawer";
 import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, PageHead, Pills, Warn, cx } from "@/components/ui";
 import { NotHere, useVisit } from "./common";
+import { BrandHealth } from "@/components/health";
 
 export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?: string }) {
   const { ws } = useApp();
@@ -145,6 +146,8 @@ function Home({ b }: { b: Brand }) {
             </div>
           </div>
         )}
+
+        <BrandHealth b={b} />
 
         <div className="mt-10">
           <H2>Recently updated</H2>

@@ -3,7 +3,9 @@ import { getViewer } from "@/server/session";
 import { readStoredFile } from "@/server/storage";
 
 /** Streams an uploaded file to someone who is allowed to see its asset. */
-export async function GET(_req: Request, ctx: RouteContext<"/api/files/[...key]">) {
+const PREVIEWABLE = /^image\/(png|jpe?g|gif|webp|avif)$/;
+
+export async function GET(req: Request, ctx: RouteContext<"/api/files/[...key]">) {
   const { key: parts } = await ctx.params;
   const key = parts.map(decodeURIComponent).join("/");
   const me = await getViewer();
@@ -20,7 +22,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/files/[...key]"
   return new Response(body, {
     headers: {
       "Content-Type": ref.type || "application/octet-stream",
-      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(ref.name)}`,
+      // Raster images may render inline for previews; everything else downloads. SVG never renders (it can run script).
+      "Content-Disposition": `${new URL(req.url).searchParams.get("inline") === "1" && PREVIEWABLE.test(ref.type ?? "") ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(ref.name)}`,
       "Cache-Control": "private, max-age=0, must-revalidate",
       "X-Content-Type-Options": "nosniff",
       ...(file.size ? { "Content-Length": String(file.size) } : {}),

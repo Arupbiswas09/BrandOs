@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Comment } from "@/db/schema";
 import { href } from "@/lib/routes";
-import { postComment, toggleResolve } from "@/app/actions";
+import { deleteComment, editComment, postComment, toggleResolve } from "@/app/actions";
 import { useAction, useApp } from "./app/provider";
 import { Avatar, Btn, cx } from "./ui";
 
@@ -57,35 +57,58 @@ export function CommentText({ c }: { c: Comment }) {
   );
 }
 
+function Note({ c }: { c: Comment }) {
+  const { ws } = useApp();
+  const [run, pending] = useAction();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(c.text);
+  const mine = c.userId === ws.me.id;
+  const save = async () => { const r = await run(editComment, c.id, text); if (r.ok) setEditing(false); };
+  return (
+    <div
+      className="rounded-xl border px-4 py-3.5"
+      style={{
+        opacity: c.resolved ? 0.65 : 1,
+        background: c.resolved ? "#FAFBFB" : c.isChange ? "rgba(194,65,18,.06)" : "#FFFFFF",
+        borderColor: c.resolved ? "var(--bos-border)" : c.isChange ? "rgba(194,65,18,.28)" : "var(--bos-border)",
+      }}
+    >
+      <div className="mb-2 flex flex-wrap items-center gap-x-[9px] gap-y-1">
+        <Avatar initials={ws.user(c.userId).initials} size={26} mono />
+        <span className="text-[15px] font-semibold">{ws.first(c.userId)}</span>
+        {c.isChange && <span className="eyebrow rounded bg-[rgba(194,65,18,.10)] px-[7px] py-[3px] text-change-ink">Change request</span>}
+        <span className="flex-1" />
+        <span className="font-mono text-[12.5px] text-mute-4">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
+        {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">Edit</button>}
+        {(mine || ws.can("del")) && !editing && (
+          <button type="button" disabled={pending} onClick={() => { if (window.confirm("Delete this note?")) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-danger">Delete</button>
+        )}
+        {ws.can("comment") && !editing && (
+          <button type="button" onClick={() => run(toggleResolve, c.id)} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
+        )}
+      </div>
+      {editing ? (
+        <div>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label="Edit note" className="field leading-[1.55]"
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save(); } if (e.key === "Escape") { e.stopPropagation(); setEditing(false); } }} autoFocus />
+          <div className="mt-2 flex justify-end gap-2">
+            <Btn size="sm" onClick={() => setEditing(false)}>Cancel</Btn>
+            <Btn size="sm" variant="primary" disabled={pending || !text.trim()} onClick={save}>Save</Btn>
+          </div>
+        </div>
+      ) : (
+        <CommentText c={c} />
+      )}
+    </div>
+  );
+}
+
 export function Thread({ kind, id }: { kind: "offer" | "asset"; id: string }) {
   const { ws } = useApp();
-  const [run] = useAction();
   const list = ws.commentsOf(kind, id);
   return (
     <div className="flex flex-col gap-[9px]">
-      {list.map((c) => (
-        <div
-          key={c.id}
-          className="rounded-xl border px-4 py-3.5"
-          style={{
-            opacity: c.resolved ? 0.6 : 1,
-            background: c.resolved ? "#FAFBFB" : c.isChange ? "rgba(194,65,18,.06)" : "#FFFFFF",
-            borderColor: c.resolved ? "var(--bos-border)" : c.isChange ? "rgba(194,65,18,.28)" : "var(--bos-border)",
-          }}
-        >
-          <div className="mb-2 flex items-center gap-[9px]">
-            <Avatar initials={ws.user(c.userId).initials} size={24} mono />
-            <span className="text-[15px] font-semibold">{ws.first(c.userId)}</span>
-            {c.isChange && <span className="eyebrow rounded bg-[rgba(194,65,18,.10)] px-[7px] py-[3px] text-[12px] text-change-ink">Change request</span>}
-            <span className="flex-1" />
-            <span className="font-mono text-[13.5px] text-[#64716B]">{ws.ago(c.createdAt)}</span>
-            {ws.can("comment") && (
-              <button type="button" onClick={() => run(toggleResolve, c.id)} className="px-1 py-0.5 text-[14px] text-[#64716B] hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
-            )}
-          </div>
-          <CommentText c={c} />
-        </div>
-      ))}
+      {list.map((c) => <Note key={c.id} c={c} />)}
       {!list.length && (
         <div className="rounded-xl border border-dashed border-line-strong p-[26px] text-center text-[15px] text-mute-2">No notes yet. Write down the thing you would otherwise say in a meeting.</div>
       )}
