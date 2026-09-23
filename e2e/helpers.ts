@@ -28,4 +28,5 @@ export const PAGES: [string, string][] = [
   ["service", "/services/sv1"],
   ["offer", "/offers/of1"],
   ["asset-drawer", "/offers/of1?asset=as1"],
+  ["settings", "/settings"],
 ];

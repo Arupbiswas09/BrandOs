@@ -33,16 +33,16 @@ const WorkspaceContext = createContext<Ctx | null>(null);
 
 export function WorkspaceProvider({ data, children }: { data: Workspace; children: ReactNode }) {
   const ws = useMemo(() => new WS(data), [data]);
+  const params = useSearchParams();
   const [modal, setModal] = useState<ModalSpec | null>(null);
   const [cmdk, setCmdk] = useState(false);
-  const [inbox, setInbox] = useState(false);
+  const [inbox, setInbox] = useState(() => params.get("inbox") === "1");
   const [nav, setNav] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [nudge, setNudge] = useState<Ctx["nudge"]>(null);
   const seq = useRef(0);
   const router = useRouter();
   const pathname = usePathname();
-  const params = useSearchParams();
   const assetId = params.get("asset");
   // The mobile navigation closes whenever the page changes.
   const [lastPath, setLastPath] = useState(pathname);

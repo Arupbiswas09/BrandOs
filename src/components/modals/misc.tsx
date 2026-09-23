@@ -84,6 +84,7 @@ const KEYS: [string, string][] = [
   ["G then S", "Go to the Street"],
   ["G then L", "Go to the Global Library"],
   ["G then T", "Go to the Team"],
+  ["G then P", "Your settings"],
   ["Esc", "Close whatever is on top"],
   ["⌘ ↵", "Post a note"],
   ["?", "This list"],
@@ -99,6 +100,20 @@ export function ShortcutsModal() {
           <span className="text-[14px] text-mute-1">{v}</span>
         </div>
       ))}
+    </Modal>
+  );
+}
+
+export function InstallModal() {
+  const { close } = useApp();
+  return (
+    <Modal title="Install BrandOS" sub="Put BrandOS on your home screen. It opens full screen, like any other app." width={440} footer={<Btn variant="primary" onClick={close}>Got it</Btn>}>
+      <ol className="m-0 flex list-decimal flex-col gap-2.5 pl-5 text-[14px] leading-[1.5] text-ink-3">
+        <li>Tap the <strong>Share</strong> button in Safari&apos;s toolbar (the square with an arrow).</li>
+        <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
+        <li>Tap <strong>Add</strong>. BrandOS appears next to your other apps.</li>
+      </ol>
+      <div className="text-[13px] text-mute-2">On Chrome or Edge, use the install icon in the address bar instead.</div>
     </Modal>
   );
 }

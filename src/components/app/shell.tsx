@@ -18,6 +18,7 @@ import { Inbox } from "./inbox";
 import { ModalHost } from "@/components/modals/host";
 import { Toasts } from "./toasts";
 import { Shortcuts } from "./shortcuts";
+import { useInstall } from "./pwa";
 
 function useActiveBrand() {
   const { ws, assetId } = useApp();
@@ -48,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <Sidebar />
       <Header inBrand={!!brand && mode !== "off"} mark={brand?.mark ?? ""} />
-      <main className="pt-[60px] lg:ml-[266px]">{children}</main>
+      <main className="pt-header lg:ml-[266px]">{children}</main>
       <AssetDrawer />
       <CommandPalette />
       <Inbox />
@@ -105,7 +106,7 @@ function Sidebar() {
   );
 
   const content = (
-    <aside className="flex h-full w-[266px] flex-col border-r border-line bg-white theme-fade">
+    <aside className="safe-top flex h-full w-[266px] flex-col border-r border-line bg-white theme-fade">
       <div className="flex items-center gap-2.5 px-4 pb-3.5 pl-[18px] pt-5">
         <Link href="/" className="flex items-center gap-2.5 text-left">
           <Mark mark="B" color="var(--bos-accent)" fg="var(--bos-on)" size={26} radius={7} />
@@ -176,7 +177,7 @@ function Sidebar() {
           <button type="button" onClick={() => open({ kind: "client" })} className="mt-1.5 w-full rounded-lg px-2.5 py-[7px] text-left text-[13.5px] text-mute-2 hover:bg-chip hover:text-ink">+ Add client</button>
         )}
       </nav>
-      <div className="relative flex items-center gap-[9px] border-t border-line px-3.5 py-[11px] theme-fade">
+      <div className="safe-bottom relative flex items-center gap-[9px] border-t border-line px-3.5 py-[11px] theme-fade">
         <Avatar initials={me.initials} size={25} className="bg-[#E4EAE7] text-[#4A5A53]" />
         <button type="button" onClick={() => setWhoOpen((v) => !v)} aria-expanded={whoOpen} className="min-w-0 flex-1 text-left">
           <span className="block truncate text-[13px] font-semibold">{me.name} ⌄</span>
@@ -245,6 +246,8 @@ function WhoMenu({ onClose, onSwitch }: { onClose: () => void; onSwitch: (id: st
         <button type="button" onClick={() => { onClose(); open({ kind: "shortcuts" }); }} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">
           <span className="flex-1">Keyboard shortcuts</span><kbd className="font-mono text-[11.5px] text-mute-4">?</kbd>
         </button>
+        <Link href="/settings" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">Settings</Link>
+        <InstallItem onDone={onClose} />
         <form action={signOut}>
           <button type="submit" className="w-full rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">Sign out</button>
         </form>
@@ -270,6 +273,7 @@ function useCrumbs() {
       case "street": out.push({ label: "The Street" }); break;
       case "library": out.push(street, { label: "Global Library" }); break;
       case "team": out.push(street, { label: "Team" }); break;
+      case "settings": out.push(street, { label: "Settings" }); break;
       case "client": out.push(street, { label: ws.client(p.id)?.name ?? "Client" }); break;
       case "brand": {
         const b = ws.brand(p.id);
@@ -313,7 +317,7 @@ function Header({ inBrand, mark }: { inBrand: boolean; mark: string }) {
   const me = ws.me;
   const readOnly = !ws.can("edit");
   return (
-    <header className="fixed left-0 right-0 top-0 z-[35] flex h-[60px] items-center gap-3.5 border-b border-line bg-white/92 px-4 backdrop-blur-[10px] theme-fade sm:px-7 lg:left-[266px]">
+    <header className="safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3.5 border-b border-line bg-white/92 px-4 backdrop-blur-[10px] theme-fade sm:px-7 lg:left-[266px]">
       <div className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-accent transition-opacity duration-300" style={{ opacity: inBrand ? 1 : 0 }} />
       <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="-ml-1 flex h-8 w-8 flex-none items-center justify-center rounded-lg text-mute-1 hover:bg-hover lg:hidden">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -343,5 +347,17 @@ function Header({ inBrand, mark }: { inBrand: boolean; mark: string }) {
         </span>
       )}
     </header>
+  );
+}
+
+function InstallItem({ onDone }: { onDone: () => void }) {
+  const { canPrompt, standalone, ios, install } = useInstall();
+  const { open } = useApp();
+  if (standalone || (!canPrompt && !ios)) return null;
+  return (
+    <button type="button" onClick={async () => { if (canPrompt) await install(); else { onDone(); open({ kind: "install" }); } }}
+      className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] font-semibold text-accent hover:bg-chip">
+      <span className="flex-1">Install the app</span><span aria-hidden>↓</span>
+    </button>
   );
 }

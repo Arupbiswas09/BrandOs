@@ -971,3 +971,18 @@ export async function revokeShareLink(token: string) {
     await log(db, me.id, "revoked a client link for", "brand", l.brandId, all.brands.find((b) => b.id === l.brandId)?.name ?? "", l.label);
   });
 }
+
+/* ================================================================ my profile */
+
+export async function updateProfile(input: { name: string; role: string }) {
+  return run(async () => {
+    const me = await getViewer();
+    if (!me) throw new Denied("You are signed out.");
+    const name = input.name.trim().slice(0, 120);
+    if (!name) throw new Denied("Your name cannot be empty.");
+    const parts = name.split(/\s+/);
+    const initials = ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
+    const db = await getDb();
+    await db.update(s.users).set({ name, initials, role: input.role.trim().slice(0, 80) || me.role, updatedAt: new Date() }).where(eq(s.users.id, me.id));
+  });
+}

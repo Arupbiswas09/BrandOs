@@ -89,6 +89,12 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
 
 }
 
+/* Installed on a notched phone the app draws edge to edge; keep content clear. */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.h-header { height: calc(60px + env(safe-area-inset-top)); }
+.pt-header { padding-top: calc(60px + env(safe-area-inset-top)); }
+
 .theme-fade { transition: background-color 0.34s ease, border-color 0.34s ease, color 0.34s ease; }
 .text-pretty { text-wrap: pretty; }
 

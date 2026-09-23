@@ -3,7 +3,7 @@
 import { useApp } from "@/components/app/provider";
 import { AssetModal, CloneModal, LinkAssetModal, LinkModal } from "./asset";
 import { BrandModal, ClientModal, CtaModal, GoalModal, GoalOffersModal, KitModal, MergeGoalModal, ServiceModal } from "./forms";
-import { ConfirmModal, NewModal, ShortcutsModal } from "./misc";
+import { ConfirmModal, InstallModal, NewModal, ShortcutsModal } from "./misc";
 import { OfferModal } from "./offer";
 import { ShareModal } from "./share";
 import { GroupModal, PersonModal, ReqChangesModal, SendReviewModal } from "./people";
@@ -32,6 +32,7 @@ export function ModalHost() {
     case "reqChanges": return <ReqChangesModal item={m.item} id={m.id} />;
     case "confirm": return <ConfirmModal item={m.item} id={m.id} label={m.label} back={m.back} />;
     case "share": return <ShareModal brandId={m.brandId} />;
+    case "install": return <InstallModal />;
     case "shortcuts": return <ShortcutsModal />;
   }
 }

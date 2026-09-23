@@ -13,6 +13,7 @@ for (const size of SIZES) {
     test.use({ viewport: { width: size.width, height: size.height } });
 
     test("every page fits the screen", async ({ page }, info) => {
+      test.setTimeout(180_000);
       await signIn(page);
       for (const [name, path] of PAGES) {
         await page.goto(path);

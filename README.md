@@ -24,6 +24,30 @@ seeded with a demo agency on first request (stored in `.data/`). Delete
 
 Configuration lives in `.env.local`; see `.env.example`.
 
+## Install it as an app
+
+BrandOS is a Progressive Web App. In Chrome or Edge, use the install icon in the
+address bar (or **Settings → Install the app**). On iPhone and iPad, open it in
+Safari, tap Share, then **Add to Home Screen**. The installed app opens in its
+own window and shows an offline screen instead of a browser error when the
+connection drops. Pages and data are never cached on the device, because they
+depend on who is signed in.
+
+The service worker only runs in production builds (`npm run build && npm start`).
+
+## Tests
+
+```bash
+npm run test:e2e
+```
+
+Playwright builds the app, starts it on a throwaway database, and checks:
+every page at phone, tablet, laptop and desktop widths (no sideways scrolling),
+WCAG AA accessibility including colour contrast on every page, the core
+flows, and the PWA (manifest, service worker, offline page). The HTML report
+lands in `playwright-report/`. It uses your installed Chrome; set `PW_CHANNEL=`
+to use Playwright's own Chromium (`npx playwright install chromium` first).
+
 ## Stack
 
 | Layer | Choice |
@@ -33,6 +57,8 @@ Configuration lives in `.env.local`; see `.env.example`.
 | Data | Postgres via Drizzle ORM. PGlite locally, any Postgres in production |
 | Files | Local disk, or private Vercel Blob |
 | AI | Anthropic SDK (Claude) for copy drafting |
+| App shell | Web app manifest + service worker (installable, offline screen) |
+| Tests | Playwright + axe-core |
 
 ## How it fits together
 
@@ -43,6 +69,11 @@ Configuration lives in `.env.local`; see `.env.example`.
 - `src/app/actions.ts` holds every change. Each action re-checks the access level
   (`src/lib/access.ts`) and client scope on the server, then refreshes the page.
 - `src/components/` holds the shell, pages, the asset drawer, and the modals.
+
+## Operations
+
+- `GET /api/health` returns 200 when the database answers — point uptime checks at it.
+- Admins can download the whole workspace as JSON from **Settings → Export JSON**.
 
 ## Deploying
 

@@ -27,4 +27,5 @@ export type ModalSpec =
   | { kind: "reqChanges"; item: ItemKind; id: string }
   | { kind: "confirm"; item: DeleteKind; id: string; label: string; back?: string }
   | { kind: "share"; brandId: string }
+  | { kind: "install" }
   | { kind: "shortcuts" };
