@@ -10,6 +10,11 @@ Built from the *BrandOS v3* Claude Design prototype.
 - **Brand Kit**: logos, colours, fonts, goals, segments, voice, boilerplate and the CTA library.
 - **Review**: send for review, request changes, approve; everything lands in the right person's queue.
 - **Team**: four access levels × client scope (per person, per group).
+- **Due dates and Calendar**: assets have due dates and offers have launch dates. Late work is flagged everywhere, the queue sorts by urgency, and the Calendar shows what is overdue, the next two weeks, and the month.
+- **Building inspection**: eight checks on each brand (proof, CTAs, goals, unlinked assets, coverage gaps, overdue work, stale reviews, unapproved client items), each linking to what needs fixing.
+- **Image previews**: uploaded images show on asset cards and in the asset panel.
+- **Editable notes**: edit or delete your own notes; admins can delete any.
+- **Client share links, AI copy drafting, version history, installable app**: see below.
 
 ## Run it
 
