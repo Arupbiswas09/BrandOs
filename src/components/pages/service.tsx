@@ -32,7 +32,7 @@ export function ServicePage({ id }: { id: string }) {
           <h1 className="m-0 mb-1.5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.022em] sm:text-[38px]">{v.name}</h1>
           <p className="m-0 text-[14px] text-[#71807A]">{v.short}</p>
         </div>
-        <div className="flex gap-2 sm:pt-[34px]">
+        <div className="flex flex-wrap gap-2 sm:pt-[34px]">
           {canEdit && <Btn onClick={() => open({ kind: "service", draft: v })}>Edit</Btn>}
           {canEdit && <Btn variant="primary" onClick={() => newOffer()}>+ New offer</Btn>}
         </div>

@@ -47,7 +47,7 @@ export function ClientPage({ id }: { id: string }) {
           <h1 className="m-0 mb-2 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.02em] sm:text-[38px]">{c.name}</h1>
           <p className="m-0 text-[14px] text-[#71807A]">{c.kind}</p>
         </div>
-        <div className="flex gap-2 sm:pt-[26px]">
+        <div className="flex flex-wrap gap-2 sm:pt-[26px]">
           {ws.can("edit") && <Btn onClick={() => open({ kind: "client", draft: c })}>Edit</Btn>}
           {ws.can("archive") && <Btn onClick={() => run(setArchived, "client", c.id, !c.archived)}>{c.archived ? "Restore client" : "Archive client"}</Btn>}
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "client", id: c.id, label: c.name, back: "/" })}>Delete</Btn>}

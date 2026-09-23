@@ -50,8 +50,13 @@ export function OfferPage({ id }: { id: string }) {
           <h1 className="m-0 mb-1.5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.022em] sm:text-[38px]">{o.name}</h1>
           <p className="m-0 text-[14px] text-[#71807A]">{o.short}</p>
         </div>
-        <div className="flex gap-2 sm:pt-[34px]">
+        <div className="flex flex-wrap gap-2 sm:pt-[34px]">
           {canEdit && <Btn onClick={() => open({ kind: "offer", draft: o })}>Edit</Btn>}
+          {canEdit && <Btn onClick={() => {
+            const taken = new Set(ws.offersOf(o.brandId).filter((x) => x.serviceId === o.serviceId && !x.archived).map((x) => x.segment));
+            const next = b?.segments.find((sg) => sg.name !== "All segments" && !taken.has(sg.name))?.name ?? o.segment;
+            open({ kind: "offer", draft: { ...o, id: undefined, name: `${o.name} — ${next}`, segment: next, status: "Ideation", review: "None" } });
+          }}>Adapt for another segment</Btn>}
           {ws.can("archive") && <Btn onClick={() => run(setArchived, "offer", o.id, !o.archived)}>{o.archived ? "Restore" : "Archive"}</Btn>}
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "offer", id: o.id, label: o.name, back: href.brand(o.brandId, "offers") })}>Delete</Btn>}
         </div>
