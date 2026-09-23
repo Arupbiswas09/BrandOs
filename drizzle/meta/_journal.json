@@ -29,6 +29,13 @@
       "when": 1790192866103,
       "tag": "0003_comment_edits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790193900599,
+      "tag": "0004_trash_and_resets",
+      "breakpoints": true
     }
   ]
 }

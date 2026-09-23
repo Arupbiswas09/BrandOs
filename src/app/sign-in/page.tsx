@@ -10,6 +10,8 @@ export default async function SignIn() {
   if (await getViewer()) redirect("/");
   const mode = authMode();
   const db = await getDb();
+  const [anyone] = await db.select({ id: s.users.id }).from(s.users).limit(1);
+  if (!anyone) redirect("/setup");
   const people = mode === "demo"
     ? (await db.select({ id: s.users.id, name: s.users.name, initials: s.users.initials, role: s.users.role, access: s.users.access }).from(s.users))
     : [];

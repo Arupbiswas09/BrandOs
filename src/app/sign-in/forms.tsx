@@ -50,7 +50,7 @@ export function PasswordForm() {
       <button type="submit" disabled={pending} className="rounded-[9px] bg-[#2D4A5C] px-4 py-2.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
         {pending ? "Signing in…" : "Sign in"}
       </button>
-      <p className="m-0 text-[14.5px] text-[#62706A]">No account? Ask an admin for an invite link.</p>
+      <p className="m-0 flex flex-wrap justify-between gap-2 text-[14px] text-mute-2"><a href="/forgot" className="text-accent hover:underline">Forgot your password?</a><span>No account? Ask an admin to invite you.</span></p>
     </form>
   );
 }

@@ -19,6 +19,7 @@ import { ModalHost } from "@/components/modals/host";
 import { Toasts } from "./toasts";
 import { Shortcuts } from "./shortcuts";
 import { useInstall } from "./pwa";
+import { LiveSync } from "./live";
 
 function useActiveBrand() {
   const { ws, assetId } = useApp();
@@ -55,6 +56,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Inbox />
       <ModalHost />
       <Shortcuts />
+      <LiveSync />
       <Toasts />
     </div>
   );
@@ -255,6 +257,7 @@ function WhoMenu({ onClose, onSwitch }: { onClose: () => void; onSwitch: (id: st
           <span className="flex-1">Keyboard shortcuts</span><kbd className="font-mono text-[13px] text-mute-4">?</kbd>
         </button>
         <Link href="/settings" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">Settings</Link>
+        {ws.can("del") && <Link href="/trash" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">Recycle bin</Link>}
         <InstallItem onDone={onClose} />
         <form action={signOut}>
           <button type="submit" className="w-full rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">Sign out</button>
@@ -283,6 +286,7 @@ function useCrumbs() {
       case "team": out.push(street, { label: "Team" }); break;
       case "settings": out.push(street, { label: "Settings" }); break;
       case "calendar": out.push(street, { label: "Calendar" }); break;
+      case "trash": out.push(street, { label: "Recycle bin" }); break;
       case "client": out.push(street, { label: ws.client(p.id)?.name ?? "Client" }); break;
       case "brand": {
         const b = ws.brand(p.id);

@@ -54,8 +54,8 @@ const CONFIRM_BODY: Record<DeleteKind, string> = {
   cta: "The button is removed from every offer and asset that used it.",
   person: "They lose access straight away. What they made stays.",
   group: "The group goes. People in it lose whatever it gave them.",
-  brand: "Everything inside it goes too — sub-brands, services, offers, assets and CTAs. This cannot be undone.",
-  client: "Everything inside it goes too — every brand, offer and asset. This cannot be undone.",
+  brand: "Everything inside it goes too — sub-brands, services, offers, assets and CTAs.",
+  client: "Everything inside it goes too — every brand, offer and asset.",
 };
 
 export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: string; label: string; back?: string }) {
@@ -72,7 +72,7 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
   return (
     <Modal title={`Delete ${label}?`} width={420} onSubmit={go} footer={<Footer saveLabel="Delete" pending={pending} saveVariant="danger-solid" />}>
       <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">{CONFIRM_BODY[item]}</div>
-      {(item === "brand" || item === "client") && <div className="text-[15px] text-mute-3">If you might want it back, archive it instead.</div>}
+      <div className="text-[14px] text-mute-3">It goes to the recycle bin for 30 days, and an admin can restore it from there.</div>
     </Modal>
   );
 }

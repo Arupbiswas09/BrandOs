@@ -13,6 +13,9 @@ import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
 import { removeStoredFile } from "@/server/storage";
+import { fileKeys, restoreSnapshot, snapshot } from "@/server/trash";
+import { after } from "next/server";
+import { appUrl, sendMail, type Mail } from "@/server/mail";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -60,6 +63,19 @@ function need(cond: unknown, msg = "You cannot see that.") {
 const str = (max = 5000) => z.string().trim().max(max);
 const name = (what: string) => z.string().trim().min(1, `Give the ${what} a name.`).max(200);
 
+/** Emails people about something that happened, after the response is sent. */
+function notify(all: All, userIds: (string | null | undefined)[], build: (firstName: string) => Omit<Mail, "to">, skip?: string) {
+  const people = [...new Set(userIds.filter((x): x is string => !!x && x !== skip))]
+    .map((id) => all.users.find((u) => u.id === id))
+    .filter((u): u is NonNullable<typeof u> => !!u?.email);
+  if (!people.length) return;
+  after(async () => {
+    for (const u of people) await sendMail({ to: u.email!, ...build(u.name.split(" ")[0]) });
+  });
+}
+
+const itemUrl = (kind: "offer" | "asset", id: string) => (kind === "offer" ? `${appUrl()}/offers/${id}` : `${appUrl()}/?asset=${id}`);
+
 /* ================================================================ session */
 
 export async function signInAs(userId: string) {
@@ -94,7 +110,7 @@ export async function resetDemo() {
     if (authMode() !== "demo") throw new Denied("Reset is only available in demo mode.");
     const db = await getDb();
     await db.transaction(async (tx) => {
-      for (const t of [s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
+      for (const t of [s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
         await tx.delete(t);
       }
       await tx.delete(s.sessions);
@@ -692,6 +708,8 @@ export async function deleteGroup(groupId: string) {
     const g = all.groups.find((x) => x.id === groupId);
     need(g, "That group no longer exists.");
     await db.transaction(async (tx) => {
+      const snap = await snapshot(tx, all, "group", groupId);
+      await tx.insert(s.trash).values({ id: newId("tr"), kind: "group", itemId: groupId, label: snap.label, context: snap.context, rows: snap.rows, deletedBy: me.id });
       for (const u of all.users.filter((u) => u.groupIds.includes(groupId))) {
         await tx.update(s.users).set({ groupIds: u.groupIds.filter((x) => x !== groupId) }).where(eq(s.users.id, u.id));
       }
@@ -744,6 +762,12 @@ export async function deleteItem(kind: Kind, id: string) {
   return run(async () => {
     const { me, vis, db, all } = await context(kind === "person" ? "access" : "del");
     await db.transaction(async (tx) => {
+      // Everything about to go is copied into the recycle bin first.
+      const exists = { offer: all.offers, asset: all.assets, cta: all.ctas, service: all.services, brand: all.brands, client: all.clients, person: all.users }[kind].some((x) => x.id === id);
+      if (exists) {
+        const snap = await snapshot(tx, all, kind, id);
+        await tx.insert(s.trash).values({ id: newId("tr"), kind, itemId: id, label: snap.label, context: snap.context, rows: snap.rows, deletedBy: me.id });
+      }
       switch (kind) {
         case "offer": {
           need(vis.offer(id));
@@ -847,6 +871,12 @@ export async function sendForReview(kind: "offer" | "asset", id: string, reviewe
     const t = reviewTarget(kind);
     await db.update(t).set({ review: "In review", reviewerId, changeNote: "", updatedAt: new Date() }).where(eq(t.id, id));
     await log(db, me.id, `asked ${reviewer!.name.split(" ")[0]} to review`, kind, id, item.name);
+    notify(all, [reviewerId], (first) => ({
+      subject: `${me.name.split(" ")[0]} asked you to review ${item.name}`,
+      heading: `${item.name} is waiting on you`,
+      body: `Hi ${first}, ${me.name} asked you to review this ${kind}. Approve it, or send it back with a note.`,
+      action: { label: "Open it in BrandOS", href: itemUrl(kind, id) },
+    }), me.id);
   });
 }
 
@@ -859,6 +889,12 @@ export async function approveItem(kind: "offer" | "asset", id: string) {
     const extra = kind === "asset" && (item as s.Asset).status === "Draft" ? { status: "Ready" as const } : {};
     await db.update(t).set({ review: "Approved", changeNote: "", reviewerId: me.id, updatedAt: new Date(), ...extra }).where(eq(t.id, id));
     await log(db, me.id, "approved", kind, id, item.name);
+    notify(all, [item.ownerId], (first) => ({
+      subject: `${item.name} was approved`,
+      heading: "Approved",
+      body: `Good news, ${first}: ${me.name} approved ${item.name}.`,
+      action: { label: "Open it in BrandOS", href: itemUrl(kind, id) },
+    }), me.id);
   });
 }
 
@@ -875,6 +911,13 @@ export async function requestChanges(kind: "offer" | "asset", id: string, note: 
       await tx.insert(s.comments).values({ id: newId("cm"), kind, itemId: id, userId: me.id, text, isChange: true, mentions: item.ownerId ? [item.ownerId] : [] });
       await log(tx, me.id, "requested changes on", kind, id, item.name, text);
     });
+    notify(all, [item.ownerId], (first) => ({
+      subject: `Changes requested on ${item.name}`,
+      heading: `${item.name} needs changes`,
+      body: `Hi ${first}, ${me.name} sent this back with a note:`,
+      quote: text,
+      action: { label: "Make the changes", href: itemUrl(kind, id) },
+    }), me.id);
   });
 }
 
@@ -891,6 +934,14 @@ export async function postComment(kind: "offer" | "asset", itemId: string, text:
     const keepRefs = [...new Set(refs)].filter((r) => vis.offer(r) && t.includes("#" + (all.offers.find((o) => o.id === r)?.name ?? "\u0000")));
     const keepMentions = [...new Set(mentions)].filter((m) => t.includes("@" + (all.users.find((u) => u.id === m)?.name ?? "\u0000")));
     await db.insert(s.comments).values({ id: newId("cm"), kind, itemId, userId: me.id, text: t, refs: keepRefs, mentions: keepMentions });
+    const where = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === itemId)?.name ?? "";
+    notify(all, keepMentions, (first) => ({
+      subject: `${me.name.split(" ")[0]} mentioned you on ${where}`,
+      heading: `${me.name} mentioned you`,
+      body: `Hi ${first}, you were mentioned in the discussion on ${where}:`,
+      quote: t.slice(0, 600),
+      action: { label: "Reply in BrandOS", href: itemUrl(kind, itemId) },
+    }), me.id);
   });
 }
 
@@ -1037,5 +1088,32 @@ export async function deleteComment(commentId: string) {
     if (c!.userId !== me.id && !can(me, "del")) throw new Denied("Only the author or an admin can delete a note.");
     await db.delete(s.comments).where(eq(s.comments.id, commentId));
     await db.delete(s.reads).where(eq(s.reads.commentId, commentId));
+  });
+}
+
+/* ================================================================ recycle bin */
+
+
+export async function restoreFromTrash(entryId: string) {
+  return run(async () => {
+    const { me, db } = await context("del");
+    const [e] = await db.select().from(s.trash).where(eq(s.trash.id, entryId));
+    need(e, "That is no longer in the bin.");
+    await db.transaction(async (tx) => {
+      await restoreSnapshot(tx, e!.rows, e!.kind === "group" ? e!.itemId : undefined);
+      await tx.delete(s.trash).where(eq(s.trash.id, entryId));
+      await log(tx, me.id, "restored", e!.kind === "group" ? "person" : e!.kind, e!.itemId, e!.label, "from the recycle bin");
+    });
+  });
+}
+
+export async function deleteForever(entryId: string | "all") {
+  return run(async () => {
+    const { db } = await context("del");
+    const list = entryId === "all" ? await db.select().from(s.trash) : await db.select().from(s.trash).where(eq(s.trash.id, entryId));
+    await db.transaction(async (tx) => {
+      for (const e of list) await tx.delete(s.trash).where(eq(s.trash.id, e.id));
+    });
+    for (const k of list.flatMap((e) => fileKeys(e.rows))) await removeStoredFile(k);
   });
 }

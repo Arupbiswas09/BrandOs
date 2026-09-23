@@ -246,6 +246,8 @@ export const sessions = pgTable("sessions", {
 export const invites = pgTable("invites", {
   token: text("token").primaryKey(),
   userId: text("user_id").notNull(),
+  /** "invite" sets a first password; "reset" replaces a forgotten one. */
+  purpose: text("purpose").notNull().default("invite"),
   createdBy: text("created_by"),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   usedAt: timestamp("used_at", { withTimezone: true }),
@@ -265,6 +267,24 @@ export const shareLinks = pgTable("share_links", {
 }, (t) => [index("share_links_brand_idx").on(t.brandId)]);
 
 export type ShareLink = typeof shareLinks.$inferSelect;
+
+/**
+ * The recycle bin. A delete copies every row it removes into one entry,
+ * so restoring puts back exactly what was there. Entries expire after 30 days.
+ */
+export const trash = pgTable("trash", {
+  id: text("id").primaryKey(),
+  kind: text("kind").notNull(),
+  itemId: text("item_id").notNull(),
+  label: text("label").notNull(),
+  /** Parent brand or client, so the bin can say where it came from. */
+  context: text("context").notNull().default(""),
+  rows: jsonb("rows").$type<Record<string, Record<string, unknown>[]>>().notNull(),
+  deletedBy: text("deleted_by"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("trash_deleted_idx").on(t.deletedAt)]);
+
+export type TrashEntry = typeof trash.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Client = typeof clients.$inferSelect;

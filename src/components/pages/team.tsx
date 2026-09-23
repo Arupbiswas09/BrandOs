@@ -16,7 +16,8 @@ export function Team() {
     const r = await createInvite(id);
     if (!r.ok) return toast(r.error, "error");
     const url = window.location.origin + r.path;
-    try { await navigator.clipboard.writeText(url); toast("Invite link copied. It works once, for a week."); }
+    if (r.emailed) { toast("Emailed. The link works once, for a week."); return; }
+    try { await navigator.clipboard.writeText(url); toast("Link copied — send it to them. It works once, for a week."); }
     catch { window.prompt("Copy this invite link", url); }
   };
   return (

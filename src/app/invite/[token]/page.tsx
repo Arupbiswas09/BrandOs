@@ -9,7 +9,7 @@ export default async function Invite({ params }: PageProps<"/invite/[token]">) {
   const { token } = await params;
   const db = await getDb();
   const [row] = await db
-    .select({ name: s.users.name, email: s.users.email })
+    .select({ name: s.users.name, email: s.users.email, purpose: s.invites.purpose })
     .from(s.invites)
     .innerJoin(s.users, eq(s.users.id, s.invites.userId))
     .where(and(eq(s.invites.token, token), isNull(s.invites.usedAt), gt(s.invites.expiresAt, new Date())))

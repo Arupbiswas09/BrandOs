@@ -14,6 +14,9 @@ Built from the *BrandOS v3* Claude Design prototype.
 - **Building inspection**: eight checks on each brand (proof, CTAs, goals, unlinked assets, coverage gaps, overdue work, stale reviews, unapproved client items), each linking to what needs fixing.
 - **Image previews**: uploaded images show on asset cards and in the asset panel.
 - **Editable notes**: edit or delete your own notes; admins can delete any.
+- **Recycle bin**: anything deleted can be restored for 30 days (Settings menu → Recycle bin, admins).
+- **Live updates**: teammates' changes appear within 30 seconds, and immediately when you return to the tab.
+- **Email** (when `RESEND_API_KEY` is set): invites, password resets, review requests, requested changes, approvals and @mentions.
 - **Client share links, AI copy drafting, version history, installable app**: see below.
 
 ## Run it
@@ -80,7 +83,14 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 - `GET /api/health` returns 200 when the database answers — point uptime checks at it.
 - Admins can download the whole workspace as JSON from **Settings → Export JSON**.
 
+## Setting up for real use
+
+1. Set `BRANDOS_AUTH=password` and `BRANDOS_SEED=off` (see `.env.example`).
+2. Open the site. The first visit shows a setup screen: your agency, your account.
+3. Add the team from **Team → Invite someone**, then send each person their invite link
+   (emailed automatically once `RESEND_API_KEY` is set).
+
 ## Deploying
 
 Any Node host works. On Vercel: add a Postgres database (e.g. Neon) and a Blob store
-from the Marketplace, set `BRANDOS_AUTH=password` plus the admin variables, and deploy.
+from the Marketplace, set `BRANDOS_AUTH=password`, `BRANDOS_SEED=off`, `APP_URL` and (for email) `RESEND_API_KEY`, then deploy and open the site to run setup.

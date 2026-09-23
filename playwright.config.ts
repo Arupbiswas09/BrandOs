@@ -16,7 +16,8 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    channel: process.env.PW_CHANNEL ?? "chrome",
+    // An empty PW_CHANNEL means Playwright's bundled Chromium (used in CI).
+    channel: process.env.PW_CHANNEL === "" ? undefined : process.env.PW_CHANNEL ?? "chrome",
     trace: "retain-on-failure",
   },
   webServer: {
