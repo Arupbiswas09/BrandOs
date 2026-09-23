@@ -1,0 +1,125 @@
+import type { Access, AssetStatus, OfferStatus, Review } from "@/db/schema";
+
+export type AssetCategory = "campaign" | "master" | "global";
+
+export const ASSET_TYPES: Record<string, { code: string; cat: AssetCategory }> = {
+  "Landing page": { code: "LP", cat: "campaign" },
+  Email: { code: "EM", cat: "campaign" },
+  "Email sequence": { code: "SEQ", cat: "campaign" },
+  "Social post": { code: "SOC", cat: "campaign" },
+  "Meta ad": { code: "META", cat: "campaign" },
+  "Google ad": { code: "ADS", cat: "campaign" },
+  Newsletter: { code: "NL", cat: "campaign" },
+  "Newsletter ad": { code: "NL", cat: "campaign" },
+  Video: { code: "VID", cat: "campaign" },
+  "Case study": { code: "CS", cat: "campaign" },
+  Poster: { code: "PST", cat: "campaign" },
+  Document: { code: "DOC", cat: "campaign" },
+  "Lead magnet": { code: "MAG", cat: "campaign" },
+  "LinkedIn post": { code: "LI", cat: "campaign" },
+  Logo: { code: "LOGO", cat: "master" },
+  Guidelines: { code: "GDL", cat: "master" },
+  Font: { code: "FONT", cat: "master" },
+  Checklist: { code: "CHK", cat: "global" },
+  Prompt: { code: "PRM", cat: "global" },
+  Template: { code: "TPL", cat: "global" },
+  SOP: { code: "SOP", cat: "global" },
+};
+
+export const CHANNELS = [
+  "Owned",
+  "Google",
+  "Meta",
+  "LinkedIn",
+  "Newsletter sponsorship",
+  "Onboarding flow",
+  "Email",
+  "Organic social",
+  "Print",
+] as const;
+
+export const CHANNEL_COLOR: Record<string, string> = {
+  Owned: "#5C6B64",
+  Google: "#2D6FA8",
+  Meta: "#4B62C4",
+  LinkedIn: "#1D6FA3",
+  "Newsletter sponsorship": "#8156C7",
+  "Onboarding flow": "#0E7490",
+  Email: "#2F8F62",
+  "Organic social": "#C2740C",
+  Print: "#6E7C76",
+};
+
+export const ACCESS_LEVELS: Access[] = ["Admin", "Editor", "Reviewer", "Viewer"];
+
+export const ACCESS_COLOR: Record<Access, string> = {
+  Admin: "#8156C7",
+  Editor: "#2F8F62",
+  Reviewer: "#C2740C",
+  Viewer: "#6E7C76",
+};
+
+export const ACCESS_NOTE: Record<Access, string> = {
+  Admin: "Everything, everywhere. Invites people and is the only role that can delete.",
+  Editor: "Creates, edits and archives inside their scope. Reviews and approves.",
+  Reviewer: "Reads, comments, approves or sends back. Changes nothing themselves.",
+  Viewer: "Reads. Useful for people who need to find things, not change them.",
+};
+
+export const DEFAULT_GOALS = [
+  { name: "Awareness", description: "Be known by people who have never heard of us." },
+  { name: "Audience growth", description: "Grow the audience we own — list, followers, members." },
+  { name: "Revenue", description: "Turn interest into money, one-off or recurring." },
+  { name: "Retention", description: "Keep and deepen the relationships we already have." },
+  { name: "Recruitment", description: "Ask for time rather than money — volunteers, coaches, staff." },
+];
+
+export const GOAL_PALETTE = ["#8156C7", "#2D6FA8", "#2F8F62", "#C2740C", "#C2410C", "#0E7490", "#7C6AC4", "#B4553A"];
+
+export const OFFER_TYPES = ["Audit", "Free consultation", "Lead magnet", "Content series", "Paid engagement", "Campaign"];
+
+export const DELIVERY = ["Designed page", "Doc link", "File download", "Email sequence", "None"];
+
+export const REVIEW_COLOR: Record<Review, string> = {
+  None: "#93A09A",
+  "In review": "#C99A2E",
+  "Changes requested": "#C2410C",
+  Approved: "#2F8F62",
+};
+
+export const OFFER_STATUS: Record<OfferStatus, string> = {
+  Ideation: "#7C6AC4",
+  Active: "#2F8F62",
+  Paused: "#C99A2E",
+  Archived: "#9AA6A0",
+};
+
+export const ASSET_STATUS: Record<AssetStatus, string> = {
+  Draft: "#9AA6A0",
+  Ready: "#2D6FA8",
+  Live: "#1F7A55",
+  Archived: "#B8C2BD",
+};
+
+export const ROLE_OPTIONS = [
+  "Strategy lead",
+  "Client lead",
+  "Design",
+  "Copy and content",
+  "Paid media",
+  "Account director",
+  "Team member",
+];
+
+export const BRAND_PALETTES: [string, string][] = [
+  ["#1F6F5C", "#E8B44A"],
+  ["#4338CA", "#06B6D4"],
+  ["#A3431F", "#4D7C0F"],
+  ["#0E7490", "#F97316"],
+  ["#2D4A5C", "#7BA0A8"],
+];
+
+export const SEGMENT_PALETTE = ["#7C6AC4", "#2D6FA8", "#C2740C", "#2F8F62", "#C2410C", "#0E7490", "#B4553A", "#4B62C4"];
+
+export const NEUTRAL = "#6E7C76";
+export const GLOBAL_ACCENT = "#2D4A5C";
