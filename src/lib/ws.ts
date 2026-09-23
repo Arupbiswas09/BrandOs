@@ -15,6 +15,7 @@ export type QueueItem = {
   act: "review" | "change";
   note: string;
   ago: string;
+  dueAt: Date | null;
 };
 
 const UNKNOWN_USER: PublicUser = {
@@ -122,7 +123,7 @@ export class WS {
       out.push({
         kind: "asset", id: a.id, name: a.name,
         sub: `${a.brandId ? this.brand(a.brandId)?.name : "Global Library"} · ${a.type}`,
-        who: w.who, verb: w.verb, act: w.act, note: a.changeNote, ago: this.ago(a.updatedAt),
+        who: w.who, verb: w.verb, act: w.act, note: a.changeNote, ago: this.ago(a.updatedAt), dueAt: a.dueAt,
       });
     }
     for (const o of this.d.offers) {
@@ -131,10 +132,25 @@ export class WS {
       if (!w) continue;
       out.push({
         kind: "offer", id: o.id, name: o.name, sub: `${this.brand(o.brandId)?.name} · Offer`,
-        who: w.who, verb: w.verb, act: w.act, note: o.changeNote, ago: this.ago(o.updatedAt),
+        who: w.who, verb: w.verb, act: w.act, note: o.changeNote, ago: this.ago(o.updatedAt), dueAt: o.dueAt,
       });
     }
-    return out;
+    // Soonest deadline first; undated work after everything with a date.
+    return out.sort((x, y) => (x.dueAt ? +new Date(x.dueAt) : Infinity) - (y.dueAt ? +new Date(y.dueAt) : Infinity));
+  }
+
+  /** Everything with a date on it that is still in play. */
+  dated() {
+    const items: { kind: "asset" | "offer"; id: string; name: string; sub: string; dueAt: Date; color: string; done: boolean }[] = [];
+    for (const a of this.d.assets) if (a.dueAt && !a.archived) {
+      const b = this.brand(a.brandId);
+      items.push({ kind: "asset", id: a.id, name: a.name, sub: `${b?.name ?? "Global Library"} · ${a.type}`, dueAt: new Date(a.dueAt), color: b?.primary ?? NEUTRAL, done: a.status === "Live" });
+    }
+    for (const o of this.d.offers) if (o.dueAt && !o.archived) {
+      const b = this.brand(o.brandId);
+      items.push({ kind: "offer", id: o.id, name: o.name, sub: `${b?.name} · Offer launch`, dueAt: new Date(o.dueAt), color: b?.primary ?? NEUTRAL, done: o.status === "Active" });
+    }
+    return items.sort((x, y) => +x.dueAt - +y.dueAt);
   }
 
   scopeLabel(u: PublicUser) {

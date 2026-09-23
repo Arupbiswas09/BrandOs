@@ -9,11 +9,12 @@ import { href } from "@/lib/routes";
 import { waitOn } from "@/lib/types";
 import {
   addItem, approveItem, listVersions, moveItem, removeFile, removeItem, resetList, restoreVersion,
-  setArchived, setStatus, toggleClientVisible, toggleItem, toggleLink, trackVisit,
+  setArchived, setDue, setStatus, toggleClientVisible, toggleItem, toggleLink, trackVisit,
 } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Thread } from "@/components/discussion";
-import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, Eyebrow, Hint, cx } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, DueBadge, Eyebrow, Hint, cx } from "@/components/ui";
+import { toDateInput } from "@/lib/time";
 import { AiDraftButton } from "@/components/ai";
 
 type Tab = "overview" | "list" | "prompt" | "copy" | "files" | "discussion" | "history" | "sharing";
@@ -126,6 +127,16 @@ function Drawer({ a }: { a: Asset }) {
               <Meta label="Access" border="b">{a.gated ? "Gated — requested, then sent" : "Open"}</Meta>
               <Meta label="Owner" border="r">{ws.user(a.ownerId).name}</Meta>
               <Meta label="Version">v{a.version} · updated {ws.ago(a.updatedAt)}</Meta>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3">
+              <span className="text-[13px] text-mute-4">Due</span>
+              {canEdit ? (
+                <input type="date" aria-label="Due date" defaultValue={toDateInput(a.dueAt)} key={String(a.dueAt)}
+                  onChange={(e) => run(setDue, "asset", a.id, e.target.value || null)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[14px]" />
+              ) : (
+                <span className="text-[15px] font-medium">{a.dueAt ? new Date(a.dueAt).toDateString() : "No date"}</span>
+              )}
+              <DueBadge at={a.dueAt} now={ws.d.now} done={a.status === "Live"} />
             </div>
           </div>
 

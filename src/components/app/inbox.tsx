@@ -6,7 +6,7 @@ import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { markMentionsRead } from "@/app/actions";
 import { useApp } from "./provider";
-import { Avatar, Eyebrow, cx } from "@/components/ui";
+import { Avatar, DueBadge, Eyebrow, cx } from "@/components/ui";
 
 export function Inbox() {
   const { inbox, setInbox } = useApp();
@@ -60,6 +60,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                 <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left hover:border-mute-2">
                   <span className="mb-1.5 flex items-center gap-2">
                     <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
+                    <DueBadge at={x.dueAt} now={ws.d.now} />
                     <span className="flex-1" /><span className="text-[13.5px] text-[#64716B]">{x.ago}</span>
                   </span>
                   <span className="block text-[16px] font-semibold leading-[1.35]">{x.name}</span>

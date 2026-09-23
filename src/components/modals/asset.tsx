@@ -5,6 +5,7 @@ import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY } from "@/lib/constants";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
+import { toDateInput } from "@/lib/time";
 import { useAction, useApp } from "@/components/app/provider";
 import { Btn, CheckRow, Chip, Field, Mark, Pills, Select, Tick, cx } from "@/components/ui";
 import { Footer, Modal } from "./frame";
@@ -38,6 +39,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     prompt: draft.prompt ?? "",
     checks: (draft.items ?? []).map((i) => i.text).join("\n"),
     offerIds: draft.offerIds ?? [],
+    dueAt: toDateInput(draft.dueAt),
   });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((x) => ({ ...x, [k]: v }));
   const known = !editing && !!d.brandId && d.offerIds.length > 0;
@@ -59,6 +61,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       ...(d.type === "Prompt" && { promptFor: d.promptFor, prompt: d.prompt }),
       ...(d.type === "Checklist" && !editing && { items: d.checks.split("\n").map((t) => t.trim()).filter(Boolean).map((text) => ({ text, done: false })) }),
       offerIds: d.brandId ? d.offerIds : [],
+      dueAt: d.dueAt || null,
     });
     if (r.ok) { close(); if (!editing && r.id) openAsset(r.id); }
   };
@@ -158,6 +161,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Short description"><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
+            <Field label="Due"><input type="date" className="field" value={d.dueAt} onChange={(e) => set("dueAt", e.target.value)} /></Field>
             <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">

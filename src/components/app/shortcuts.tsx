@@ -32,7 +32,7 @@ export function Shortcuts() {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey || modal || cmdk) return;
       if (g) {
         g = false;
-        const to = ({ s: "/", l: "/library", t: "/team", p: "/settings" } as Record<string, string>)[e.key.toLowerCase()];
+        const to = ({ s: "/", l: "/library", t: "/team", p: "/settings", c: "/calendar" } as Record<string, string>)[e.key.toLowerCase()];
         if (to) { e.preventDefault(); router.push(to); }
         return;
       }

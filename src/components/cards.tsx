@@ -7,7 +7,7 @@ import { href } from "@/lib/routes";
 import type { WS } from "@/lib/ws";
 import { plural } from "@/lib/ws";
 import { useApp } from "./app/provider";
-import { Avatar, Blocks, Chip, CodeTile, cx } from "./ui";
+import { Avatar, Blocks, Chip, CodeTile, DueBadge, cx } from "./ui";
 
 /** One square per asset, coloured by where it stands in review. Live assets get a ring. */
 export function blocksFor(list: Asset[], limit = 28) {
@@ -74,6 +74,7 @@ export function AssetCard({ a, variant = "full" }: { a: Asset; variant?: AssetVa
           <>
             {variant === "full" && <span className="mb-2 block text-[13.5px] text-mute-4">{a.type}</span>}
             <StatusChips a={a} />
+            {a.dueAt && a.status !== "Live" && a.status !== "Archived" && <DueBadge at={a.dueAt} now={ws.d.now} className="mb-[7px]" />}
             <span className="block text-[13.5px] font-medium" style={{ color: n === 0 ? "#8A6A12" : "#566560" }}>{linkLabel(n)}</span>
             {open > 0 && <span className="mt-[3px] block font-mono text-[13.5px] text-mute-2">{plural(open, "open note")}</span>}
           </>
@@ -130,6 +131,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
         <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
         {variant === "service" && <GoalChips ws={ws} o={o} />}
         {o.review !== "None" && <Chip color={REVIEW_COLOR[o.review]}>{o.review}</Chip>}
+        {o.dueAt && o.status !== "Archived" && <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />}
       </span>
       {variant === "full" ? (
         <span className="block">

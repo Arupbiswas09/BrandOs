@@ -115,7 +115,7 @@ export async function seed(db: DB) {
   ): s.Offer => ({
     id, brandId, serviceId, name, short, segment, goals: goalNames, status, ownerId, positioning, promise, proof,
     primaryCtaId: primaryCtaId || null, secondaryCtaId: secondaryCtaId || null, tags, offerType,
-    review: "None", reviewerId: null, changeNote: "", archived: false, createdAt: at("3 months ago"), updatedAt: at(when),
+    review: "None", reviewerId: null, changeNote: "", dueAt: null, archived: false, createdAt: at("3 months ago"), updatedAt: at(when),
   });
   const offers: s.Offer[] = [
     O("of1", "br1", "sv1", "Ad Grant for Church Reach", "Fill the pews from search", "Church", ["Audience growth"], "Active", "pr", "2 hours ago",
@@ -192,6 +192,11 @@ export async function seed(db: DB) {
       "Eight booked calls a month.", "Converts at 34 percent to a paid engagement.", "ct1", "ct2", ["consultation", "sales"], "Free consultation"),
   ];
   const setO = (id: string, p: Partial<s.Offer>) => Object.assign(offers.find((o) => o.id === id)!, p);
+  const inDays = (n: number) => new Date(now.getTime() + n * 24 * 3600 * 1000);
+  setO("of17", { dueAt: inDays(21) });
+  setO("of20", { dueAt: inDays(9) });
+  setO("of12", { dueAt: inDays(-2) });
+  setO("of3", { dueAt: inDays(12) });
   setO("of12", { review: "In review", reviewerId: "pr" });
   setO("of3", { review: "Changes requested", reviewerId: "pr", changeNote: "Proof point is empty. Do not put this in front of a club until the March pilot gives us a number." });
   setO("of24", { review: "Approved", reviewerId: "jw" });
@@ -229,7 +234,7 @@ export async function seed(db: DB) {
       short: "", tags: [], url: "", notes: "", copy: null, files: [], specs: "", audienceNotes: "", aiPrompt: "",
       ctaId: null, clientVisible: false, isTemplate: false, clonedFromId: null, gated: false,
       delivery: type === "Landing page" ? "Designed page" : "None",
-      items: type === "Checklist" ? [] : null, promptFor: "", prompt: "", archived: false,
+      items: type === "Checklist" ? [] : null, promptFor: "", prompt: "", dueAt: null, archived: false,
       createdAt: at("3 months ago"), updatedAt: at(when), ...extra,
     };
   };
@@ -426,6 +431,9 @@ export async function seed(db: DB) {
     PR("pm4", "LinkedIn Carousel Outline", "Eight slides, no pitch", "Creative", ["linkedin", "organic"],
       "Outline a LinkedIn carousel for a nonprofit marketing audience.\n\nContext:\n- Topic: [TOPIC]\n- The one thing the reader should do differently afterwards: [CHANGE]\n- Proof or example available: [DETAIL]\n\nEight slides:\n1. A claim most of the audience believes and is wrong about\n2-6. One idea per slide, one sentence plus one supporting line\n7. The specific action\n8. Who wrote it, no logo wall\n\nNo pitch anywhere. No “swipe →”. Slide one must work as a standalone image in the feed."),
   );
+
+  const due: [string, number][] = [["as2", 1], ["as36", 3], ["as39", -1], ["as21", 5], ["as28", 2], ["as11", 14], ["as40", 6], ["as19", 20], ["as12", 30]];
+  for (const [id, n] of due) { const a = assets.find((x) => x.id === id); if (a) a.dueAt = new Date(now.getTime() + n * 24 * 3600 * 1000); }
 
   /* ---------------- conversation ---------------- */
   const C = (id: string, kind: "asset" | "offer", itemId: string, userId: string, text: string, when: string, extra: Partial<s.Comment> = {}): s.Comment =>

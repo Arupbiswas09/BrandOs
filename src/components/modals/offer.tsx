@@ -6,6 +6,7 @@ import type { Offer } from "@/db/schema";
 import { OFFER_STATUS, OFFER_TYPES } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { saveOffer } from "@/app/actions";
+import { toDateInput } from "@/lib/time";
 import { useAction, useApp } from "@/components/app/provider";
 import { Field, Select, cx } from "@/components/ui";
 import { Footer, Modal } from "./frame";
@@ -29,6 +30,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
     primaryCtaId: draft.primaryCtaId ?? "",
     secondaryCtaId: draft.secondaryCtaId ?? "",
     tags: (draft.tags ?? []).join(", "),
+    dueAt: toDateInput(draft.dueAt),
   });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((x) => ({ ...x, [k]: v }));
   const b = ws.brand(d.brandId);
@@ -44,6 +46,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
       primaryCtaId: d.primaryCtaId || null,
       secondaryCtaId: d.secondaryCtaId || null,
       tags: d.tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
+      dueAt: d.dueAt || null,
     });
     if (r.ok) { close(); if (!draft.id && r.id) router.push(href.offer(r.id)); }
   };
@@ -93,6 +96,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Offer type"><Select value={d.offerType} onChange={(v) => set("offerType", v)} options={OFFER_TYPES.map((x) => ({ value: x, label: x }))} /></Field>
+        <Field label="Launch date"><input type="date" className="field" value={d.dueAt} onChange={(e) => set("dueAt", e.target.value)} /></Field>
         <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Offer["status"])} options={Object.keys(OFFER_STATUS).map((x) => ({ value: x, label: x }))} /></Field>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">

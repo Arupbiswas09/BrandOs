@@ -74,6 +74,10 @@ function Sidebar() {
   const myQueue = ws.d.queueCounts[me.id] ?? 0;
   const unread = ws.d.unreadMentions.length;
   const [whoOpen, setWhoOpen] = useState(false);
+  const overdueCount = useMemo(() => {
+    const t = new Date(ws.d.now); const start = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    return ws.dated().filter((x) => !x.done && x.dueAt < start).length;
+  }, [ws]);
   const [run] = useAction();
   const [lastPath, setLastPath] = useState(pathname);
   if (lastPath !== pathname) { setLastPath(pathname); setWhoOpen(false); }
@@ -131,6 +135,10 @@ function Sidebar() {
       <nav data-scroll className="flex-1 overflow-y-auto px-3 pb-3 pt-1" aria-label="Main">
         <Link href="/" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "street"))}>
           <span className="w-3.5 text-center text-[13.5px] opacity-55">◻</span><span>The Street</span>
+        </Link>
+        <Link href="/calendar" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "calendar"))}>
+          <span className="w-3.5 text-center text-[12px] opacity-55">◷</span><span className="flex-1">Calendar</span>
+          {overdueCount > 0 && <span className="rounded-full bg-[rgba(180,35,24,.1)] px-1.5 font-mono text-[12px] font-semibold text-[#B42318]" title={`${overdueCount} overdue`}>{overdueCount}</span>}
         </Link>
         <Link href="/library" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "library"))}>
           <span className="w-3.5 text-center text-[13.5px] opacity-55">◫</span><span>Global Library</span>
@@ -274,6 +282,7 @@ function useCrumbs() {
       case "library": out.push(street, { label: "Global Library" }); break;
       case "team": out.push(street, { label: "Team" }); break;
       case "settings": out.push(street, { label: "Settings" }); break;
+      case "calendar": out.push(street, { label: "Calendar" }); break;
       case "client": out.push(street, { label: ws.client(p.id)?.name ?? "Client" }); break;
       case "brand": {
         const b = ws.brand(p.id);

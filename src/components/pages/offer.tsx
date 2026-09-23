@@ -6,12 +6,13 @@ import { hexA, readable } from "@/lib/color";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import type { Offer } from "@/db/schema";
-import { setArchived, setStatus } from "@/app/actions";
+import { setArchived, setDue, setStatus } from "@/app/actions";
+import { toDateInput } from "@/lib/time";
 import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, GoalChips } from "@/components/cards";
 import { CommentText, Thread } from "@/components/discussion";
 import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
-import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, Empty, Eyebrow, Page } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, DueBadge, Empty, Eyebrow, Page } from "@/components/ui";
 import { NotHere, useVisit } from "./common";
 
 export function OfferPage({ id }: { id: string }) {
@@ -72,6 +73,17 @@ export function OfferPage({ id }: { id: string }) {
               style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#5C6A64" }}>{k}</button>
           );
         })}
+      </div>
+
+      <div className="-mt-3 mb-6 flex flex-wrap items-center gap-2.5">
+        <span className="eyebrow mr-1">Launch</span>
+        {canEdit ? (
+          <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
+            onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[14px]" />
+        ) : (
+          <span className="text-[15px]">{o.dueAt ? new Date(o.dueAt).toDateString() : "Not scheduled"}</span>
+        )}
+        <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />
       </div>
 
       {o.archived && <ArchivedNote className="mb-3.5">Archived. Its assets are still in the library — only this room is closed.</ArchivedNote>}

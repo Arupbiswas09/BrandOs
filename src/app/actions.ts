@@ -290,7 +290,17 @@ const offerDraft = z.object({
   primaryCtaId: z.string().nullable().optional(),
   secondaryCtaId: z.string().nullable().optional(),
   tags: z.array(str(40)).max(30).optional(),
+  dueAt: z.string().nullable().optional(),
 });
+
+/** "2026-10-03" from a date input, or null to clear. Noon keeps it on the same day in every timezone. */
+function dueFrom(v: string | null | undefined): Date | null | undefined {
+  if (v === undefined) return undefined;
+  if (!v) return null;
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(v) ? `${v}T12:00:00` : v);
+  if (Number.isNaN(d.getTime())) throw new Denied("That date does not look right.");
+  return d;
+}
 
 export async function saveOffer(input: z.input<typeof offerDraft>) {
   let id = input.id;
@@ -308,6 +318,7 @@ export async function saveOffer(input: z.input<typeof offerDraft>) {
       primaryCtaId: d.primaryCtaId || null, secondaryCtaId: d.secondaryCtaId || null,
       ...(d.tags && { tags: d.tags }),
       ...(d.ownerId && { ownerId: d.ownerId }),
+      ...(d.dueAt !== undefined && { dueAt: dueFrom(d.dueAt) }),
     };
     if (d.id) {
       need(vis.offer(d.id));
@@ -349,6 +360,7 @@ const assetDraft = z.object({
   promptFor: str(120).optional(),
   prompt: str(20000).optional(),
   offerIds: z.array(z.string()).max(200).default([]),
+  dueAt: z.string().nullable().optional(),
 });
 
 function assetSnapshot(a: s.Asset) {
@@ -378,6 +390,7 @@ export async function saveAsset(input: z.input<typeof assetDraft>) {
       ...(d.items !== undefined && { items: d.items }),
       ...(d.promptFor !== undefined && { promptFor: d.promptFor }),
       ...(d.prompt !== undefined && { prompt: d.prompt }),
+      ...(d.dueAt !== undefined && { dueAt: dueFrom(d.dueAt) }),
     };
     await db.transaction(async (tx) => {
       if (d.id) {
@@ -984,5 +997,19 @@ export async function updateProfile(input: { name: string; role: string }) {
     const initials = ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
     const db = await getDb();
     await db.update(s.users).set({ name, initials, role: input.role.trim().slice(0, 80) || me.role, updatedAt: new Date() }).where(eq(s.users.id, me.id));
+  });
+}
+
+/* ================================================================ due dates */
+
+export async function setDue(kind: "offer" | "asset", id: string, date: string | null) {
+  return run(async () => {
+    const { me, vis, db, all } = await context("edit");
+    need(kind === "offer" ? vis.offer(id) : vis.asset(id));
+    const t = kind === "offer" ? s.offers : s.assets;
+    const item = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === id)!;
+    const dueAt = dueFrom(date) ?? null;
+    await db.update(t).set({ dueAt, updatedAt: new Date() }).where(eq(t.id, id));
+    await log(db, me.id, dueAt ? "set a due date on" : "cleared the due date on", kind, id, item.name, dueAt ? dueAt.toDateString() : "");
   });
 }

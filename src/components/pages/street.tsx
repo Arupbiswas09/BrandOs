@@ -9,7 +9,7 @@ import { NEUTRAL } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
-import { ArchExpander, Avatar, Card, Eyebrow, H2, Page } from "@/components/ui";
+import { ArchExpander, Avatar, Card, DueBadge, Eyebrow, H2, Page } from "@/components/ui";
 
 export function Street() {
   const { ws, openAsset, open } = useApp();
@@ -30,10 +30,10 @@ export function Street() {
 
   const already = new Set(mine.map((q) => q.kind + q.id));
   const attention = [
-    ...mine.map((q) => ({ key: q.kind + q.id, label: q.name, sub: q.sub, dot: q.act === "review" ? "#8A6A12" : "#C2410C", badge: q.verb, badgeFg: q.act === "review" ? "#8A6A12" : "#A63A12", go: () => (q.kind === "asset" ? openAsset(q.id) : router.push(href.offer(q.id))) })),
+    ...mine.map((q) => ({ key: q.kind + q.id, label: q.name, sub: q.sub, dueAt: q.dueAt as Date | null, dot: q.act === "review" ? "#8A6A12" : "#C2410C", badge: q.verb, badgeFg: q.act === "review" ? "#8A6A12" : "#A63A12", go: () => (q.kind === "asset" ? openAsset(q.id) : router.push(href.offer(q.id))) })),
     ...ideation.filter((o) => !already.has("offer" + o.id)).slice(0, 3).map((o) => {
       const n = ws.linkedAssetIds(o.id).length;
-      return { key: "i" + o.id, label: o.name, sub: `${ws.brand(o.brandId)?.name} · ${plural(n, "asset")}`, dot: "#7C6AC4", badge: "Ideation", badgeFg: "#5C4CA8", go: () => router.push(href.offer(o.id)) };
+      return { key: "i" + o.id, dueAt: o.dueAt as Date | null, label: o.name, sub: `${ws.brand(o.brandId)?.name} · ${plural(n, "asset")}`, dot: "#7C6AC4", badge: "Ideation", badgeFg: "#5C4CA8", go: () => router.push(href.offer(o.id)) };
     }),
   ];
 
@@ -70,6 +70,7 @@ export function Street() {
                 <span className="block truncate text-[15px] font-medium">{a.label}</span>
                 <span className="mt-px block text-[15px] text-mute-2">{a.sub}</span>
               </span>
+              <DueBadge at={a.dueAt} now={ws.d.now} className="hidden sm:inline-flex" />
               <span className="flex-none rounded-[5px] px-[7px] py-[3px] text-[13px] font-semibold" style={{ background: hexA(a.dot, 0.15), color: readable(a.dot, 0.15) }}>{a.badge}</span>
             </button>
           ))}

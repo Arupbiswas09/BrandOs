@@ -29,4 +29,5 @@ export const PAGES: [string, string][] = [
   ["offer", "/offers/of1"],
   ["asset-drawer", "/offers/of1?asset=as1"],
   ["settings", "/settings"],
+  ["calendar", "/calendar"],
 ];

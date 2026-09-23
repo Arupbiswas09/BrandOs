@@ -126,6 +126,8 @@ export const offers = pgTable("offers", {
   review: text("review").$type<Review>().notNull().default("None"),
   reviewerId: text("reviewer_id"),
   changeNote: text("change_note").notNull().default(""),
+  /** When this offer should launch. */
+  dueAt: timestamp("due_at", { withTimezone: true }),
   archived: boolean("archived").notNull().default(false),
   ...stamps,
 }, (t) => [index("offers_brand_idx").on(t.brandId), index("offers_service_idx").on(t.serviceId)]);
@@ -160,6 +162,8 @@ export const assets = pgTable("assets", {
   items: jsonb("items").$type<CheckItem[]>(),
   promptFor: text("prompt_for").notNull().default(""),
   prompt: text("prompt").notNull().default(""),
+  /** When this asset has to be ready. */
+  dueAt: timestamp("due_at", { withTimezone: true }),
   archived: boolean("archived").notNull().default(false),
   ...stamps,
 }, (t) => [index("assets_brand_idx").on(t.brandId)]);
