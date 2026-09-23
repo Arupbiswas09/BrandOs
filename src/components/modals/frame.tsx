@@ -6,7 +6,7 @@ import { Btn, cx } from "@/components/ui";
 
 /** The shared dialog: dimmed backdrop, card, header, scrolling body, footer. */
 export function Modal({
-  title, sub, eyebrow, width = 520, children, footer, bodyClass, onSubmit, label,
+  title, sub, eyebrow, width = 520, children, footer, bodyClass, onSubmit, label, onClose,
 }: {
   title: ReactNode;
   sub?: ReactNode;
@@ -17,8 +17,11 @@ export function Modal({
   bodyClass?: string;
   onSubmit?: () => void;
   label?: string;
+  /** For dialogs that live outside the app's modal slot. */
+  onClose?: () => void;
 }) {
-  const { close } = useApp();
+  const app = useApp();
+  const close = onClose ?? app.close;
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,7 +45,7 @@ export function Modal({
 
   const Inner = onSubmit ? "form" : "div";
   return (
-    <div className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-[72px]">
+    <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-[72px]">
       <div className="fixed inset-0 animate-fade bg-[rgba(16,22,20,.34)]" onClick={close} />
       <div
         ref={ref}

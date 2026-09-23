@@ -86,7 +86,7 @@ export async function buildWorkspace(
   const scope = scopeFor(all, meId);
   const vis = makeVisibility(all, scope);
 
-  const users: PublicUser[] = all.users.map(({ passwordHash: _omit, ...u }) => u);
+  const users: PublicUser[] = all.users.map(({ passwordHash, ...u }) => ({ ...u, hasPassword: !!passwordHash }));
   const offers = all.offers.filter((o) => vis.brand(o.brandId));
   const assets = all.assets.filter((a) => !a.brandId || vis.brand(a.brandId));
   const offerIds = new Set(offers.map((o) => o.id));
@@ -113,7 +113,7 @@ export async function buildWorkspace(
     now: Date.now(),
     meId,
     authMode: extra.authMode,
-    aiEnabled: !!(process.env.ANTHROPIC_API_KEY || process.env.AI_GATEWAY_API_KEY),
+    aiEnabled: !!process.env.ANTHROPIC_API_KEY,
     uploadsEnabled: true,
     users,
     groups: all.groups,

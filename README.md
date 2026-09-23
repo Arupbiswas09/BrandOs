@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BrandOS
 
-## Getting Started
+Every client, brand, offer and asset an agency works on, in one building.
+Built from the *BrandOS v3* Claude Design prototype.
 
-First, run the development server:
+- **The Street**: what is waiting on you, where you left off, every client.
+- **Clients → brands → sub-brands**: each brand re-skins the app in its own colours.
+- **Services and offers**: an offer is a service argued at one segment. The coverage grid shows which combinations nobody has written yet.
+- **Assets**: exist once and link to as many offers as they support. Files, copy, checklists, prompts, versions, discussion and client sign-off in one drawer.
+- **Brand Kit**: logos, colours, fonts, goals, segments, voice, boilerplate and the CTA library.
+- **Review**: send for review, request changes, approve; everything lands in the right person's queue.
+- **Team**: four access levels × client scope (per person, per group).
+
+## Run it
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000 and pick a teammate. The database is created and
+seeded with a demo agency on first request (stored in `.data/`). Delete
+`.data/` to start over, or use **Reset** at the bottom of the sidebar.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Configuration lives in `.env.local`; see `.env.example`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Stack
 
-## Learn More
+| Layer | Choice |
+|---|---|
+| App | Next.js App Router, React Server Components + Server Actions |
+| UI | Tailwind CSS v4, design tokens from the prototype, Asap / Instrument Serif / JetBrains Mono |
+| Data | Postgres via Drizzle ORM. PGlite locally, any Postgres in production |
+| Files | Local disk, or private Vercel Blob |
+| AI | Anthropic SDK (Claude) for copy drafting |
 
-To learn more about Next.js, take a look at the following resources:
+## How it fits together
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `src/db/schema.ts` is the data model; `drizzle/` holds migrations, applied automatically on start.
+  After changing the schema run `npx drizzle-kit generate`.
+- `src/server/data.ts` loads the workspace and filters it to what the signed-in person may see.
+  Pages render from that snapshot (`src/lib/ws.ts`), so navigation is instant.
+- `src/app/actions.ts` holds every change. Each action re-checks the access level
+  (`src/lib/access.ts`) and client scope on the server, then refreshes the page.
+- `src/components/` holds the shell, pages, the asset drawer, and the modals.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploying
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Any Node host works. On Vercel: add a Postgres database (e.g. Neon) and a Blob store
+from the Marketplace, set `BRANDOS_AUTH=password` plus the admin variables, and deploy.

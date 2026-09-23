@@ -2,7 +2,7 @@ import type {
   Activity, Asset, Brand, Client, Comment, Cta, Group, Link, Offer, Service, User,
 } from "@/db/schema";
 
-export type PublicUser = Omit<User, "passwordHash">;
+export type PublicUser = Omit<User, "passwordHash"> & { hasPassword: boolean };
 
 export type Recent = { kind: string; itemId: string };
 

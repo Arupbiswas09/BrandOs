@@ -3,14 +3,22 @@
 import { ACCESS_COLOR, ACCESS_LEVELS, ACCESS_NOTE } from "@/lib/constants";
 import { hexA } from "@/lib/color";
 import { switchUser } from "@/app/actions";
+import { createInvite } from "@/app/auth-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Avatar, Btn, Card, H2, Page, PageHead } from "@/components/ui";
 
 export function Team() {
-  const { ws, open } = useApp();
+  const { ws, open, toast } = useApp();
   const [run] = useAction();
   const canAccess = ws.can("access");
   const demo = ws.d.authMode === "demo";
+  const invite = async (id: string) => {
+    const r = await createInvite(id);
+    if (!r.ok) return toast(r.error, "error");
+    const url = window.location.origin + r.path;
+    try { await navigator.clipboard.writeText(url); toast("Invite link copied. It works once, for a week."); }
+    catch { window.prompt("Copy this invite link", url); }
+  };
   return (
     <Page>
       <PageHead
@@ -48,6 +56,10 @@ export function Team() {
               <span className="min-w-[96px] flex-1 text-[12.5px] leading-[1.35] text-mute-1">{ws.scopeLabel(u)}</span>
               <span className="flex-none font-mono text-[12px] text-mute-3" title="Items waiting on them">{ws.d.queueCounts[u.id] ?? 0}</span>
               {demo && !isMe && <Btn size="sm" onClick={() => run(switchUser, u.id)}>View as</Btn>}
+              {!demo && canAccess && !isMe && (
+                <button type="button" onClick={() => invite(u.id)} className="flex-none p-[5px] text-[11.5px] text-accent hover:underline">{u.hasPassword ? "Reset link" : "Invite link"}</button>
+              )}
+              {!demo && !u.hasPassword && <span className="flex-none rounded bg-chip px-1.5 py-0.5 text-[10.5px] text-mute-3">Not joined</span>}
               {canAccess && <button type="button" onClick={() => open({ kind: "person", draft: u })} className="flex-none p-[5px] text-[11.5px] text-mute-3 hover:text-ink">Access</button>}
               {canAccess && !isMe && <button type="button" onClick={() => open({ kind: "confirm", item: "person", id: u.id, label: u.name })} className="flex-none p-[5px] text-[11.5px] text-mute-5 hover:text-danger">Remove</button>}
             </div>
