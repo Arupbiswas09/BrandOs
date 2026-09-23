@@ -70,7 +70,7 @@
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font-sans);
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   color: #101614;
   background: #f7f9f8;
@@ -101,9 +101,9 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
 @layer components {
   .eyebrow {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
     color: #62706a;
   }
@@ -111,16 +111,16 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
     width: 100%;
     border: 1px solid var(--bos-border);
     border-radius: 9px;
-    padding: 9px 12px;
-    font-size: 14px;
+    padding: 10px 13px;
+    font-size: 15px;
     background: #fff;
     outline: none;
   }
   .label {
     display: block;
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 600;
-    color: #4f5d57;
+    color: #3e4a45;
     margin-bottom: 6px;
   }
 }

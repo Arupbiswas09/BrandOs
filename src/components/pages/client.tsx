@@ -45,7 +45,7 @@ export function ClientPage({ id }: { id: string }) {
         <div className="min-w-0 flex-1">
           <Eyebrow className="mb-[9px] tracking-[0.13em]">Property</Eyebrow>
           <h1 className="m-0 mb-2 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.02em] sm:text-[38px]">{c.name}</h1>
-          <p className="m-0 text-[14px] text-[#566560]">{c.kind}</p>
+          <p className="m-0 text-[15px] text-[#566560]">{c.kind}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[26px]">
           {ws.can("edit") && <Btn onClick={() => open({ kind: "client", draft: c })}>Edit</Btn>}
@@ -54,24 +54,24 @@ export function ClientPage({ id }: { id: string }) {
         </div>
       </div>
       {c.archived && <ArchivedNote className="mt-[22px]">Archived. Hidden from the street and from search unless you go looking.</ArchivedNote>}
-      {c.note && <p className="m-0 mt-[22px] max-w-[60ch] text-[14px] leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
+      {c.note && <p className="m-0 mt-[22px] max-w-[60ch] text-[15px] leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
 
       <Card className="mt-7 flex flex-wrap gap-x-9 gap-y-4 px-6 py-5">
         {stats.map((s) => (
           <div key={s.label}>
             <div className="font-mono text-[23px] font-medium tabular-nums tracking-[-0.01em]">{s.value}</div>
-            <div className="mt-0.5 text-[13.5px] text-mute-2">{s.label}</div>
+            <div className="mt-0.5 text-[15px] text-mute-2">{s.label}</div>
           </div>
         ))}
         <div className="hidden flex-1 sm:block" />
         <div>
-          <div className="text-[14px] font-semibold">{ws.user(c.contactId).name}</div>
-          <div className="mt-0.5 text-[13.5px] text-mute-2">Primary contact</div>
+          <div className="text-[15px] font-semibold">{ws.user(c.contactId).name}</div>
+          <div className="mt-0.5 text-[15px] text-mute-2">Primary contact</div>
         </div>
       </Card>
 
       <div className="mt-10">
-        <H2 right={ws.can("edit") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-[13px] text-mute-2 hover:text-ink">+ Add brand</button>}>Buildings on this property</H2>
+        <H2 right={ws.can("edit") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add brand</button>}>Buildings on this property</H2>
         <div className="grid gap-4 md:grid-cols-2">
           {tops.map((b) => {
             const subs = live(ws.subBrands(b.id));
@@ -80,12 +80,12 @@ export function ClientPage({ id }: { id: string }) {
                 <Link href={href.brand(b.id)} className="flex w-full items-center gap-[15px] p-[22px] text-left" style={{ background: hexA(b.primary, 0.1) }}>
                   <Mark mark={b.mark} color={b.primary} size={48} radius={11} />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[17px] font-semibold tracking-[-0.015em]">{b.name}</span>
-                    <span className="mt-0.5 block text-[13.5px] text-mute-1">{b.tagline}</span>
+                    <span className="block text-[18px] font-semibold tracking-[-0.015em]">{b.name}</span>
+                    <span className="mt-0.5 block text-[15px] text-mute-1">{b.tagline}</span>
                   </span>
-                  <span className="flex-none text-[14px] text-mute-2">→</span>
+                  <span className="flex-none text-[15px] text-mute-2">→</span>
                 </Link>
-                <div className="flex gap-3.5 border-t border-line px-[22px] py-3 text-[12.5px] text-[#566560]">
+                <div className="flex gap-3.5 border-t border-line px-[22px] py-3 text-[14px] text-[#566560]">
                   <span>{plural(live(ws.offersOf(b.id)).length, "offer")}</span>
                   <span>{plural(live(ws.assetsOf(b.id)).length, "asset")}</span>
                   {subs.length > 0 && <span className="text-mute-4">{plural(subs.length, "sub-brand")}</span>}
@@ -93,8 +93,8 @@ export function ClientPage({ id }: { id: string }) {
                 {subs.map((sb) => (
                   <Link key={sb.id} href={href.brand(sb.id)} className="flex w-full items-center gap-2.5 border-t border-divider px-[22px] py-[11px] text-left hover:bg-wash">
                     <Mark mark={sb.mark} color={sb.primary} size={22} radius={6} />
-                    <span className="flex-1 text-[13.5px] font-medium">{sb.name}</span>
-                    <span className="text-[11.5px] text-mute-4">Sub-brand</span>
+                    <span className="flex-1 text-[15px] font-medium">{sb.name}</span>
+                    <span className="text-[13px] text-mute-4">Sub-brand</span>
                   </Link>
                 ))}
               </Card>
@@ -103,8 +103,8 @@ export function ClientPage({ id }: { id: string }) {
         </div>
         {!tops.length && (
           <div className="rounded-[14px] border border-dashed border-line-strong p-10 text-center">
-            <div className="mb-1.5 text-[14px] font-semibold">No buildings yet</div>
-            <div className="mb-4 text-[13.5px] text-mute-2">A brand is where offers and assets live.</div>
+            <div className="mb-1.5 text-[15px] font-semibold">No buildings yet</div>
+            <div className="mb-4 text-[15px] text-mute-2">A brand is where offers and assets live.</div>
             {ws.can("edit") && <Btn variant="primary" size="lg" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })}>Add the first brand</Btn>}
           </div>
         )}
@@ -119,16 +119,16 @@ export function ClientPage({ id }: { id: string }) {
               const col = ws.colorOf(a);
               return (
                 <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="flex items-start gap-[11px] rounded-xl border border-line bg-white p-3.5 text-left hover:border-mute-2">
-                  <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[9.5px] font-bold" style={{ background: hexA(col, 0.1), color: readable(col) }}>{ws.codeOf(a)}</span>
+                  <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[12px] font-bold" style={{ background: hexA(col, 0.1), color: readable(col) }}>{ws.codeOf(a)}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13.5px] font-semibold leading-[1.35]">{a.name}</span>
-                    <span className="mt-[3px] block text-[13px] text-mute-2">{ws.brand(a.brandId)?.name} · {ws.ago(a.updatedAt)}</span>
+                    <span className="block text-[15px] font-semibold leading-[1.35]">{a.name}</span>
+                    <span className="mt-[3px] block text-[14.5px] text-mute-2">{ws.brand(a.brandId)?.name} · {ws.ago(a.updatedAt)}</span>
                   </span>
                 </button>
               );
             })}
           </div>
-          {!recent.length && <div className="text-[13.5px] text-mute-3">Nothing touched here yet.</div>}
+          {!recent.length && <div className="text-[15px] text-mute-3">Nothing touched here yet.</div>}
         </div>
         <div>
           <H2>Activity</H2>
@@ -137,11 +137,11 @@ export function ClientPage({ id }: { id: string }) {
               <button key={a.id} type="button" onClick={() => (a.type === "asset" ? openAsset(a.itemId) : a.type === "offer" ? router.push(href.offer(a.itemId)) : a.type === "brand" ? router.push(href.brand(a.itemId)) : undefined)}
                 className="flex w-full items-center gap-2.5 border-t border-divider py-2.5 text-left first:border-t-0">
                 <Avatar initials={ws.user(a.userId).initials} size={20} />
-                <span className="min-w-0 flex-1 truncate text-[13px] text-ink-3">{ws.first(a.userId)} {a.action} {a.label}{a.field ? ` — ${a.field}` : ""}</span>
-                <span className="flex-none text-[12px] text-[#64716B]">{ws.ago(a.createdAt)}</span>
+                <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-3">{ws.first(a.userId)} {a.action} {a.label}{a.field ? ` — ${a.field}` : ""}</span>
+                <span className="flex-none text-[13.5px] text-[#64716B]">{ws.ago(a.createdAt)}</span>
               </button>
             ))}
-            {!acts.length && <div className="py-5 text-center text-[13.5px] text-mute-4">Quiet so far.</div>}
+            {!acts.length && <div className="py-5 text-center text-[15px] text-mute-4">Quiet so far.</div>}
           </Card>
         </div>
       </div>

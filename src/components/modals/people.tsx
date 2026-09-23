@@ -33,7 +33,7 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
     <Modal title={draft?.id ? "Edit access" : "Invite someone"} sub="Two decisions: what they can do, and which clients they can see." width={560} onSubmit={save}
       footer={<Footer saveLabel={draft?.id ? "Save access" : "Add to the team"} pending={pending} disabled={!d.name.trim()} />} bodyClass="max-h-[60vh] gap-[18px] overflow-y-auto">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Marta Vieira" /></Field>
+        <Field label="Name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Marta Vieira" /></Field>
         <Field label="What they do"><Select value={d.role} onChange={(v) => setD({ ...d, role: v })} options={roles.map((r) => ({ value: r, label: r }))} /></Field>
       </div>
       <Field label="Email" hint={<span className="font-normal text-mute-4">used to sign in</span>}>
@@ -47,8 +47,8 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
               className={cx("flex w-full items-start gap-[11px] rounded-[11px] border px-3.5 py-3 text-left transition", d.access === a ? "border-accent bg-soft" : "border-line bg-white")}>
               <span className="mt-1 h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: ACCESS_COLOR[a] }} />
               <span className="flex-1">
-                <span className="block text-[14.5px] font-semibold">{a}</span>
-                <span className="mt-0.5 block text-[13px] leading-[1.45] text-mute-1">{ACCESS_NOTE[a]}</span>
+                <span className="block text-[16px] font-semibold">{a}</span>
+                <span className="mt-0.5 block text-[14.5px] leading-[1.45] text-mute-1">{ACCESS_NOTE[a]}</span>
               </span>
             </button>
           ))}
@@ -58,7 +58,7 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
         <div className="label">What they can see</div>
         <button type="button" role="checkbox" aria-checked={d.allClients} onClick={() => setD({ ...d, allClients: !d.allClients, clientIds: [], brandIds: [], groupIds: [] })}
           className="mb-2.5 flex w-full items-center gap-2.5 rounded-[11px] border border-line bg-white px-3.5 py-[11px] text-left hover:border-mute-2">
-          <Tick on={d.allClients} /><span className="text-[14.5px] font-medium">Every client, including ones added later</span>
+          <Tick on={d.allClients} /><span className="text-[16px] font-medium">Every client, including ones added later</span>
         </button>
         <div style={{ opacity: d.allClients ? 0.4 : 1 }}>
           <div className="eyebrow mb-[7px]">Or pick groups</div>
@@ -66,18 +66,18 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
             {ws.d.groups.map((g) => {
               const on = d.groupIds.includes(g.id);
               return (
-                <button key={g.id} type="button" aria-pressed={on} onClick={() => toggle("groupIds", g.id)} className={cx("rounded-full border px-[13px] py-1.5 text-[13.5px] font-medium transition", on ? "border-accent bg-soft" : "border-line bg-white")}>
+                <button key={g.id} type="button" aria-pressed={on} onClick={() => toggle("groupIds", g.id)} className={cx("rounded-full border px-[13px] py-1.5 text-[15px] font-medium transition", on ? "border-accent bg-soft" : "border-line bg-white")}>
                   {g.name} <span className="text-mute-3">· {g.clientIds.length} clients</span>
                 </button>
               );
             })}
-            {!ws.d.groups.length && <span className="text-[13px] text-mute-3">No groups yet.</span>}
+            {!ws.d.groups.length && <span className="text-[14.5px] text-mute-3">No groups yet.</span>}
           </div>
           <div className="eyebrow mb-[7px]">Or single clients</div>
           <div className="mb-3 flex flex-wrap gap-1.5">
             {ws.d.clients.filter((c) => !c.archived).map((c) => {
               const on = d.clientIds.includes(c.id);
-              return <button key={c.id} type="button" aria-pressed={on} onClick={() => toggle("clientIds", c.id)} className={cx("rounded-full border px-[13px] py-1.5 text-[13.5px] font-medium transition", on ? "border-accent bg-soft" : "border-line bg-white")}>{c.name}</button>;
+              return <button key={c.id} type="button" aria-pressed={on} onClick={() => toggle("clientIds", c.id)} className={cx("rounded-full border px-[13px] py-1.5 text-[15px] font-medium transition", on ? "border-accent bg-soft" : "border-line bg-white")}>{c.name}</button>;
             })}
           </div>
           <div className="eyebrow mb-[7px]">Or single brands</div>
@@ -85,7 +85,7 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
             {ws.d.brands.filter((b) => !b.archived).map((b) => {
               const on = d.brandIds.includes(b.id);
               return (
-                <button key={b.id} type="button" aria-pressed={on} onClick={() => toggle("brandIds", b.id)} className={cx("flex items-center gap-1.5 rounded-full border px-[13px] py-1.5 text-[13.5px] font-medium transition", on ? "border-accent bg-soft" : "border-line bg-white")}>
+                <button key={b.id} type="button" aria-pressed={on} onClick={() => toggle("brandIds", b.id)} className={cx("flex items-center gap-1.5 rounded-full border px-[13px] py-1.5 text-[15px] font-medium transition", on ? "border-accent bg-soft" : "border-line bg-white")}>
                   <span className="h-[7px] w-[7px] rounded-[2px]" style={{ background: b.primary }} />{b.name}
                 </button>
               );
@@ -110,14 +110,14 @@ export function GroupModal({ draft }: { draft?: Partial<Group> }) {
   const save = async () => { const r = await run(saveGroup, { id: draft?.id, ...d }); if (r.ok) close(); };
   return (
     <Modal title={draft?.id ? "Edit group" : "New group"} sub="A saved set of clients. Everyone in the group sees all of them." width={540} onSubmit={save} footer={<Footer saveLabel="Save group" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="Name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Nonprofit pod" /></Field>
+      <Field label="Name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Nonprofit pod" /></Field>
       <Field label="What it is for"><input className="field" value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder="Everyone who touches faith and community work." /></Field>
       <div>
         <div className="label">Clients in it</div>
         <div className="flex flex-wrap gap-1.5">
           {ws.d.clients.filter((c) => !c.archived).map((c) => {
             const on = d.clientIds.includes(c.id);
-            return <button key={c.id} type="button" aria-pressed={on} onClick={() => toggle("clientIds", c.id)} className={cx("rounded-full border px-[13px] py-1.5 text-[13.5px] font-medium", on ? "border-accent bg-soft" : "border-line bg-white")}>{c.name}</button>;
+            return <button key={c.id} type="button" aria-pressed={on} onClick={() => toggle("clientIds", c.id)} className={cx("rounded-full border px-[13px] py-1.5 text-[15px] font-medium", on ? "border-accent bg-soft" : "border-line bg-white")}>{c.name}</button>;
           })}
         </div>
       </div>
@@ -127,13 +127,13 @@ export function GroupModal({ draft }: { draft?: Partial<Group> }) {
           {ws.d.users.filter((u) => !u.allClients).map((u) => {
             const on = d.memberIds.includes(u.id);
             return (
-              <button key={u.id} type="button" aria-pressed={on} onClick={() => toggle("memberIds", u.id)} className={cx("flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-[13.5px] font-medium", on ? "border-accent bg-soft" : "border-line bg-white")}>
+              <button key={u.id} type="button" aria-pressed={on} onClick={() => toggle("memberIds", u.id)} className={cx("flex items-center gap-1.5 rounded-full border py-1 pl-1 pr-3 text-[15px] font-medium", on ? "border-accent bg-soft" : "border-line bg-white")}>
                 <Avatar initials={u.initials} size={20} />{u.name}
               </button>
             );
           })}
         </div>
-        <div className="mt-2 text-[12.5px] text-mute-3">People who already see every client are not listed.</div>
+        <div className="mt-2 text-[14px] text-mute-3">People who already see every client are not listed.</div>
       </div>
     </Modal>
   );
@@ -151,13 +151,13 @@ export function SendReviewModal({ item, id }: { item: ItemKind; id: string }) {
           className="flex w-full items-center gap-[11px] rounded-[10px] px-3 py-2.5 text-left hover:bg-hover disabled:opacity-60">
           <Avatar initials={u.initials} size={28} />
           <span className="flex-1">
-            <span className="block text-[14.5px] font-semibold">{u.name}{u.id === ws.me.id ? " (you)" : ""}</span>
-            <span className="block text-[13.5px] text-mute-2">{u.role} · {u.access}</span>
+            <span className="block text-[16px] font-semibold">{u.name}{u.id === ws.me.id ? " (you)" : ""}</span>
+            <span className="block text-[15px] text-mute-2">{u.role} · {u.access}</span>
           </span>
-          <span className="font-mono text-[12px] text-mute-4" title="Items already waiting on them">{ws.d.queueCounts[u.id] ?? 0} waiting</span>
+          <span className="font-mono text-[13.5px] text-mute-4" title="Items already waiting on them">{ws.d.queueCounts[u.id] ?? 0} waiting</span>
         </button>
       ))}
-      {!people.length && <div className="p-6 text-center text-[14px] text-mute-2">Nobody else can review yet. Give someone Reviewer access on the Team page.</div>}
+      {!people.length && <div className="p-6 text-center text-[15px] text-mute-2">Nobody else can review yet. Give someone Reviewer access on the Team page.</div>}
     </Modal>
   );
 }

@@ -26,11 +26,11 @@ export function Library() {
   return (
     <Page>
       <PageHead eyebrow="Shared workshop" title="Global Library" actions={ws.can("edit") && <Btn variant="dark" size="lg" onClick={upload}>+ Add to the workshop</Btn>} />
-      <p className="mb-6 max-w-[64ch] text-[14px] text-[#566560] text-pretty">
+      <p className="mb-6 max-w-[64ch] text-[15px] text-[#566560] text-pretty">
         {live(all).length} shared items — checklists, prompts, templates and SOPs. Nothing here belongs to a brand, so nothing here is themed. Clone one into a brand when you actually run it.
       </p>
       <div className="mb-3.5 flex items-center gap-2.5">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the workshop" aria-label="Search the workshop" className="field max-w-[280px] flex-1 text-[13.5px]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the workshop" aria-label="Search the workshop" className="field max-w-[280px] flex-1 text-[15px]" />
       </div>
       <Pills className="mb-[26px]" tone="dark" value={tab} onChange={setTab} options={TABS.map((x) => ({ ...x, count: live(all).filter((a) => x.value === "All" || a.type === x.value).length }))} />
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">

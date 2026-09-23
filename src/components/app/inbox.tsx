@@ -46,10 +46,10 @@ function Panel({ onClose }: { onClose: () => void }) {
       <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.24)]" onClick={onClose} />
       <div data-scroll className="absolute inset-y-0 right-0 w-[440px] max-w-full animate-slide overflow-y-auto border-l border-line bg-white shadow-[-16px_0_44px_rgba(16,22,20,.10)]">
         <div className="sticky top-0 z-[2] flex items-center gap-2.5 border-b border-line bg-white/95 px-[22px] py-[18px] backdrop-blur-[8px]">
-          <span className="flex-1 text-[16px] font-semibold tracking-[-0.012em]">
+          <span className="flex-1 text-[17px] font-semibold tracking-[-0.012em]">
             {mine.length ? `${mine.length} ${mine.length === 1 ? "thing needs" : "things need"} you` : "Nothing needs you"}
           </span>
-          <button type="button" aria-label="Close" onClick={onClose} className="px-1.5 py-0.5 text-[15px] text-mute-2 hover:text-ink">✕</button>
+          <button type="button" aria-label="Close" onClick={onClose} className="px-1.5 py-0.5 text-[16px] text-mute-2 hover:text-ink">✕</button>
         </div>
         <div className="px-[22px] pb-8 pt-[18px]">
           <Eyebrow className="mb-2.5">On you</Eyebrow>
@@ -59,16 +59,16 @@ function Panel({ onClose }: { onClose: () => void }) {
               return (
                 <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left hover:border-mute-2">
                   <span className="mb-1.5 flex items-center gap-2">
-                    <span className="rounded-[5px] px-2 py-0.5 text-[11px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
-                    <span className="flex-1" /><span className="text-[12px] text-[#64716B]">{x.ago}</span>
+                    <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
+                    <span className="flex-1" /><span className="text-[13.5px] text-[#64716B]">{x.ago}</span>
                   </span>
-                  <span className="block text-[14.5px] font-semibold leading-[1.35]">{x.name}</span>
-                  <span className="mt-0.5 block text-[13.5px] text-mute-2">{x.sub}</span>
-                  {x.note && <span className="mt-2 block border-t border-divider pt-2 text-[13px] leading-[1.5] text-change-ink">{x.note}</span>}
+                  <span className="block text-[16px] font-semibold leading-[1.35]">{x.name}</span>
+                  <span className="mt-0.5 block text-[15px] text-mute-2">{x.sub}</span>
+                  {x.note && <span className="mt-2 block border-t border-divider pt-2 text-[14.5px] leading-[1.5] text-change-ink">{x.note}</span>}
                 </button>
               );
             })}
-            {!mine.length && <div className="rounded-xl border border-dashed border-line-strong p-[30px] text-center text-[14px] text-mute-2">Nothing has your name on it.</div>}
+            {!mine.length && <div className="rounded-xl border border-dashed border-line-strong p-[30px] text-center text-[15px] text-mute-2">Nothing has your name on it.</div>}
           </div>
 
           {mentions.length > 0 && (
@@ -82,8 +82,8 @@ function Panel({ onClose }: { onClose: () => void }) {
                     <button key={m.id} type="button" onClick={() => openItem(m.kind, m.itemId)} className={cx("flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left hover:border-mute-2", isNew ? "border-accent/40 bg-soft" : "border-line bg-white")}>
                       <Avatar initials={ws.user(m.userId).initials} size={24} mono />
                       <span className="min-w-0 flex-1">
-                        <span className="line-clamp-3 block text-[13.5px] leading-[1.5] text-ink-3">{m.text}</span>
-                        <span className="mt-1 block text-[12px] text-mute-4">{ws.first(m.userId)} · on {where} · {ws.ago(m.createdAt)}</span>
+                        <span className="line-clamp-3 block text-[15px] leading-[1.5] text-ink-3">{m.text}</span>
+                        <span className="mt-1 block text-[13.5px] text-mute-4">{ws.first(m.userId)} · on {where} · {ws.ago(m.createdAt)}</span>
                       </span>
                       {isNew && <span className="mt-1.5 h-[7px] w-[7px] flex-none rounded-full bg-change" aria-label="New" />}
                     </button>
@@ -99,12 +99,12 @@ function Panel({ onClose }: { onClose: () => void }) {
               <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="flex w-full items-center gap-[11px] rounded-[10px] px-2.5 py-[9px] text-left hover:bg-hover">
                 <Avatar initials={ws.user(x.who).initials} size={24} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13.5px] font-medium">{x.name}</span>
-                  <span className="block text-[12px] text-mute-4">{x.verb} · {ws.first(x.who)}</span>
+                  <span className="block truncate text-[15px] font-medium">{x.name}</span>
+                  <span className="block text-[13.5px] text-mute-4">{x.verb} · {ws.first(x.who)}</span>
                 </span>
               </button>
             ))}
-            {!others.length && <div className="px-0.5 py-2 text-[13.5px] text-mute-4">Nobody else is holding anything up.</div>}
+            {!others.length && <div className="px-0.5 py-2 text-[15px] text-mute-4">Nobody else is holding anything up.</div>}
           </div>
         </div>
       </div>

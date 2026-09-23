@@ -49,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     >
       <Sidebar />
       <Header inBrand={!!brand && mode !== "off"} mark={brand?.mark ?? ""} />
-      <main className="pt-header lg:ml-[266px]">{children}</main>
+      <main className="pt-header lg:ml-[288px]">{children}</main>
       <AssetDrawer />
       <CommandPalette />
       <Inbox />
@@ -95,7 +95,7 @@ function Sidebar() {
           <Link
             key={key}
             href={href.brand(bid, key)}
-            className={cx("block w-full border-l-2 py-[5px] pr-2.5 text-left text-[13px]", on ? "border-accent bg-soft font-semibold text-ink" : "border-[#E8EDEB] font-medium text-[#5C6A64] hover:text-ink")}
+            className={cx("block w-full border-l-2 py-[5px] pr-2.5 text-left text-[14.5px]", on ? "border-accent bg-soft font-semibold text-ink" : "border-[#E8EDEB] font-medium text-[#5C6A64] hover:text-ink")}
             style={{ paddingLeft: indent }}
           >
             {label}
@@ -106,52 +106,52 @@ function Sidebar() {
   );
 
   const content = (
-    <aside className="safe-top flex h-full w-[266px] flex-col border-r border-line bg-white theme-fade">
+    <aside className="safe-top flex h-full w-[288px] flex-col border-r border-line bg-white theme-fade">
       <div className="flex items-center gap-2.5 px-4 pb-3.5 pl-[18px] pt-5">
         <Link href="/" className="flex items-center gap-2.5 text-left">
           <Mark mark="B" color="var(--bos-accent)" fg="var(--bos-on)" size={26} radius={7} />
-          <span className="text-[14.5px] font-semibold tracking-[-0.015em] text-ink">BrandOS</span>
+          <span className="text-[16px] font-semibold tracking-[-0.015em] text-ink">BrandOS</span>
         </Link>
       </div>
       <div className="px-3 pb-2.5">
-        <button type="button" onClick={() => setCmdk(true)} className="flex w-full items-center gap-2 rounded-[9px] border border-line bg-[#FBFCFC] px-2.5 py-2 text-left text-[13.5px] text-[#566560] transition hover:border-line-strong hover:bg-white">
+        <button type="button" onClick={() => setCmdk(true)} className="flex w-full items-center gap-2 rounded-[9px] border border-line bg-[#FBFCFC] px-2.5 py-2 text-left text-[15px] text-[#566560] transition hover:border-line-strong hover:bg-white">
           <span className="flex-1">Search everything</span>
-          <kbd className="font-mono text-[12px] tracking-[0.04em] text-mute-1">/</kbd>
+          <kbd className="font-mono text-[13.5px] tracking-[0.04em] text-mute-1">/</kbd>
         </button>
       </div>
       <div className="px-3 pb-2.5">
-        <button type="button" onClick={() => setInbox(true)} className="flex w-full items-center gap-[9px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-left text-[13.5px] font-medium text-ink-3 hover:border-mute-2">
+        <button type="button" onClick={() => setInbox(true)} className="flex w-full items-center gap-[9px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-left text-[15px] font-medium text-ink-3 hover:border-mute-2">
           <span className="flex-1">{myQueue ? "Your queue" : unread ? "New mentions" : "Nothing on you"}</span>
           {unread > 0 && <span className="h-[7px] w-[7px] rounded-full bg-change" title={`${unread} unread mention${unread === 1 ? "" : "s"}`} />}
-          <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[10px] px-1.5 font-mono text-[11.5px] font-bold theme-fade" style={myQueue ? { background: "var(--bos-accent)", color: "var(--bos-on)" } : { background: "#E4EAE7", color: "#5C6A64" }}>
+          <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[10px] px-1.5 font-mono text-[13px] font-bold theme-fade" style={myQueue ? { background: "var(--bos-accent)", color: "var(--bos-on)" } : { background: "#E4EAE7", color: "#5C6A64" }}>
             {myQueue}
           </span>
         </button>
       </div>
       <nav data-scroll className="flex-1 overflow-y-auto px-3 pb-3 pt-1" aria-label="Main">
-        <Link href="/" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[14px]", navRow(p.view === "street"))}>
-          <span className="w-3.5 text-center text-[12px] opacity-55">◻</span><span>The Street</span>
+        <Link href="/" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "street"))}>
+          <span className="w-3.5 text-center text-[13.5px] opacity-55">◻</span><span>The Street</span>
         </Link>
-        <Link href="/library" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[14px]", navRow(p.view === "library"))}>
-          <span className="w-3.5 text-center text-[12px] opacity-55">◫</span><span>Global Library</span>
+        <Link href="/library" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "library"))}>
+          <span className="w-3.5 text-center text-[13.5px] opacity-55">◫</span><span>Global Library</span>
         </Link>
-        <Link href="/team" className={cx("mb-4 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[14px]", navRow(p.view === "team"))}>
-          <span className="w-3.5 text-center text-[12px] opacity-55">◐</span><span className="flex-1">Team</span>
-          <span className="font-mono text-[12px] text-mute-4">{ws.d.users.length}</span>
+        <Link href="/team" className={cx("mb-4 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "team"))}>
+          <span className="w-3.5 text-center text-[13.5px] opacity-55">◐</span><span className="flex-1">Team</span>
+          <span className="font-mono text-[13.5px] text-mute-4">{ws.d.users.length}</span>
         </Link>
         <div className="eyebrow px-2.5 pb-[7px] tracking-[0.11em]">Clients</div>
         {clients.map(({ c, count, tops }) => (
           <div key={c.id} className="mb-[3px]">
-            <Link href={href.client(c.id)} className={cx("flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13.5px] font-semibold", p.view === "client" && p.id === c.id ? "bg-soft text-ink" : "text-mute-1 hover:bg-hover")}>
+            <Link href={href.client(c.id)} className={cx("flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[15px] font-semibold", p.view === "client" && p.id === c.id ? "bg-soft text-ink" : "text-mute-1 hover:bg-hover")}>
               <span className="flex-1 truncate">{c.name}</span>
-              <span className="text-[11.5px] font-medium text-mute-4">{count}</span>
+              <span className="text-[13px] font-medium text-mute-4">{count}</span>
             </Link>
             {tops.map((b) => {
               const on = activeBrandId === b.id;
               const subs = brands.filter((x) => x.parentId === b.id);
               return (
                 <div key={b.id}>
-                  <Link href={href.brand(b.id)} className={cx("flex w-full items-center gap-[9px] rounded-lg py-1.5 pl-5 pr-2.5 text-[13.5px]", navRow(on))}>
+                  <Link href={href.brand(b.id)} className={cx("flex w-full items-center gap-[9px] rounded-lg py-1.5 pl-5 pr-2.5 text-[15px]", navRow(on))}>
                     <span className="h-[7px] w-[7px] flex-none rounded-[2px]" style={{ background: b.primary }} />
                     <span className="flex-1 truncate">{b.name}</span>
                   </Link>
@@ -160,7 +160,7 @@ function Sidebar() {
                     const son = activeBrandId === sb.id;
                     return (
                       <div key={sb.id}>
-                        <Link href={href.brand(sb.id)} className={cx("flex w-full items-center gap-[9px] rounded-lg py-1.5 pl-8 pr-2.5 text-[13.5px]", navRow(son))}>
+                        <Link href={href.brand(sb.id)} className={cx("flex w-full items-center gap-[9px] rounded-lg py-1.5 pl-8 pr-2.5 text-[15px]", navRow(son))}>
                           <span className="h-[7px] w-[7px] flex-none rounded-[2px]" style={{ background: sb.primary }} />
                           <span className="flex-1 truncate">{sb.name}</span>
                         </Link>
@@ -174,20 +174,20 @@ function Sidebar() {
           </div>
         ))}
         {ws.can("edit") && (
-          <button type="button" onClick={() => open({ kind: "client" })} className="mt-1.5 w-full rounded-lg px-2.5 py-[7px] text-left text-[13.5px] text-mute-2 hover:bg-chip hover:text-ink">+ Add client</button>
+          <button type="button" onClick={() => open({ kind: "client" })} className="mt-1.5 w-full rounded-lg px-2.5 py-[7px] text-left text-[15px] text-mute-2 hover:bg-chip hover:text-ink">+ Add client</button>
         )}
       </nav>
       <div className="safe-bottom relative flex items-center gap-[9px] border-t border-line px-3.5 py-[11px] theme-fade">
         <Avatar initials={me.initials} size={25} className="bg-[#E4EAE7] text-[#4A5A53]" />
         <button type="button" onClick={() => setWhoOpen((v) => !v)} aria-expanded={whoOpen} className="min-w-0 flex-1 text-left">
-          <span className="block truncate text-[13px] font-semibold">{me.name} ⌄</span>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-mute-4">
+          <span className="block truncate text-[14.5px] font-semibold">{me.name} ⌄</span>
+          <span className="flex items-center gap-1.5 text-[13px] text-mute-4">
             <span>{me.role}</span>
-            <span className="rounded-[4px] px-1 font-mono text-[10px] font-bold" style={{ background: hexA(ACCESS_COLOR[me.access], 0.14), color: readable(ACCESS_COLOR[me.access]) }}>{me.access}</span>
+            <span className="rounded-[4px] px-1 font-mono text-[12px] font-bold" style={{ background: hexA(ACCESS_COLOR[me.access], 0.14), color: readable(ACCESS_COLOR[me.access]) }}>{me.access}</span>
           </span>
         </button>
         {ws.d.authMode === "demo" && (
-          <button type="button" title="Reset demo data" onClick={() => run(resetDemo)} className="p-1 text-[12px] text-mute-5 hover:text-ink">Reset</button>
+          <button type="button" title="Reset demo data" onClick={() => run(resetDemo)} className="p-1 text-[13.5px] text-mute-5 hover:text-ink">Reset</button>
         )}
         {whoOpen && <WhoMenu onClose={() => setWhoOpen(false)} onSwitch={(id) => run(switchUser, id)} />}
       </div>
@@ -221,35 +221,35 @@ function WhoMenu({ onClose, onSwitch }: { onClose: () => void; onSwitch: (id: st
       <div className="absolute bottom-[58px] left-3 right-3 z-50 animate-pop rounded-xl border border-line bg-white p-1.5 shadow-[0_12px_32px_rgba(16,22,20,.14)]">
         {ws.d.authMode === "demo" && (
           <>
-            <div className="eyebrow px-2.5 pb-[5px] pt-[7px] text-[10.5px] tracking-[0.11em]">Viewing as</div>
+            <div className="eyebrow px-2.5 pb-[5px] pt-[7px] text-[12px] tracking-[0.11em]">Viewing as</div>
             <div data-scroll className="max-h-[300px] overflow-y-auto">
               {ws.d.users.map((u) => (
                 <button key={u.id} type="button" onClick={() => { onClose(); onSwitch(u.id); }} className={cx("flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-left hover:bg-chip", u.id === ws.me.id && "bg-soft")}>
                   <Avatar initials={u.initials} size={22} />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-semibold">{u.name}</span>
-                    <span className="block text-[11.5px] text-mute-4">{u.role} · {u.access}</span>
+                    <span className="block text-[14.5px] font-semibold">{u.name}</span>
+                    <span className="block text-[13px] text-mute-4">{u.role} · {u.access}</span>
                   </span>
-                  <span className="flex-none text-[11.5px] text-mute-2">{ws.d.queueCounts[u.id] ?? 0}</span>
+                  <span className="flex-none text-[13px] text-mute-2">{ws.d.queueCounts[u.id] ?? 0}</span>
                 </button>
               ))}
             </div>
             <div className="my-1.5 h-px bg-divider" />
           </>
         )}
-        <div className="px-2.5 pb-1 pt-1.5 text-[10.5px] eyebrow tracking-[0.11em]">Brand colours</div>
+        <div className="px-2.5 pb-1 pt-1.5 text-[12px] eyebrow tracking-[0.11em]">Brand colours</div>
         <div className="flex gap-1 px-2 pb-1.5">
           {(["bold", "moderate", "off"] as const).map((m) => (
-            <button key={m} type="button" onClick={() => setMode(m)} className={cx("flex-1 rounded-md border px-2 py-1 text-[12px] capitalize", mode === m ? "border-accent bg-soft font-semibold text-ink" : "border-line text-mute-1 hover:border-mute-4")}>{m}</button>
+            <button key={m} type="button" onClick={() => setMode(m)} className={cx("flex-1 rounded-md border px-2 py-1 text-[13.5px] capitalize", mode === m ? "border-accent bg-soft font-semibold text-ink" : "border-line text-mute-1 hover:border-mute-4")}>{m}</button>
           ))}
         </div>
-        <button type="button" onClick={() => { onClose(); open({ kind: "shortcuts" }); }} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">
-          <span className="flex-1">Keyboard shortcuts</span><kbd className="font-mono text-[11.5px] text-mute-4">?</kbd>
+        <button type="button" onClick={() => { onClose(); open({ kind: "shortcuts" }); }} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">
+          <span className="flex-1">Keyboard shortcuts</span><kbd className="font-mono text-[13px] text-mute-4">?</kbd>
         </button>
-        <Link href="/settings" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">Settings</Link>
+        <Link href="/settings" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">Settings</Link>
         <InstallItem onDone={onClose} />
         <form action={signOut}>
-          <button type="submit" className="w-full rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">Sign out</button>
+          <button type="submit" className="w-full rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">Sign out</button>
         </form>
       </div>
     </>
@@ -317,7 +317,7 @@ function Header({ inBrand, mark }: { inBrand: boolean; mark: string }) {
   const me = ws.me;
   const readOnly = !ws.can("edit");
   return (
-    <header className="safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3.5 border-b border-line bg-white/92 px-4 backdrop-blur-[10px] theme-fade sm:px-7 lg:left-[266px]">
+    <header className="safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3.5 border-b border-line bg-white/92 px-4 backdrop-blur-[10px] theme-fade sm:px-7 lg:left-[288px]">
       <div className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-accent transition-opacity duration-300" style={{ opacity: inBrand ? 1 : 0 }} />
       <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="-ml-1 flex h-8 w-8 flex-none items-center justify-center rounded-lg text-mute-1 hover:bg-hover lg:hidden">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -329,20 +329,20 @@ function Header({ inBrand, mark }: { inBrand: boolean; mark: string }) {
           return (
             <span key={i} className={cx("flex items-center gap-[7px]", last ? "min-w-0 flex-none" : "hidden min-w-0 shrink sm:flex")} style={last ? undefined : { flex: `0 ${Math.max(1, c.label.length - 6)} auto` }}>
               {c.href && !last ? (
-                <Link href={c.href} className="block min-w-0 truncate text-[14px] font-medium tracking-[-0.005em] text-[#5C6A64] hover:text-ink">{c.label}</Link>
+                <Link href={c.href} className="block min-w-0 truncate text-[15px] font-medium tracking-[-0.005em] text-[#5C6A64] hover:text-ink">{c.label}</Link>
               ) : (
-                <span aria-current={last ? "page" : undefined} className={cx("block min-w-0 truncate text-[14px] tracking-[-0.005em]", last ? "font-semibold text-ink" : "font-medium text-[#5C6A64]")}>{c.label}</span>
+                <span aria-current={last ? "page" : undefined} className={cx("block min-w-0 truncate text-[15px] tracking-[-0.005em]", last ? "font-semibold text-ink" : "font-medium text-[#5C6A64]")}>{c.label}</span>
               )}
-              {!last && <span className="flex-none text-[12px] text-line-strong">/</span>}
+              {!last && <span className="flex-none text-[13.5px] text-line-strong">/</span>}
             </span>
           );
         })}
       </nav>
       {!readOnly && (
-        <button type="button" onClick={() => open({ kind: "new" })} className="flex-none rounded-lg bg-accent px-[13px] py-[7px] text-[13.5px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">+ New</button>
+        <button type="button" onClick={() => open({ kind: "new" })} className="flex-none rounded-lg bg-accent px-[13px] py-[7px] text-[15px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">+ New</button>
       )}
       {readOnly && (
-        <span className="hidden flex-none items-center gap-2 rounded-[7px] px-[11px] py-[5px] text-[13px] font-semibold md:flex" style={{ background: hexA(ACCESS_COLOR[me.access], 0.14), color: readable(ACCESS_COLOR[me.access]) }}>
+        <span className="hidden flex-none items-center gap-2 rounded-[7px] px-[11px] py-[5px] text-[14.5px] font-semibold md:flex" style={{ background: hexA(ACCESS_COLOR[me.access], 0.14), color: readable(ACCESS_COLOR[me.access]) }}>
           {me.access === "Reviewer" ? "Reviewer — you can approve, send back and comment, but not edit." : "Viewer — read only. Ask an admin if you need to change something."}
         </span>
       )}
@@ -356,7 +356,7 @@ function InstallItem({ onDone }: { onDone: () => void }) {
   if (standalone || (!canPrompt && !ios)) return null;
   return (
     <button type="button" onClick={async () => { if (canPrompt) await install(); else { onDone(); open({ kind: "install" }); } }}
-      className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] font-semibold text-accent hover:bg-chip">
+      className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] font-semibold text-accent hover:bg-chip">
       <span className="flex-1">Install the app</span><span aria-hidden>↓</span>
     </button>
   );

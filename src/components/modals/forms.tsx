@@ -24,7 +24,7 @@ export function ClientModal({ draft }: { draft?: Partial<Client> }) {
   };
   return (
     <Modal title={draft?.id ? "Edit client" : "New client"} width={480} onSubmit={save} footer={<Footer saveLabel="Save client" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="Client name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
+      <Field label="Client name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
       <Field label="Sector and location"><input className="field" value={d.kind} onChange={(e) => setD({ ...d, kind: e.target.value })} placeholder="Wildlife conservation · Western Australia" /></Field>
       <Field label="What we do for them"><textarea rows={3} className="field leading-[1.55]" value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></Field>
     </Modal>
@@ -38,7 +38,7 @@ function ColourInput({ value, onChange, label }: { value: string; onChange: (v: 
   return (
     <span className="flex items-center gap-2 rounded-[9px] border border-line bg-white py-1 pl-1 pr-2">
       <input type="color" aria-label={label} value={isHex(value) && value.length === 7 ? value : "#2D4A5C"} onChange={(e) => { onChange(e.target.value.toUpperCase()); setText(e.target.value.toUpperCase()); }} className="h-7 w-8 cursor-pointer rounded-md border-0 bg-transparent p-0" />
-      <input value={text} aria-label={`${label} hex`} onChange={(e) => { setText(e.target.value); if (isHex(e.target.value)) onChange(e.target.value.toUpperCase()); }} className="w-[76px] border-0 bg-transparent font-mono text-[13px] outline-none" />
+      <input value={text} aria-label={`${label} hex`} onChange={(e) => { setText(e.target.value); if (isHex(e.target.value)) onChange(e.target.value.toUpperCase()); }} className="w-[76px] border-0 bg-transparent font-mono text-[14.5px] outline-none" />
     </span>
   );
 }
@@ -63,12 +63,12 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
       <div className="flex items-center gap-3.5 rounded-xl p-[18px]" style={{ background: hexA(d.primary, 0.06) }}>
         <Mark mark={mark} color={d.primary} fg={onColor(d.primary)} size={44} radius={11} />
         <span className="flex-1">
-          <span className="block text-[15px] font-semibold">{d.name || "New brand"}</span>
-          <span className="mt-0.5 block text-[12.5px] text-mute-1">{draft.id ? d.tagline || "No tagline yet" : "Starts with five default goals you can edit or merge later"}</span>
+          <span className="block text-[16px] font-semibold">{d.name || "New brand"}</span>
+          <span className="mt-0.5 block text-[14px] text-mute-1">{draft.id ? d.tagline || "No tagline yet" : "Starts with five default goals you can edit or merge later"}</span>
         </span>
         <span className="h-6 w-6 rounded-md" style={{ background: d.secondary }} title="Secondary colour" />
       </div>
-      <Field label="Brand name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
+      <Field label="Brand name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
       <div className="grid grid-cols-[2fr_1fr] gap-3">
         <Field label="Tagline"><input className="field" value={d.tagline} onChange={(e) => setD({ ...d, tagline: e.target.value })} placeholder="Small animal. Big mandate." /></Field>
         <Field label="Monogram"><input className="field uppercase" maxLength={3} value={d.mark} onChange={(e) => setD({ ...d, mark: e.target.value })} placeholder={mark} /></Field>
@@ -137,11 +137,11 @@ export function KitModal({ brandId }: { brandId: string }) {
             <div key={s.key} className="flex items-center gap-2">
               <input type="color" aria-label={`${s.name} colour`} value={s.color} onChange={(e) => setSegments(segments.map((x) => (x.key === s.key ? { ...x, color: e.target.value.toUpperCase() } : x)))} className="h-8 w-9 flex-none cursor-pointer rounded-md border border-line bg-white p-0.5" />
               <input className="field flex-1" value={s.name} aria-label="Segment name" onChange={(e) => setSegments(segments.map((x) => (x.key === s.key ? { ...x, name: e.target.value } : x)))} />
-              <span className="w-[62px] flex-none text-right text-[12.5px] text-mute-3">{s.orig ? counts(s.orig) : 0} offers</span>
+              <span className="w-[62px] flex-none text-right text-[14px] text-mute-3">{s.orig ? counts(s.orig) : 0} offers</span>
               <button type="button" aria-label="Remove segment" disabled={!!s.orig && counts(s.orig) > 0} title={s.orig && counts(s.orig) > 0 ? "Offers still use this segment" : "Remove"} onClick={() => setSegments(segments.filter((x) => x.key !== s.key))} className="px-1.5 text-mute-5 hover:text-danger disabled:opacity-30">✕</button>
             </div>
           ))}
-          <div className="flex items-center gap-2 text-[13px] text-mute-3"><Chip color="#566560">All segments</Chip> is always there for offers that speak to everyone.</div>
+          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#566560">All segments</Chip> is always there for offers that speak to everyone.</div>
           <Btn size="sm" className="self-start" onClick={() => setSegments([...segments, { key: nextKey(), name: "", color: SEGMENT_PALETTE[segments.length % SEGMENT_PALETTE.length], orig: "" }])}>+ Add segment</Btn>
         </div>
       </section>
@@ -195,7 +195,7 @@ export function ServiceModal({ draft }: { draft: Partial<Service> & { brandId: s
       {!draft.id && (
         <Field label="Brand"><Select value={d.brandId} onChange={(v) => setD({ ...d, brandId: v })} options={ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name }))} /></Field>
       )}
-      <Field label="Service name"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
+      <Field label="Service name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
       <Field label="One line"><input className="field" value={d.short} onChange={(e) => setD({ ...d, short: e.target.value })} placeholder="Ten thousand a month, actually spent" /></Field>
       <Field label="What it is"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="The capability itself, before it is aimed at anyone." /></Field>
     </Modal>
@@ -223,9 +223,9 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
   return (
     <Modal title={draft.id ? "Edit CTA" : "New CTA"} width={480} onSubmit={save} footer={<Footer saveLabel="Save CTA" pending={pending} disabled={!d.text.trim()} />}>
       <div className="flex items-center justify-center rounded-[11px] bg-wash-2 p-6">
-        <span className="inline-block rounded-[7px] px-[18px] py-[9px] text-[14.5px] font-semibold" style={preview}>{d.text || "Button text"}</span>
+        <span className="inline-block rounded-[7px] px-[18px] py-[9px] text-[16px] font-semibold" style={preview}>{d.text || "Button text"}</span>
       </div>
-      <Field label="Button text"><input className="field text-[14.5px]" value={d.text} onChange={(e) => setD({ ...d, text: e.target.value })} placeholder="Book a Grant Audit" maxLength={80} /></Field>
+      <Field label="Button text"><input className="field text-[16px]" value={d.text} onChange={(e) => setD({ ...d, text: e.target.value })} placeholder="Book a Grant Audit" maxLength={80} /></Field>
       <Field label="Destination"><input className="field" value={d.url} onChange={(e) => setD({ ...d, url: e.target.value })} placeholder="quokkaforgood.org/grant-audit" /></Field>
       <div>
         <div className="label">{outline ? "Colour" : "Button colour"}</div>
@@ -250,8 +250,8 @@ export function GoalModal({ brandId, name, description, original }: { brandId: s
   const remove = async () => { const r = await run(deleteGoal, brandId, original!); if (r.ok) close(); };
   return (
     <Modal title={original ? "Edit goal" : "New goal"} sub={`In ${ws.brand(brandId)?.name}. Keep it broad enough that a tactic never fits it exactly.`} width={480} onSubmit={save}
-      footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <button type="button" onClick={remove} className="px-0.5 py-1.5 text-[13px] text-danger hover:underline">Remove from every offer</button> : undefined} />}>
-      <Field label="Goal"><input className="field text-[14.5px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
+      footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <button type="button" onClick={remove} className="px-0.5 py-1.5 text-[14.5px] text-danger hover:underline">Remove from every offer</button> : undefined} />}>
+      <Field label="Goal"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
       <Field label="What it means here"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="Grow the audience we own — list, followers, members." /></Field>
     </Modal>
   );
@@ -266,7 +266,7 @@ export function MergeGoalModal({ brandId, from }: { brandId: string; from: strin
   return (
     <Modal title={`Merge ${from} into…`} sub={`${n} ${n === 1 ? "offer moves" : "offers move"} across. ${from} then disappears.`} width={460} onSubmit={save} footer={<Footer saveLabel="Merge" pending={pending} disabled={!into} />} bodyClass="gap-[7px]">
       {(ws.brand(brandId)?.goals ?? []).filter((g) => g.name !== from).map((g) => (
-        <button key={g.name} type="button" aria-pressed={into === g.name} onClick={() => setInto(g.name)} className={cx("w-full rounded-[10px] border px-3.5 py-[11px] text-left text-[14.5px] font-medium transition", into === g.name ? "border-accent bg-soft" : "border-line bg-white")}>{g.name}</button>
+        <button key={g.name} type="button" aria-pressed={into === g.name} onClick={() => setInto(g.name)} className={cx("w-full rounded-[10px] border px-3.5 py-[11px] text-left text-[16px] font-medium transition", into === g.name ? "border-accent bg-soft" : "border-line bg-white")}>{g.name}</button>
       ))}
     </Modal>
   );
@@ -281,13 +281,13 @@ export function GoalOffersModal({ brandId, name }: { brandId: string; name: stri
       {list.map((o) => (
         <button key={o.id} type="button" onClick={() => { close(); router.push(href.offer(o.id)); }} className="flex w-full items-center gap-[11px] rounded-[10px] border border-line bg-white px-[13px] py-[11px] text-left hover:border-mute-2">
           <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-semibold">{o.name}</span>
-            <span className="mt-0.5 block text-[13px] text-mute-2">{o.serviceId ? ws.service(o.serviceId)?.name ?? "Standalone" : "Standalone"} · {o.segment}</span>
+            <span className="block text-[15px] font-semibold">{o.name}</span>
+            <span className="mt-0.5 block text-[14.5px] text-mute-2">{o.serviceId ? ws.service(o.serviceId)?.name ?? "Standalone" : "Standalone"} · {o.segment}</span>
           </span>
           <Chip color={OFFER_STATUS[o.status]} size="xs">{o.status}</Chip>
         </button>
       ))}
-      {!list.length && <div className="p-7 text-center text-[14px] text-mute-2">No offer chases this goal yet.</div>}
+      {!list.length && <div className="p-7 text-center text-[15px] text-mute-2">No offer chases this goal yet.</div>}
     </Modal>
   );
 }

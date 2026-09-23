@@ -28,7 +28,7 @@ export function StatusChips({ a }: { a: Asset }) {
     <span className="mb-[7px] flex flex-wrap items-center gap-[5px]">
       <Chip color={ASSET_STATUS[a.status] ?? "#9AA6A0"} size="xs">{a.status}</Chip>
       {a.review !== "None" && <Chip color={REVIEW_COLOR[a.review]} size="xs">{a.review}</Chip>}
-      <span className="text-[12px] text-[#64716B]">v{a.version}</span>
+      <span className="text-[13.5px] text-[#64716B]">v{a.version}</span>
     </span>
   );
 }
@@ -57,25 +57,25 @@ export function AssetCard({ a, variant = "full" }: { a: Asset; variant?: AssetVa
     >
       <CodeTile code={ws.codeOf(a)} color={color} height={tileH} className="w-full" style={{ fontSize: variant === "recent" ? 12.5 : variant === "kit" || variant === "font" ? 12 : 13 }} />
       <span className={cx("block", variant === "kit" || variant === "font" ? "px-3.5 py-[13px]" : variant === "recent" ? "px-3.5 pb-3.5 pt-[13px]" : "p-3.5")}>
-        <span className={cx("block text-[13.5px] font-semibold leading-[1.35]", variant !== "kit" && variant !== "font" && "mb-[5px]")}>{a.name}</span>
-        {variant === "kit" && <span className="mt-[3px] block text-[13px] text-mute-2">{a.short}</span>}
-        {variant === "font" && <span className="mt-[3px] block text-[13px] text-mute-2">{a.type}</span>}
+        <span className={cx("block text-[15px] font-semibold leading-[1.35]", variant !== "kit" && variant !== "font" && "mb-[5px]")}>{a.name}</span>
+        {variant === "kit" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.short}</span>}
+        {variant === "font" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.type}</span>}
         {variant === "library" && (
           <>
             <span className="mb-2 flex items-center gap-[7px]">
-              <span className="text-[12px] text-mute-4">{a.type}</span>
-              {a.type === "Checklist" && <span className="font-mono text-[11.5px] text-mute-2">{(a.items ?? []).length} checks</span>}
-              {a.type === "Prompt" && <span className="font-mono text-[11.5px] text-mute-2">{a.promptFor}</span>}
+              <span className="text-[13.5px] text-mute-4">{a.type}</span>
+              {a.type === "Checklist" && <span className="font-mono text-[13px] text-mute-2">{(a.items ?? []).length} checks</span>}
+              {a.type === "Prompt" && <span className="font-mono text-[13px] text-mute-2">{a.promptFor}</span>}
             </span>
-            <span className="block text-[13px] text-mute-2">{a.short}</span>
+            <span className="block text-[14.5px] text-mute-2">{a.short}</span>
           </>
         )}
         {(variant === "full" || variant === "recent") && (
           <>
-            {variant === "full" && <span className="mb-2 block text-[12px] text-mute-4">{a.type}</span>}
+            {variant === "full" && <span className="mb-2 block text-[13.5px] text-mute-4">{a.type}</span>}
             <StatusChips a={a} />
-            <span className="block text-[12px] font-medium" style={{ color: n === 0 ? "#8A6A12" : "#566560" }}>{linkLabel(n)}</span>
-            {open > 0 && <span className="mt-[3px] block font-mono text-[12px] text-mute-2">{plural(open, "open note")}</span>}
+            <span className="block text-[13.5px] font-medium" style={{ color: n === 0 ? "#8A6A12" : "#566560" }}>{linkLabel(n)}</span>
+            {open > 0 && <span className="mt-[3px] block font-mono text-[13.5px] text-mute-2">{plural(open, "open note")}</span>}
           </>
         )}
       </span>
@@ -108,9 +108,9 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
           <Chip color={segColor}>{o.segment}</Chip>
           <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
         </span>
-        <span className="block text-[15.5px] font-semibold tracking-[-0.012em]">{o.name}</span>
-        <span className="block text-[13.5px] leading-[1.5] text-mute-1">{o.positioning}</span>
-        <span className="block w-full border-t border-divider pt-2 text-[12.5px]" style={{ color: ac === 0 ? "#8A6A12" : "#566560" }}>{assetLabel}</span>
+        <span className="block text-[16.5px] font-semibold tracking-[-0.012em]">{o.name}</span>
+        <span className="block text-[15px] leading-[1.5] text-mute-1">{o.positioning}</span>
+        <span className="block w-full border-t border-divider pt-2 text-[14px]" style={{ color: ac === 0 ? "#8A6A12" : "#566560" }}>{assetLabel}</span>
       </Link>
     );
   }
@@ -134,16 +134,16 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
       {variant === "full" ? (
         <span className="block">
           <span className="eyebrow mb-[5px] block">{serviceName}</span>
-          <span className="block text-[17px] font-semibold leading-[1.25] tracking-[-0.015em]">{o.name}</span>
-          <span className="mt-[3px] block text-[13.5px] text-mute-2">{o.short}</span>
+          <span className="block text-[18px] font-semibold leading-[1.25] tracking-[-0.015em]">{o.name}</span>
+          <span className="mt-[3px] block text-[15px] text-mute-2">{o.short}</span>
         </span>
       ) : (
-        <span className="block text-[16px] font-semibold leading-[1.25] tracking-[-0.014em]">{o.name}</span>
+        <span className="block text-[17px] font-semibold leading-[1.25] tracking-[-0.014em]">{o.name}</span>
       )}
-      <span className={cx("block leading-[1.55] text-ink-3 text-pretty", variant === "full" ? "text-[14px]" : "text-[13.5px]")}>{o.positioning}</span>
+      <span className={cx("block leading-[1.55] text-ink-3 text-pretty", variant === "full" ? "text-[15px]" : "text-[15px]")}>{o.positioning}</span>
       {variant === "full" && <GoalChips ws={ws} o={o} />}
       <span className="mb-0.5"><Blocks blocks={blocksFor(assets)} /></span>
-      <span className="flex w-full items-center gap-2.5 border-t border-divider pt-3 text-[12.5px]">
+      <span className="flex w-full items-center gap-2.5 border-t border-divider pt-3 text-[14px]">
         <span className="font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#566560" }}>{assetLabel}</span>
         {open > 0 && <span className="font-mono text-mute-2">{plural(open, "note")}</span>}
         <span className="flex-1" />

@@ -35,19 +35,19 @@ export function ShareModal({ brandId }: { brandId: string }) {
           {links.map((l) => (
             <div key={l.token} className="flex items-center gap-3 border-t border-divider px-4 py-3 first:border-t-0">
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold">{l.label || "Client link"}</span>
-                <span className="block text-[12.5px] text-mute-3">
+                <span className="block truncate text-[15px] font-semibold">{l.label || "Client link"}</span>
+                <span className="block text-[14px] text-mute-3">
                   made {ws.ago(l.createdAt)} by {ws.first(l.createdBy)} · {l.views ? `opened ${l.views} time${l.views === 1 ? "" : "s"}, last ${ws.ago(l.lastViewedAt ?? l.createdAt)}` : "not opened yet"}
                 </span>
               </span>
-              <a href={`/share/${l.token}`} target="_blank" rel="noreferrer" className="flex-none text-[12.5px] text-mute-2 hover:text-ink">Preview</a>
+              <a href={`/share/${l.token}`} target="_blank" rel="noreferrer" className="flex-none text-[14px] text-mute-2 hover:text-ink">Preview</a>
               <Btn size="sm" onClick={() => copy(l.token)}>Copy</Btn>
-              <button type="button" disabled={pending} onClick={() => run(revokeShareLink, l.token)} className="flex-none px-1 text-[12.5px] text-danger hover:underline">Revoke</button>
+              <button type="button" disabled={pending} onClick={() => run(revokeShareLink, l.token)} className="flex-none px-1 text-[14px] text-danger hover:underline">Revoke</button>
             </div>
           ))}
         </div>
       ) : (
-        <div className="text-[13.5px] text-mute-3">No live links. Anyone with a link can open it until you revoke it.</div>
+        <div className="text-[15px] text-mute-3">No live links. Anyone with a link can open it until you revoke it.</div>
       )}
     </Modal>
   );

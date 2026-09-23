@@ -39,8 +39,8 @@ export function NewModal() {
     <Modal title="What do you need?" sub={`Pick the thing you actually want. The system works out where it belongs.${b ? ` New work goes into ${b.name}.` : ""}`} bodyClass="gap-0 px-3.5 pb-4 pt-2">
       {options.map((o, i) => (
         <button key={o.label} type="button" data-autofocus={i === 0 ? "" : undefined} onClick={o.run} className="w-full rounded-[10px] p-3 text-left hover:bg-hover focus-visible:bg-hover">
-          <span className="mb-0.5 block text-[14px] font-semibold">{o.label}</span>
-          <span className="block text-[13px] text-mute-2">{o.sub}</span>
+          <span className="mb-0.5 block text-[15px] font-semibold">{o.label}</span>
+          <span className="block text-[14.5px] text-mute-2">{o.sub}</span>
         </button>
       ))}
     </Modal>
@@ -71,8 +71,8 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
   };
   return (
     <Modal title={`Delete ${label}?`} width={420} onSubmit={go} footer={<Footer saveLabel="Delete" pending={pending} saveVariant="danger-solid" />}>
-      <div className="text-[14px] leading-[1.6] text-mute-1 text-pretty">{CONFIRM_BODY[item]}</div>
-      {(item === "brand" || item === "client") && <div className="text-[13.5px] text-mute-3">If you might want it back, archive it instead.</div>}
+      <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">{CONFIRM_BODY[item]}</div>
+      {(item === "brand" || item === "client") && <div className="text-[15px] text-mute-3">If you might want it back, archive it instead.</div>}
     </Modal>
   );
 }
@@ -96,8 +96,8 @@ export function ShortcutsModal() {
     <Modal title="Keyboard shortcuts" width={440} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-0 py-3">
       {KEYS.map(([k, v]) => (
         <div key={k} className="flex items-center gap-3 border-t border-divider py-2.5 first:border-t-0">
-          <kbd className="w-[110px] flex-none font-mono text-[12.5px] font-semibold text-ink-3">{k}</kbd>
-          <span className="text-[14px] text-mute-1">{v}</span>
+          <kbd className="w-[110px] flex-none font-mono text-[14px] font-semibold text-ink-3">{k}</kbd>
+          <span className="text-[15px] text-mute-1">{v}</span>
         </div>
       ))}
     </Modal>
@@ -108,12 +108,12 @@ export function InstallModal() {
   const { close } = useApp();
   return (
     <Modal title="Install BrandOS" sub="Put BrandOS on your home screen. It opens full screen, like any other app." width={440} footer={<Btn variant="primary" onClick={close}>Got it</Btn>}>
-      <ol className="m-0 flex list-decimal flex-col gap-2.5 pl-5 text-[14px] leading-[1.5] text-ink-3">
+      <ol className="m-0 flex list-decimal flex-col gap-2.5 pl-5 text-[15px] leading-[1.5] text-ink-3">
         <li>Tap the <strong>Share</strong> button in Safari&apos;s toolbar (the square with an arrow).</li>
         <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
         <li>Tap <strong>Add</strong>. BrandOS appears next to your other apps.</li>
       </ol>
-      <div className="text-[13px] text-mute-2">On Chrome or Edge, use the install icon in the address bar instead.</div>
+      <div className="text-[14.5px] text-mute-2">On Chrome or Edge, use the install icon in the address bar instead.</div>
     </Modal>
   );
 }

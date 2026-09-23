@@ -59,9 +59,9 @@ export function Modal({
           {...(onSubmit ? { onSubmit: (e: React.FormEvent) => { e.preventDefault(); onSubmit(); } } : {})}
         >
           <div className={cx("px-6 pb-4 pt-6 sm:px-7", (children || footer) ? "border-b border-line" : "")}>
-            {eyebrow && <div className="mb-[7px] text-[12px] font-semibold uppercase tracking-[0.08em] text-mute-4">{eyebrow}</div>}
-            <div className="text-[19px] font-semibold tracking-[-0.015em]">{title}</div>
-            {sub && <div className="mt-1 text-[13.5px] leading-[1.5] text-mute-2">{sub}</div>}
+            {eyebrow && <div className="mb-[7px] text-[13.5px] font-semibold uppercase tracking-[0.08em] text-mute-4">{eyebrow}</div>}
+            <div className="text-[20px] font-semibold tracking-[-0.015em]">{title}</div>
+            {sub && <div className="mt-1 text-[15px] leading-[1.5] text-mute-2">{sub}</div>}
           </div>
           {children && <div className={cx("flex flex-col gap-4 px-6 pb-6 pt-[22px] sm:px-7", bodyClass)}>{children}</div>}
           {footer && <div className="flex flex-wrap items-center justify-end gap-[9px] border-t border-line bg-wash-2 px-6 py-3.5 sm:px-7">{footer}</div>}

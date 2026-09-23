@@ -43,12 +43,12 @@ export function OfferPage({ id }: { id: string }) {
           <div className="mb-3 flex flex-wrap items-center gap-[7px]">
             <Chip color={ws.segColor(o.segment, o.brandId)}>{o.segment}</Chip>
             <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
-            {sv && <Link href={href.service(sv.id)} className="rounded-[5px] border border-line bg-white px-2 py-0.5 text-[11.5px] font-semibold text-mute-1 hover:border-accent hover:text-accent">{sv.name} ↗</Link>}
-            {!sv && <span className="rounded-[5px] border border-dashed border-line px-2 py-0.5 text-[11.5px] font-semibold text-mute-3">Standalone</span>}
-            <span className="text-[12.5px] text-[#64716B]">Updated {ws.ago(o.updatedAt)}</span>
+            {sv && <Link href={href.service(sv.id)} className="rounded-[5px] border border-line bg-white px-2 py-0.5 text-[13px] font-semibold text-mute-1 hover:border-accent hover:text-accent">{sv.name} ↗</Link>}
+            {!sv && <span className="rounded-[5px] border border-dashed border-line px-2 py-0.5 text-[13px] font-semibold text-mute-3">Standalone</span>}
+            <span className="text-[14px] text-[#64716B]">Updated {ws.ago(o.updatedAt)}</span>
           </div>
           <h1 className="m-0 mb-1.5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.022em] sm:text-[38px]">{o.name}</h1>
-          <p className="m-0 text-[14px] text-[#566560]">{o.short}</p>
+          <p className="m-0 text-[15px] text-[#566560]">{o.short}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[34px]">
           {canEdit && <Btn onClick={() => open({ kind: "offer", draft: o })}>Edit</Btn>}
@@ -68,7 +68,7 @@ export function OfferPage({ id }: { id: string }) {
         {canEdit && (Object.keys(OFFER_STATUS) as Offer["status"][]).map((k) => {
           const on = o.status === k; const c = OFFER_STATUS[k];
           return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="rounded-[7px] border px-[11px] py-1 text-[12.5px] font-medium transition"
+            <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="rounded-[7px] border px-[11px] py-1 text-[14px] font-medium transition"
               style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#5C6A64" }}>{k}</button>
           );
         })}
@@ -79,7 +79,7 @@ export function OfferPage({ id }: { id: string }) {
       {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mb-5">{o.changeNote}</ChangeNote>}
 
       {missing.length > 0 && o.status !== "Archived" && (
-        <div className="mb-3 rounded-xl border border-dashed border-[rgba(201,154,46,.45)] bg-[rgba(201,154,46,.06)] px-[18px] py-3 text-[13.5px] text-warn-ink">
+        <div className="mb-3 rounded-xl border border-dashed border-[rgba(201,154,46,.45)] bg-[rgba(201,154,46,.06)] px-[18px] py-3 text-[15px] text-warn-ink">
           Before this goes out: {missing.join(", ")}.
         </div>
       )}
@@ -95,32 +95,32 @@ export function OfferPage({ id }: { id: string }) {
           <div className="border-b border-line px-6 py-[22px] sm:px-7 md:border-b-0 md:border-r">
             <Eyebrow className="mb-[9px]">Goals</Eyebrow>
             <div className="mb-3">
-              {o.goals.length ? <GoalChips ws={ws} o={o} size="md" /> : <span className="text-[14px] text-warn-text">No goal set, so this offer is not comparable to anything.</span>}
+              {o.goals.length ? <GoalChips ws={ws} o={o} size="md" /> : <span className="text-[15px] text-warn-text">No goal set, so this offer is not comparable to anything.</span>}
             </div>
-            {o.offerType && <div className="text-[13.5px] text-mute-2">Offer type · <span className="font-medium text-ink-3">{o.offerType}</span></div>}
+            {o.offerType && <div className="text-[15px] text-mute-2">Offer type · <span className="font-medium text-ink-3">{o.offerType}</span></div>}
           </div>
           <div className="border-b border-line px-6 py-[22px] sm:px-7 md:border-b-0 md:border-r">
             <Eyebrow className="mb-2">Promise</Eyebrow>
-            <p className="m-0 text-[14.5px] leading-[1.55] text-ink-3 text-pretty">{o.promise || <span className="text-mute-4">Not written yet.</span>}</p>
+            <p className="m-0 text-[16px] leading-[1.55] text-ink-3 text-pretty">{o.promise || <span className="text-mute-4">Not written yet.</span>}</p>
           </div>
           <div className="px-6 py-[22px] sm:px-7">
             <Eyebrow className="mb-2">Proof</Eyebrow>
-            <p className="m-0 text-[14.5px] leading-[1.55] text-ink-3 text-pretty">{o.proof || <span className="text-mute-4">Not written yet.</span>}</p>
+            <p className="m-0 text-[16px] leading-[1.55] text-ink-3 text-pretty">{o.proof || <span className="text-mute-4">Not written yet.</span>}</p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3 border-t border-line bg-wash-2 px-6 py-[18px] sm:px-7">
           <Eyebrow>Calls to action</Eyebrow>
           {o.primaryCtaId && <CtaButton id={o.primaryCtaId} />}
           {o.secondaryCtaId && <CtaButton id={o.secondaryCtaId} />}
-          {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-[13.5px] text-warn-text">None set — readers do not know what to do next.</span>}
+          {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-[15px] text-warn-text">None set — readers do not know what to do next.</span>}
           <span className="flex-1" />
-          <span className="flex items-center gap-[7px] text-[13.5px] text-mute-2"><Avatar initials={ws.user(o.ownerId).initials} size={20} />{ws.user(o.ownerId).name}</span>
+          <span className="flex items-center gap-[7px] text-[15px] text-mute-2"><Avatar initials={ws.user(o.ownerId).initials} size={20} />{ws.user(o.ownerId).name}</span>
         </div>
       </div>
 
       {nudgeAsset && (
         <div className="mb-[18px] flex animate-pop flex-wrap items-center gap-3.5 rounded-xl border border-accent bg-soft px-[18px] py-[15px]">
-          <span className="min-w-[240px] flex-1 text-[14px] leading-[1.5] text-ink-2">
+          <span className="min-w-[240px] flex-1 text-[15px] leading-[1.5] text-ink-2">
             {nudgeAsset.name} is now linked to this offer. The same asset, not a copy. <span className="text-mute-1">Need a version written specifically for this offer?</span>
           </span>
           <Btn variant="primary" onClick={() => open({ kind: "clone", srcId: nudgeAsset.id, brandId: nudgeAsset.brandId ?? o.brandId, name: `${nudgeAsset.name} — ${o.name}`, offerIds: [o.id] })}>Clone and adapt</Btn>
@@ -130,8 +130,8 @@ export function OfferPage({ id }: { id: string }) {
 
       <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h2 className="m-0 mb-1 text-[14px] font-semibold">What supports this offer</h2>
-          <p className="m-0 text-[13px] text-mute-2">{assets.length} {assets.length === 1 ? "asset supports" : "assets support"} this offer. Linking never duplicates — the asset stays where it lives.</p>
+          <h2 className="m-0 mb-1 text-[17px] font-semibold">What supports this offer</h2>
+          <p className="m-0 text-[14.5px] text-mute-2">{assets.length} {assets.length === 1 ? "asset supports" : "assets support"} this offer. Linking never duplicates — the asset stays where it lives.</p>
         </div>
         {canEdit && (
           <div className="flex gap-2">
@@ -151,15 +151,15 @@ export function OfferPage({ id }: { id: string }) {
 
       <div id="discussion" className="mt-11 max-w-[720px] scroll-mt-24">
         <div className="mb-1 flex items-baseline justify-between gap-4">
-          <h2 className="m-0 text-[14px] font-semibold">Discussion</h2>
-          <span className="font-mono text-[13px] text-mute-3">{openNotes ? `${openNotes} open note${openNotes === 1 ? "" : "s"}` : "Nothing open"}</span>
+          <h2 className="m-0 text-[17px] font-semibold">Discussion</h2>
+          <span className="font-mono text-[14.5px] text-mute-3">{openNotes ? `${openNotes} open note${openNotes === 1 ? "" : "s"}` : "Nothing open"}</span>
         </div>
-        <p className="mb-3.5 mt-0 text-[13.5px] text-mute-3">
+        <p className="mb-3.5 mt-0 text-[15px] text-mute-3">
           Decisions about this offer live here, not in a thread somebody has to go find. Type <span className="font-mono text-mute-1">#</span> to tag another offer, <span className="font-mono text-mute-1">@</span> to pull someone in.
         </p>
         {mentions.length > 0 && (
           <div className="mb-3.5 rounded-xl border border-line bg-[#FBFCFC] px-4 py-3.5">
-            <div className="eyebrow mb-2.5 text-[10.5px]">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
+            <div className="eyebrow mb-2.5 text-[12px]">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
             <div className="flex flex-col gap-2">
               {mentions.map((m) => {
                 const where = m.kind === "asset" ? ws.asset(m.itemId)?.name : ws.offer(m.itemId)?.name;
@@ -168,7 +168,7 @@ export function OfferPage({ id }: { id: string }) {
                     <Avatar initials={ws.user(m.userId).initials} size={22} mono className="mt-px" />
                     <span className="min-w-0 flex-1">
                       <CommentText c={m} />
-                      <span className="mt-[3px] block text-[12px] text-mute-4">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
+                      <span className="mt-[3px] block text-[13.5px] text-mute-4">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
                     </span>
                   </>
                 );
@@ -183,7 +183,7 @@ export function OfferPage({ id }: { id: string }) {
         )}
         <Thread kind="offer" id={o.id} />
       </div>
-      {b && <div className="mt-10 text-[13px] text-mute-4">In <Link href={href.brand(b.id)} className="hover:text-ink">{b.name}</Link>{sv ? <> · <Link href={href.service(sv.id)} className="hover:text-ink">{sv.name}</Link></> : null}</div>}
+      {b && <div className="mt-10 text-[14.5px] text-mute-4">In <Link href={href.brand(b.id)} className="hover:text-ink">{b.name}</Link>{sv ? <> · <Link href={href.service(sv.id)} className="hover:text-ink">{sv.name}</Link></> : null}</div>}
     </Page>
   );
 }
