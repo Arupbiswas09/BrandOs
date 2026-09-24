@@ -10,14 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - name: Types
-        run: npx tsc --noEmit
+        run: npx next typegen && npx tsc --noEmit
       - name: Lint
         run: npx eslint src e2e
       - name: Install browser
@@ -26,7 +26,7 @@ jobs:
         run: npx playwright test
         env:
           PW_CHANNEL: ""
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: failure()
         with:
           name: playwright-report
