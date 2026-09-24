@@ -51,3 +51,4 @@ next-env.d.ts
 /.shoot.mjs
 /.anon.mjs
 /.mini.mjs
+/.claude/worktrees
