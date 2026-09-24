@@ -7,13 +7,13 @@ import { useStored } from "@/lib/stored";
 import type { Brand } from "@/db/schema";
 import { hexA, readable, onColor } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, OFFER_TYPES } from "@/lib/constants";
-import { href, type BrandTab } from "@/lib/routes";
+import { BRAND_TABS, href, type BrandTab } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, OfferCard, blocksFor } from "@/components/cards";
 import { CtaButton } from "@/components/drawer/asset-drawer";
-import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, PageHead, Pills, Warn, cx } from "@/components/ui";
+import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, Pills, SectionHead, Tabs, Warn } from "@/components/ui";
 import { NotHere, useVisit } from "./common";
 import { BrandHealth } from "@/components/health";
 
@@ -22,14 +22,45 @@ export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?:
   const b = ws.brand(id);
   useVisit("brand", id, !!b);
   if (!b) return <NotHere what="brand" />;
-  switch (tab) {
-    case "services": return <Services b={b} />;
-    case "offers": return <Offers b={b} />;
-    case "assets": return <Assets key={type ?? "all"} b={b} initialType={type} />;
-    case "kit": return <Kit b={b} />;
-    case "ctas": return <Ctas b={b} />;
-    default: return <Home b={b} />;
-  }
+  const body = (() => {
+    switch (tab) {
+      case "services": return <Services b={b} />;
+      case "offers": return <Offers b={b} />;
+      case "assets": return <Assets key={type ?? "all"} b={b} initialType={type} />;
+      case "kit": return <Kit b={b} />;
+      case "ctas": return <Ctas b={b} />;
+      default: return <Home b={b} />;
+    }
+  })();
+  return (
+    <Page>
+      <BrandBar b={b} tab={tab} />
+      {body}
+    </Page>
+  );
+}
+
+/** The brand's header band: mark, name, where it sits, and the section tabs. */
+function BrandBar({ b, tab }: { b: Brand; tab: BrandTab }) {
+  const { ws } = useApp();
+  const parent = ws.brand(b.parentId);
+  const client = ws.client(b.clientId);
+  return (
+    <div className="head-band -mt-8 mb-8 pt-7 sm:-mt-10 sm:pt-8">
+      <div className="flex items-center gap-4">
+        <Mark mark={b.mark} color="var(--bos-accent)" fg="var(--bos-on)" size={48} radius={12} className="text-[17px]" />
+        <div className="min-w-0 flex-1">
+          <h1 className="m-0 truncate text-[26px] font-semibold leading-[1.2] tracking-[-0.02em]">{b.name}</h1>
+          <p className="m-0 mt-0.5 truncate text-[15px] text-mute-2">
+            {parent ? <>Sub-brand of <Link href={href.brand(parent.id)} className="hover:text-ink hover:underline">{parent.name}</Link></> : client?.name}
+            {b.tagline ? ` · ${b.tagline}` : ""}
+          </p>
+        </div>
+        {b.archived && <span className="flex-none rounded-md bg-chip px-2.5 py-1 text-[13px] font-semibold text-mute-2">Archived</span>}
+      </div>
+      <Tabs items={BRAND_TABS.map(([k, label]) => ({ key: k, label, href: href.brand(b.id, k), active: tab === k }))} className="mt-6" />
+    </div>
+  );
 }
 
 /* ================================================================ home */
@@ -44,7 +75,6 @@ function Home({ b }: { b: Brand }) {
   const templates = live(all.filter((a) => a.isTemplate));
   const services = live(ws.servicesOf(b.id));
   const ctas = ws.ctasOf(b.id);
-  const parent = ws.brand(b.parentId);
   const subs = live(ws.subBrands(b.id));
   const canEdit = ws.can("edit");
 
@@ -72,24 +102,16 @@ function Home({ b }: { b: Brand }) {
 
   return (
     <div className="animate-fade">
-      <div className="px-4 pb-12 pt-12 sm:px-8 sm:pt-16" style={{ background: "linear-gradient(180deg,var(--bos-soft) 0%,rgba(255,255,255,0) 100%)" }}>
-        <div className="mx-auto max-w-[760px] animate-rise text-center">
-          <Mark mark={b.mark} color="var(--bos-accent)" fg="var(--bos-on)" size={72} radius={18} className="mx-auto mb-[22px] text-[22px]" />
-          {parent && <div className="mb-2.5 text-[13.5px] font-semibold uppercase tracking-[0.08em] text-mute-2">Wing of <Link href={href.brand(parent.id)} className="hover:text-ink">{parent.name}</Link></div>}
-          <h1 className="m-0 mb-2.5 font-serif text-[36px] font-normal leading-[1.05] tracking-[-0.025em] sm:text-[44px]">Welcome to {b.name}</h1>
-          <p className="mx-auto my-0 max-w-[44ch] text-[17px] leading-[1.5] text-mute-1 text-pretty">{b.tagline}</p>
-          <div className="mt-[34px] inline-flex max-w-full flex-wrap justify-center overflow-hidden rounded-[14px] border border-line bg-white theme-fade">
-            {stats.map((s, i) => (
-              <Link key={s.label} href={href.brand(b.id, s.tab)} className={cx("px-5 py-4 text-center hover:bg-wash sm:px-[30px]", i < stats.length - 1 && "border-r border-line")}>
-                <span className="block font-mono text-[23px] font-medium tabular-nums tracking-[-0.01em]">{s.value}</span>
-                <span className="mt-0.5 block text-[14.5px] text-mute-2">{s.label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {stats.map((st) => (
+          <Link key={st.label} href={href.brand(b.id, st.tab)} className="rounded-xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,.04)] transition hover:border-line-strong">
+            <span className="block text-[13.5px] font-medium text-mute-3">{st.label}</span>
+            <span className="mt-1 block text-[28px] font-semibold tabular-nums tracking-[-0.02em]">{st.value}</span>
+          </Link>
+        ))}
       </div>
 
-      <div className="mx-auto max-w-[1060px] px-4 pb-[88px] pt-4 sm:px-8">
+      <div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {actions.map((q) => (
             <button key={q.label} type="button" onClick={q.go} className="flex flex-col rounded-xl border border-line bg-white p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(16,22,20,.07)]">
@@ -137,7 +159,7 @@ function Home({ b }: { b: Brand }) {
               ))}
             </Card>
             <div className="mt-3 flex flex-wrap gap-4">
-              {[["Approved", rc.Approved, "#2F8F62"], ["In review", rc["In review"], "#8A6A12"], ["Changes requested", rc["Changes requested"], "#C2410C"], ["Not reviewed", rc.None, "#CBD6D1"]].map(([l, n, c]) => (
+              {[["Approved", rc.Approved, "#2F8F62"], ["In review", rc["In review"], "#8A6A12"], ["Changes requested", rc["Changes requested"], "#C2410C"], ["Not reviewed", rc.None, "#CBD5E1"]].map(([l, n, c]) => (
                 <span key={l as string} className="flex items-center gap-[7px] text-[14.5px] text-mute-2">
                   <span className="h-[11px] w-[11px] rounded-[3px]" style={{ background: c as string }} />{l}
                   <span className="font-mono font-medium text-ink">{n}</span>
@@ -202,9 +224,10 @@ function Services({ b }: { b: Brand }) {
   const gaps = rows.reduce((n, r) => n + cols.filter((c) => !r.list.some((o) => matches(o, c))).length, 0);
 
   return (
-    <Page>
-      <PageHead eyebrow="Floors" title="Services" actions={canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>+ New service</Btn>} />
-      <p className="mb-[30px] max-w-[60ch] text-[15px] text-[#566560] text-pretty">A service is what you sell. An offer is that service argued at one segment. Keeping them apart is what makes a missing version visible.</p>
+    <>
+      <SectionHead eyebrow="Floors" title="Services" actions={canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>+ New service</Btn>}
+        sub={<>A service is what you sell. An offer is that service argued at one segment. Keeping them apart is what makes a missing version visible.</>}
+      />
 
       {cols.length > 0 && svcs.length > 0 && (
         <div className="mb-9">
@@ -233,7 +256,7 @@ function Services({ b }: { b: Brand }) {
                         disabled={!n && !canEdit}
                         onClick={() => (n ? (n === 1 ? router.push(href.offer(hits[0].id)) : router.push(r.sid ? href.service(r.sid) : href.brand(b.id, "offers"))) : open({ kind: "offer", draft: { brandId: b.id, serviceId: r.sid, segment: "All segments", status: "Ideation", ...prefill(col) } }))}
                         className="min-h-[46px] flex-1 border-l border-line text-[15px] font-semibold transition hover:brightness-95 disabled:cursor-default"
-                        style={{ background: n ? hexA(b.primary, 0.1 + Math.min(n, 4) * 0.05) : "#FFFFFF", color: n ? readable(b.primary) : "#64716B" }}
+                        style={{ background: n ? hexA(b.primary, 0.1 + Math.min(n, 4) * 0.05) : "#FFFFFF", color: n ? readable(b.primary) : "#526077" }}
                       >
                         {n ? n : canEdit ? "+" : "·"}
                       </button>
@@ -263,7 +286,7 @@ function Services({ b }: { b: Brand }) {
               <span className="flex flex-wrap gap-[5px]">{[...segs].map((n) => <span key={n} className="rounded-[5px] px-2 py-0.5 text-[13px] font-semibold" style={{ background: hexA(ws.segColor(n, b.id), 0.13), color: readable(ws.segColor(n, b.id)) }}>{n}</span>)}</span>
               {hasGap && <span className="block text-[14px] text-warn-text">Nothing written for {missing.join(", ")}</span>}
               <Blocks blocks={blocksFor(assets)} />
-              <span className="flex gap-3.5 border-t border-divider pt-3 text-[15px] text-[#566560]"><span>{plural(so.length, "offer")}</span><span>{plural(assets.length, "asset")}</span></span>
+              <span className="flex gap-3.5 border-t border-divider pt-3 text-[15px] text-[#475569]"><span>{plural(so.length, "offer")}</span><span>{plural(assets.length, "asset")}</span></span>
             </Link>
           );
         })}
@@ -281,7 +304,7 @@ function Services({ b }: { b: Brand }) {
           <div className="grid gap-3.5 md:grid-cols-2">{stand.map((o) => <OfferCard key={o.id} o={o} variant="standalone" />)}</div>
         </div>
       )}
-    </Page>
+    </>
   );
 }
 
@@ -300,9 +323,10 @@ function Offers({ b }: { b: Brand }) {
   const segsPresent = ["All", ...b.segments.map((s) => s.name).filter((n) => all.some((o) => o.segment === n))];
   const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: seg !== "All" ? seg : "All segments", status: "Ideation" } });
   return (
-    <Page>
-      <PageHead eyebrow="Rooms" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>} />
-      <p className="mb-6 max-w-[56ch] text-[15px] text-[#566560] text-pretty">Each offer holds one piece of positioning and everything that supports it. Assets can sit in several at once.</p>
+    <>
+      <SectionHead eyebrow="Rooms" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
+        sub={<>Each offer holds one piece of positioning and everything that supports it. Assets can sit in several at once.</>}
+      />
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter offers" aria-label="Filter offers" className="field mb-3 max-w-[280px] text-[15px]" />
       <Pills className="mb-2.5" value={seg} onChange={setSeg} label="Segment" options={segsPresent.map((s) => ({ value: s, label: s, count: s === "All" ? live(all).length : live(all).filter((o) => o.segment === s).length }))} />
       <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...Object.keys(OFFER_STATUS)].map((s) => ({ value: s, label: s }))} />
@@ -313,7 +337,7 @@ function Offers({ b }: { b: Brand }) {
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>{all.length ? "Create an offer" : "Create the first offer"}</Btn>}
         </Empty>
       )}
-    </Page>
+    </>
   );
 }
 
@@ -338,9 +362,10 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
   const newAsset = () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 });
 
   return (
-    <Page>
-      <PageHead eyebrow="Furniture" title="Assets" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>} />
-      <p className="mb-[22px] text-[15px] text-[#566560]">{plural(liveCamp.length, "asset")} in this building. Each one exists once, however many offers point at it.</p>
+    <>
+      <SectionHead eyebrow="Furniture" title="Assets" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
+        sub={<>{plural(liveCamp.length, "asset")} in this building. Each one exists once, however many offers point at it.</>}
+      />
       {unlinked.length > 0 && (
         <button type="button" onClick={() => { setUnlinkedOnly(!unlinkedOnly); setType("All"); setStat("All"); }} className="mb-[18px] block w-full text-left">
           <Warn>
@@ -358,7 +383,7 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>Add an asset</Btn>}
         </Empty>
       )}
-    </Page>
+    </>
   );
 }
 
@@ -374,9 +399,10 @@ function Kit({ b }: { b: Brand }) {
   const canEdit = ws.can("edit");
 
   return (
-    <Page>
-      <PageHead eyebrow="Foundation" title="Brand Kit" actions={canEdit && <Btn onClick={() => open({ kind: "kit", brandId: b.id })}>Edit kit</Btn>} />
-      <p className="mb-[34px] max-w-[56ch] text-[15px] text-[#566560] text-pretty">Master files, not campaign work. Nothing in here is tied to an offer.</p>
+    <>
+      <SectionHead eyebrow="Foundation" title="Brand Kit" actions={canEdit && <Btn onClick={() => open({ kind: "kit", brandId: b.id })}>Edit kit</Btn>}
+        sub={<>Master files, not campaign work. Nothing in here is tied to an offer.</>}
+      />
 
       <H2 right={canEdit && <button type="button" onClick={() => open({ kind: "asset", draft: { brandId: b.id, type: "Logo", status: "Ready", offerIds: [] }, step: 3 })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add master file</button>}>Logos and typefaces</H2>
       <div className="mb-[38px] grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
@@ -403,7 +429,7 @@ function Kit({ b }: { b: Brand }) {
             {b.fonts.map((f) => (
               <div key={f.name + f.role} className="flex items-center gap-3 border-t border-divider py-[13px] first:border-t-0">
                 <span className="flex-1"><span className="block text-[15px] font-semibold">{f.name}</span><span className="mt-0.5 block text-[14.5px] text-mute-2">{f.role}</span></span>
-                <span className="text-[14px] text-[#64716B]">{f.files}</span>
+                <span className="text-[14px] text-[#526077]">{f.files}</span>
               </div>
             ))}
             {!b.fonts.length && <div className="py-3 text-[15px] text-mute-3">No fonts recorded.</div>}
@@ -415,7 +441,7 @@ function Kit({ b }: { b: Brand }) {
             {b.guidelines.map((g) => (
               <div key={g.name} className="flex items-center gap-3 border-t border-divider py-[13px] first:border-t-0">
                 <span className="flex-1 truncate text-[15px] font-medium">{g.name}</span>
-                <span className="flex-none text-[14px] text-[#64716B]">{g.size}</span>
+                <span className="flex-none text-[14px] text-[#526077]">{g.size}</span>
               </div>
             ))}
             {!b.guidelines.length && <div className="py-3 text-[15px] text-mute-3">No guideline documents yet. Add a Guidelines master file above.</div>}
@@ -443,7 +469,7 @@ function Kit({ b }: { b: Brand }) {
               <div className="mb-[7px] flex items-center gap-[9px]"><span className="h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: c }} /><span className="flex-1 text-[15px] font-semibold">{g.name}</span></div>
               <div className="mb-[11px] min-h-8 text-[14.5px] leading-[1.5] text-mute-1 text-pretty">{g.description}</div>
               <div className="flex items-center gap-2 border-t border-divider pt-2.5">
-                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 text-left text-[14px] font-medium hover:underline" style={{ color: n ? "#566560" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</button>
+                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 text-left text-[14px] font-medium hover:underline" style={{ color: n ? "#475569" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</button>
                 {canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id, name: g.name, description: g.description, original: g.name })} className="text-[14px] text-mute-2 hover:text-ink">Edit</button>}
                 {canEdit && b.goals.length > 1 && <button type="button" onClick={() => open({ kind: "mergeGoal", brandId: b.id, from: g.name })} className="text-[14px] text-mute-2 hover:text-ink">Merge</button>}
               </div>
@@ -460,7 +486,7 @@ function Kit({ b }: { b: Brand }) {
           return (
             <div key={t} className="flex items-center gap-2.5 rounded-[11px] border border-line bg-white px-[15px] py-[11px]">
               <span className="text-[15px] font-semibold">{t}</span>
-              <span className="text-[14px] font-medium" style={{ color: n ? "#566560" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
+              <span className="text-[14px] font-medium" style={{ color: n ? "#475569" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
             </div>
           );
         })}
@@ -487,7 +513,7 @@ function Kit({ b }: { b: Brand }) {
           <p className="m-0 text-[15px] leading-[1.6] text-ink-3 text-pretty">{b.boilerplate || <span className="text-mute-4">Not written yet.</span>}</p>
         </Card>
       </div>
-    </Page>
+    </>
   );
 }
 
@@ -509,9 +535,10 @@ function Ctas({ b }: { b: Brand }) {
   const ctas = ws.ctasOf(b.id);
   const newCta = () => open({ kind: "cta", draft: { brandId: b.id, bg: b.primary, fg: onColor(b.primary), style: "solid" } });
   return (
-    <Page>
-      <PageHead eyebrow="Doorhandles" title="CTA Library" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>+ New CTA</Btn>} />
-      <p className="mb-7 max-w-[56ch] text-[15px] text-[#566560] text-pretty">Written once, used everywhere. These render in their real colours so you can see what a reader sees.</p>
+    <>
+      <SectionHead eyebrow="Doorhandles" title="CTA Library" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>+ New CTA</Btn>}
+        sub={<>Written once, used everywhere. These render in their real colours so you can see what a reader sees.</>}
+      />
       <div className="grid gap-3.5 md:grid-cols-2">
         {ctas.map((c) => {
           const used = [
@@ -523,14 +550,14 @@ function Ctas({ b }: { b: Brand }) {
               <div className="flex items-center justify-center rounded-[9px] bg-wash-2 p-[18px]"><CtaButton id={c.id} size="lg" /></div>
               <div>
                 <div className="mb-[3px] break-all text-[15px] text-mute-2">{c.url || "No destination set"}</div>
-                <div className="text-[14px] font-medium" style={{ color: used.length ? "#566560" : "#8A6A12" }}>{used.length ? `Used in ${plural(used.length, "place")}` : "Not used yet"}</div>
-                {used.length > 0 && <div className="mt-0.5 text-[14px] text-[#64716B]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
+                <div className="text-[14px] font-medium" style={{ color: used.length ? "#475569" : "#8A6A12" }}>{used.length ? `Used in ${plural(used.length, "place")}` : "Not used yet"}</div>
+                {used.length > 0 && <div className="mt-0.5 text-[14px] text-[#526077]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
               </div>
               <div className="flex gap-[7px] border-t border-divider pt-3">
                 {ws.can("edit") && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
                 {ws.can("del") && <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "cta", id: c.id, label: c.text })}>Delete</Btn>}
                 <span className="flex-1" />
-                <span className="self-center text-[13.5px] text-[#64716B]">{c.style}</span>
+                <span className="self-center text-[13.5px] text-[#526077]">{c.style}</span>
               </div>
             </Card>
           );
@@ -541,6 +568,6 @@ function Ctas({ b }: { b: Brand }) {
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>Create a CTA</Btn>}
         </Empty>
       )}
-    </Page>
+    </>
   );
 }

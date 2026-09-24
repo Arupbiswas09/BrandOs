@@ -30,7 +30,7 @@ export function dueLabel(when: Date | string | number, now: number): { label: st
   return { label: `Due ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, tone: "later" };
 }
 
-export const DUE_COLOR: Record<DueTone, string> = { overdue: "#B42318", today: "#C2410C", soon: "#8A6A12", later: "#566560" };
+export const DUE_COLOR: Record<DueTone, string> = { overdue: "#B42318", today: "#C2410C", soon: "#8A6A12", later: "#475569" };
 
 /** yyyy-mm-dd for <input type="date">. */
 export function toDateInput(when: Date | string | number | null | undefined): string {

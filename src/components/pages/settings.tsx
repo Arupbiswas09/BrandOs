@@ -6,7 +6,8 @@ import { signOut, updateProfile } from "@/app/actions";
 import { changePassword } from "@/app/auth-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { useInstall } from "@/components/app/pwa";
-import { useTakeover } from "@/components/app/shell";
+import { usePalette, useTakeover } from "@/components/app/shell";
+import { PALETTES, PALETTE_KEYS } from "@/components/app/theme";
 import { Btn, Card, Field, H2, Page, PageHead, Select, cx } from "@/components/ui";
 
 export function Settings() {
@@ -16,14 +17,16 @@ export function Settings() {
   const [name, setName] = useState(me.name);
   const [role, setRole] = useState(me.role);
   const [mode, setMode] = useTakeover();
+  const [palette, setPalette] = usePalette();
   const { canPrompt, standalone, ios, install } = useInstall();
   const [pw, pwAction, pwPending] = useActionState(changePassword, undefined);
   const roles = ROLE_OPTIONS.includes(role) ? ROLE_OPTIONS : [...ROLE_OPTIONS, role];
 
   return (
     <Page className="max-w-[760px]">
-      <PageHead eyebrow="Just for you" title="Settings" />
-      <p className="mb-8 mt-1 text-[16px] text-mute-1">You are signed in as {me.email ?? me.name} with <strong className="font-semibold text-ink-3">{me.access}</strong> access. {ws.scopeLabel(me) === "Every client" ? "You can see every client." : `You can see: ${ws.scopeLabel(me)}.`}</p>
+      <PageHead eyebrow="Just for you" title="Settings"
+        sub={<>You are signed in as {me.email ?? me.name} with <strong className="font-semibold text-ink-3">{me.access}</strong> access. {ws.scopeLabel(me) === "Every client" ? "You can see every client." : `You can see: ${ws.scopeLabel(me)}.`}</>}
+      />
 
       <H2>Profile</H2>
       <Card className="mb-8 p-6">
@@ -55,12 +58,32 @@ export function Settings() {
 
       <H2>Display</H2>
       <Card className="mb-8 p-6">
-        <div className="mb-2 text-[15px] font-semibold">Brand colours</div>
-        <p className="mb-3 mt-0 text-[15px] text-mute-2">Inside a brand, BrandOS takes on that brand&apos;s colours. Turn it down if it gets in the way.</p>
+        <div className="mb-1 text-[15px] font-semibold">Colour set</div>
+        <p className="mb-3 mt-0 text-[14.5px] text-mute-2">The house colours for buttons, links and the highlight on where you are.</p>
+        <div className="mb-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Colour set">
+          {PALETTE_KEYS.map((k) => {
+            const pal = PALETTES[k];
+            const on = palette === k;
+            return (
+              <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setPalette(k)}
+                className={cx("flex items-center gap-3 rounded-lg border p-3 text-left transition", on ? "border-accent ring-2 ring-[color:var(--bos-hl)]" : "border-line hover:border-line-strong")}>
+                <span className="flex h-11 w-16 flex-none overflow-hidden rounded-md">
+                  <span className="flex-[3]" style={{ background: pal.accent }} /><span className="flex-[2]" style={{ background: pal.hl }} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[15px] font-semibold">{pal.name}</span>
+                  <span className="block text-[13.5px] text-mute-2">{pal.note}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mb-1 text-[15px] font-semibold">Inside a brand</div>
+        <p className="mb-3 mt-0 text-[14.5px] text-mute-2">Keep the house blue everywhere, or let each brand&apos;s own colour take over its pages.</p>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Brand colours">
-          {([["bold", "Bold — tinted pages"], ["moderate", "Moderate — accents only"], ["off", "Off — always neutral"]] as const).map(([k, label]) => (
+          {([["off", "House blue everywhere"], ["moderate", "Brand colour for accents"], ["bold", "Brand colour and tinted pages"]] as const).map(([k, label]) => (
             <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)}
-              className={cx("rounded-[9px] border px-3.5 py-2 text-[15px]", mode === k ? "border-accent bg-soft font-semibold" : "border-line bg-white hover:border-mute-4")}>
+              className={cx("rounded-md border px-3.5 py-2 text-[14.5px]", mode === k ? "border-accent bg-soft font-semibold" : "border-line bg-white hover:border-mute-4")}>
               {label}
             </button>
           ))}

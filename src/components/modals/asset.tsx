@@ -153,7 +153,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               <div className="flex flex-col gap-1">
                 {dupes.map((a) => (
                   <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="py-0.5 text-left text-[15px] text-warn-ink hover:underline">
-                    {a.name} <span className="text-[#A08540]">· {ws.brand(a.brandId)?.name ?? "Global"} · {a.type}</span>
+                    {a.name} <span className="text-[#8A6A12]">· {ws.brand(a.brandId)?.name ?? "Global"} · {a.type}</span>
                   </button>
                 ))}
               </div>
@@ -186,7 +186,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
             <div className="border-t border-divider pt-1.5">
               <Field label="Use for" className="mt-2"><input className="field" value={d.promptFor} onChange={(e) => set("promptFor", e.target.value)} placeholder="Copy, Creative, Strategy…" /></Field>
               <Field label="The prompt" className="mt-3" hint={<span className="font-normal text-mute-4">[BRACKETS] for the bits people swap</span>}>
-                <textarea rows={8} className="field font-mono text-[14.5px] leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
+                <textarea rows={8} className="field font-[family-name:var(--font-code)] text-[14.5px] leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
               </Field>
             </div>
           )}
@@ -278,7 +278,7 @@ export function LinkModal({ offerId }: { offerId: string }) {
     if (scope === "linked" && !linked.has(a.id)) return false;
     return !t || `${a.name} ${a.short} ${a.type} ${a.tags.join(" ")}`.toLowerCase().includes(t);
   });
-  const color = ws.brand(o.brandId)?.primary ?? "#6C7B74";
+  const color = ws.brand(o.brandId)?.primary ?? "#64748B";
   return (
     <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and gains one more room." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
       <input className="field text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />

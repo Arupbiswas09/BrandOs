@@ -40,7 +40,7 @@ export async function completeSetup(_: SetupState, form: FormData): Promise<Setu
     await tx.insert(s.brands).values({
       id: id("br"), clientId, name: agency, mark: agency.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "AG",
       tagline: "", primary, secondary: "#E8B44A", ownerId: userId,
-      goals: DEFAULT_GOALS.map((g) => ({ ...g })), segments: [{ name: "All segments", color: "#6E7C76" }],
+      goals: DEFAULT_GOALS.map((g) => ({ ...g })), segments: [{ name: "All segments", color: "#64748B" }],
       colours: [{ name: "Primary", hex: primary, usage: "Buttons, links, headings." }],
     });
     return true;

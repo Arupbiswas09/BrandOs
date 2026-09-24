@@ -69,7 +69,7 @@ function Note({ c }: { c: Comment }) {
       className="rounded-xl border px-4 py-3.5"
       style={{
         opacity: c.resolved ? 0.65 : 1,
-        background: c.resolved ? "#FAFBFB" : c.isChange ? "rgba(194,65,18,.06)" : "#FFFFFF",
+        background: c.resolved ? "#F8FAFC" : c.isChange ? "rgba(194,65,18,.06)" : "#FFFFFF",
         borderColor: c.resolved ? "var(--bos-border)" : c.isChange ? "rgba(194,65,18,.28)" : "var(--bos-border)",
       }}
     >
@@ -195,7 +195,7 @@ function Composer({ kind, id }: { kind: "offer" | "asset"; id: string }) {
         </div>
       )}
       <div className="mt-2 flex items-center gap-2.5 border-t border-divider pt-2.5">
-        <span className="flex-1 text-[14px] text-[#64716B]">Everyone on the team sees this · ⌘↵ to post</span>
+        <span className="flex-1 text-[14px] text-[#526077]">Everyone on the team sees this · ⌘↵ to post</span>
         <Btn variant="primary" onClick={post} disabled={pending || !text.trim()}>Post note</Btn>
       </div>
     </div>

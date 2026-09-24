@@ -53,7 +53,7 @@ function Drawer({ a }: { a: Asset }) {
   useEffect(() => { void trackVisit("asset", a.id); }, [a.id]);
 
   const b = ws.brand(a.brandId);
-  const color = b?.primary ?? "#6C7B74";
+  const color = b?.primary ?? "#64748B";
   const offers = ws.linkedOffers(a.id);
   const cat = ws.catOf(a);
   const canEdit = ws.can("edit");
@@ -114,7 +114,7 @@ function Drawer({ a }: { a: Asset }) {
               const on = a.status === k; const c = ASSET_STATUS[k];
               return (
                 <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "asset", a.id, k)} className="rounded-[7px] border px-2.5 py-1 text-[14px] font-medium transition"
-                  style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#5C6A64" }}>{k}</button>
+                  style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>{k}</button>
               );
             })}
           </div>
@@ -128,7 +128,7 @@ function Drawer({ a }: { a: Asset }) {
             <div className="grid grid-cols-2">
               <Meta label="Brand" border="br">{b ? <button type="button" className="text-left hover:text-accent" onClick={() => router.push(href.brand(b.id))}>{b.name}</button> : "Global Library"}</Meta>
               <Meta label="Type" border="b">{a.type}</Meta>
-              <Meta label="Channel" border="br"><Chip color={CHANNEL_COLOR[a.channel] ?? "#4F5D57"} size="md">{a.channel}</Chip></Meta>
+              <Meta label="Channel" border="br"><Chip color={CHANNEL_COLOR[a.channel] ?? "#475569"} size="md">{a.channel}</Chip></Meta>
               <Meta label="Visibility" border="b">{a.clientVisible ? "Visible to client" : "Internal only"}</Meta>
               <Meta label="Delivery" border="br">{a.delivery || "None"}</Meta>
               <Meta label="Access" border="b">{a.gated ? "Gated — requested, then sent" : "Open"}</Meta>
@@ -295,11 +295,11 @@ function Checklist({ a }: { a: Asset }) {
           <div key={idx} className="group flex items-start gap-3 border-t border-divider px-[15px] py-3 first:border-t-0">
             <button type="button" role="checkbox" aria-checked={it.done} disabled={!canTick} onClick={() => run(toggleItem, a.id, idx)}
               className="mt-px flex h-[19px] w-[19px] flex-none items-center justify-center rounded-[5px] text-[13.5px] font-bold text-white disabled:cursor-default"
-              style={{ border: `1.5px solid ${it.done ? "var(--bos-accent)" : "#AFBDB7"}`, background: it.done ? "var(--bos-accent)" : "#FFF" }}>
+              style={{ border: `1.5px solid ${it.done ? "var(--bos-accent)" : "#CBD5E1"}`, background: it.done ? "var(--bos-accent)" : "#FFF" }}>
               {it.done ? "✓" : ""}
             </button>
             <span className="mt-[3px] flex-none font-mono text-[13.5px] text-mute-5">{String(idx + 1).padStart(2, "0")}</span>
-            <span className="flex-1 text-[16px] leading-[1.5] text-pretty" style={{ color: it.done ? "#5C6A64" : "#2A3833", textDecoration: it.done ? "line-through" : "none" }}>{it.text}</span>
+            <span className="flex-1 text-[16px] leading-[1.5] text-pretty" style={{ color: it.done ? "#4B5A6E" : "#1E293B", textDecoration: it.done ? "line-through" : "none" }}>{it.text}</span>
             {ws.can("edit") && (
               <span className="flex flex-none gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                 <button type="button" aria-label="Move up" disabled={idx === 0} onClick={() => run(moveItem, a.id, idx, -1)} className="px-1 text-[13.5px] text-line-strong hover:text-ink disabled:opacity-30">↑</button>
@@ -347,8 +347,8 @@ function PromptTab({ a }: { a: Asset }) {
         <span className="flex-1" />
         <Btn size="sm" className="font-semibold text-accent hover:border-accent" onClick={() => copy(a.prompt, "prompt")} disabled={!a.prompt}>{copied === "prompt" ? "Copied" : "Copy prompt"}</Btn>
       </div>
-      <div className="rounded-xl border border-line bg-[#FBFCFC] px-5 py-[18px]">
-        <pre className="m-0 whitespace-pre-wrap break-words font-mono text-[15px] leading-[1.75] text-ink-2">{a.prompt || "No prompt written yet."}</pre>
+      <div className="rounded-xl border border-line bg-[#F8FAFC] px-5 py-[18px]">
+        <pre className="m-0 whitespace-pre-wrap break-words font-[family-name:var(--font-code)] text-[15px] leading-[1.75] text-ink-2">{a.prompt || "No prompt written yet."}</pre>
       </div>
       <Hint className="mt-3.5">
         {ws.can("edit")
@@ -458,7 +458,7 @@ function Files({ a }: { a: Asset }) {
           {files.map((f) => (
             <div key={f.name} className="group flex items-center gap-3 border-t border-divider py-3 first:border-t-0">
               <span className="min-w-0 flex-1 truncate text-[16px] font-medium">{f.name}</span>
-              <span className="flex-none font-mono text-[14px] text-[#64716B]">{f.size}</span>
+              <span className="flex-none font-mono text-[14px] text-[#526077]">{f.size}</span>
               {f.url ? (
                 <a href={f.url} download={f.name} className="flex-none rounded-[7px] border border-line bg-white px-[11px] py-[5px] text-[14px] font-semibold text-accent hover:border-accent">Download</a>
               ) : (
@@ -503,7 +503,7 @@ function History({ a }: { a: Asset }) {
             <div key={x.id} className="flex items-center gap-[11px] border-t border-divider py-[13px] first:border-t-0">
               <Avatar initials={ws.user(x.userId).initials} size={20} />
               <span className="flex-1 text-[15px] text-ink-3">{ws.first(x.userId)} {x.action}{x.field ? ` — ${x.field}` : ""}</span>
-              <span className="flex-none text-[14px] text-[#64716B]">{ws.ago(x.createdAt)}</span>
+              <span className="flex-none text-[14px] text-[#526077]">{ws.ago(x.createdAt)}</span>
             </div>
           ))}
         </div>

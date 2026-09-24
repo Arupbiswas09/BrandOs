@@ -14,8 +14,10 @@ export function hexA(hex: string, a: number): string {
 
 /** Black or white, whichever reads better on top of `hex`. */
 export function onColor(hex: string): string {
-  // White unless ink reads clearly better (white keeps saturated brands looking like themselves).
-  return contrast("#FFFFFF", hex) >= 4.5 || contrast("#FFFFFF", hex) >= contrast("#101614", hex) ? "#FFFFFF" : "#101614";
+  // White keeps saturated brands looking like themselves; ink, then black, when white cannot reach 4.5:1.
+  if (contrast("#FFFFFF", hex) >= 4.5) return "#FFFFFF";
+  if (contrast("#0F172A", hex) >= 4.5) return "#0F172A";
+  return contrast("#000000", hex) > contrast("#FFFFFF", hex) ? "#000000" : "#FFFFFF";
 }
 
 export function isHex(v: string): boolean {

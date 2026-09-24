@@ -22,17 +22,17 @@ export type Mail = { to: string; subject: string; heading: string; body: string;
 
 function render(m: Mail) {
   const button = m.action
-    ? `<p style="margin:28px 0"><a href="${esc(m.action.href)}" style="background:#2D4A5C;color:#fff;text-decoration:none;padding:12px 20px;border-radius:9px;font-weight:600;display:inline-block">${esc(m.action.label)}</a></p>`
+    ? `<p style="margin:28px 0"><a href="${esc(m.action.href)}" style="background:#0F2A5F;color:#fff;text-decoration:none;padding:12px 20px;border-radius:9px;font-weight:600;display:inline-block">${esc(m.action.label)}</a></p>`
     : "";
-  const quote = m.quote ? `<blockquote style="margin:20px 0;padding:14px 18px;background:#F7F9F8;border-left:3px solid #2D4A5C;border-radius:6px;color:#2A3833">${esc(m.quote)}</blockquote>` : "";
-  const html = `<!doctype html><html><body style="margin:0;background:#F7F9F8;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#101614">
+  const quote = m.quote ? `<blockquote style="margin:20px 0;padding:14px 18px;background:#F8FAFC;border-left:3px solid #0F2A5F;border-radius:6px;color:#1E293B">${esc(m.quote)}</blockquote>` : "";
+  const html = `<!doctype html><html><body style="margin:0;background:#F8FAFC;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#0F172A">
 <div style="max-width:560px;margin:0 auto;padding:36px 24px">
-<div style="font-weight:700;font-size:15px;margin-bottom:24px"><span style="display:inline-block;background:#2D4A5C;color:#fff;border-radius:7px;width:26px;height:26px;text-align:center;line-height:26px;margin-right:8px">B</span>BrandOS</div>
-<div style="background:#fff;border:1px solid #E1E7E4;border-radius:14px;padding:28px">
+<div style="font-weight:700;font-size:15px;margin-bottom:24px"><span style="display:inline-block;background:#0F2A5F;color:#fff;border-radius:7px;width:26px;height:26px;text-align:center;line-height:26px;margin-right:8px">B</span>BrandOS</div>
+<div style="background:#fff;border:1px solid #E2E8F0;border-radius:14px;padding:28px">
 <h1 style="font-size:21px;margin:0 0 12px;font-weight:600">${esc(m.heading)}</h1>
-<p style="font-size:16px;line-height:1.6;margin:0;color:#3E4A45">${esc(m.body)}</p>${quote}${button}
+<p style="font-size:16px;line-height:1.6;margin:0;color:#334155">${esc(m.body)}</p>${quote}${button}
 </div>
-<p style="font-size:13px;color:#566560;margin-top:18px">You are getting this because you are on the BrandOS team. ${esc(appUrl())}</p>
+<p style="font-size:13px;color:#475569;margin-top:18px">You are getting this because you are on the BrandOS team. ${esc(appUrl())}</p>
 </div></body></html>`;
   const text = [m.heading, "", m.body, m.quote ? `\n"${m.quote}"` : "", m.action ? `\n${m.action.label}: ${m.action.href}` : ""].join("\n");
   return { html, text };

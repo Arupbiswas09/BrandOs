@@ -61,7 +61,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                   <span className="mb-1.5 flex items-center gap-2">
                     <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
                     <DueBadge at={x.dueAt} now={ws.d.now} />
-                    <span className="flex-1" /><span className="text-[13.5px] text-[#64716B]">{x.ago}</span>
+                    <span className="flex-1" /><span className="text-[13.5px] text-[#526077]">{x.ago}</span>
                   </span>
                   <span className="block text-[16px] font-semibold leading-[1.35]">{x.name}</span>
                   <span className="mt-0.5 block text-[15px] text-mute-2">{x.sub}</span>

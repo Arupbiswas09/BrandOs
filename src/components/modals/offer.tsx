@@ -65,7 +65,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
         </Field>
       )}
       <Field label="Offer name"><input className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" /></Field>
-      <Field label="Short description" hint={<span className="font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#62706A" }}>{shortLen}/30</span>}>
+      <Field label="Short description" hint={<span className="font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#526077" }}>{shortLen}/30</span>}>
         <input className="field text-[16px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Grow grant-funded traffic" />
       </Field>
       <Field label="Positioning statement"><textarea rows={3} className="field text-[16px] leading-[1.55]" value={d.positioning} onChange={(e) => set("positioning", e.target.value)} placeholder="One sentence a stranger would understand." /></Field>

@@ -19,7 +19,7 @@ export function SetupForm({ needsPassword }: { needsPassword: boolean }) {
           <div className="flex flex-wrap items-center gap-2">
             {BRAND_PALETTES.map(([c]) => (
               <button key={c} type="button" aria-label={`Use ${c}`} aria-pressed={color === c} onClick={() => setColor(c)}
-                className="h-9 w-9 rounded-lg border-2" style={{ background: c, borderColor: color === c ? "#101614" : "transparent" }} />
+                className="h-9 w-9 rounded-lg border-2" style={{ background: c, borderColor: color === c ? "#0F172A" : "transparent" }} />
             ))}
             <input type="color" aria-label="Pick any colour" value={color} onChange={(e) => setColor(e.target.value.toUpperCase())} className="h-9 w-11 cursor-pointer rounded-lg border border-line bg-white p-0.5" />
           </div>

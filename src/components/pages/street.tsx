@@ -43,20 +43,20 @@ export function Street() {
     if (r.kind === "service") { const v = ws.service(r.itemId); const b = ws.brand(v?.brandId); return v && !v.archived && { key: "s" + v.id, title: v.name, sub: `Service · ${b?.name}`, code: "SVC", color: b?.primary ?? NEUTRAL, go: () => router.push(href.service(v.id)) }; }
     if (r.kind === "client") { const c = ws.client(r.itemId); return c && !c.archived && { key: "c" + c.id, title: c.name, sub: `Client · ${c.kind}`, code: "CL", color: NEUTRAL, go: () => router.push(href.client(c.id)) }; }
     const a = ws.asset(r.itemId); const b = ws.brand(a?.brandId);
-    return a && !a.archived && { key: "a" + a.id, title: a.name, sub: `Asset · ${b?.name ?? "Global Library"}`, code: ws.codeOf(a), color: b?.primary ?? "#6C7B74", go: () => openAsset(a.id) };
+    return a && !a.archived && { key: "a" + a.id, title: a.name, sub: `Asset · ${b?.name ?? "Global Library"}`, code: ws.codeOf(a), color: b?.primary ?? "#64748B", go: () => openAsset(a.id) };
   }).filter(Boolean).slice(0, 4) as { key: string; title: string; sub: string; code: string; color: string; go: () => void }[];
 
   const activity = ws.d.activity.slice(0, 7);
 
   return (
     <Page>
-      <div className="animate-rise">
-        <Eyebrow className="mb-[9px] tracking-[0.13em]">The Street</Eyebrow>
-        <h1 className="m-0 mb-1.5 font-serif text-[34px] font-normal leading-[1.1] tracking-[-0.02em] sm:text-[40px]">{greeting}</h1>
-        <p className="m-0 max-w-[52ch] text-[16px] text-[#566560] text-pretty">{sub}</p>
+      <div className="head-band -mt-8 mb-8 pb-7 pt-8 sm:-mt-10 sm:pt-10">
+        <Eyebrow className="mb-2">The Street</Eyebrow>
+        <h1 className="m-0 mb-1.5 text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[30px]">{greeting}</h1>
+        <p className="m-0 max-w-[52ch] text-[16px] text-[#475569] text-pretty">{sub}</p>
       </div>
 
-      <div className="mt-[38px] grid items-start gap-5 md:grid-cols-2">
+      <div className="grid items-start gap-5 md:grid-cols-2">
         <Card className="px-[22px] pb-2 pt-5">
           <div className="mb-1 flex items-baseline justify-between">
             <h2 className="m-0 text-[17px] font-semibold tracking-[-0.01em]">Waiting on you</h2>
@@ -82,12 +82,12 @@ export function Street() {
           <p className="mb-3 mt-0 text-[14.5px] text-mute-3">The last places you were standing.</p>
           {continueItems.map((r) => (
             <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[7px] border-t border-divider px-2 py-2.5 text-left hover:bg-wash">
-              <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md font-mono text-[12px] font-bold tracking-[0.06em]" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-[11px] font-bold tracking-[0.06em]" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-medium">{r.title}</span>
                 <span className="mt-px block truncate text-[15px] text-mute-2">{r.sub}</span>
               </span>
-              <span className="flex-none text-[14px] text-[#64716B]">→</span>
+              <span className="flex-none text-[14px] text-[#526077]">→</span>
             </button>
           ))}
           {!continueItems.length && <div className="pb-[26px] pt-[22px] text-center text-[15px] text-mute-4">Open a brand and it will show up here.</div>}
@@ -115,7 +115,7 @@ export function Street() {
                   <span className="block text-[16px] font-semibold tracking-[-0.01em]">{c.name}</span>
                   <span className="mt-[3px] block text-[15px] text-mute-2">{c.kind}</span>
                 </span>
-                <span className="flex gap-4 whitespace-nowrap border-t border-divider pt-3 text-[14px] text-[#566560]">
+                <span className="flex gap-4 whitespace-nowrap border-t border-divider pt-3 text-[14px] text-[#475569]">
                   <span>{plural(bs.length, "brand")}</span><span>{plural(os, "offer")}</span><span>{plural(as, "asset")}</span>
                 </span>
               </Link>
@@ -147,7 +147,7 @@ export function Street() {
                 <button key={a.id} type="button" onClick={go} className="flex w-full items-center gap-[11px] border-t border-divider py-[11px] text-left first:border-t-0">
                   <Avatar initials={ws.user(a.userId).initials} size={22} />
                   <span className="min-w-0 flex-1 truncate text-[15px] text-ink-3">{ws.first(a.userId)} {a.action} {a.label}{a.field ? ` — ${a.field}` : ""}</span>
-                  <span className="flex-none text-[14px] text-[#64716B]">{ws.ago(a.createdAt)}</span>
+                  <span className="flex-none text-[14px] text-[#526077]">{ws.ago(a.createdAt)}</span>
                 </button>
               );
             })}

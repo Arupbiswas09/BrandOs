@@ -26,8 +26,9 @@ export function Team() {
         eyebrow="Who is in the building"
         title="Team"
         actions={canAccess && <Btn variant="primary" size="lg" onClick={() => open({ kind: "person" })}>+ Invite someone</Btn>}
+     
+        sub={<>Two things decide what a person gets: what they are allowed to do, and which clients they can see. Everything else follows from those.</>}
       />
-      <p className="mb-[30px] max-w-[62ch] text-[16px] text-[#566560] text-pretty">Two things decide what a person gets: what they are allowed to do, and which clients they can see. Everything else follows from those.</p>
 
       <div className="mb-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {ACCESS_LEVELS.map((a) => (

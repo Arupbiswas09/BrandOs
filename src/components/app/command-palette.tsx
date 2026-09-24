@@ -105,7 +105,7 @@ function Palette({ onClose }: { onClose: () => void }) {
         </div>
         <div className="flex gap-0.5 overflow-x-auto border-b border-line px-3.5 py-[9px]">
           {SCOPES.map((k) => (
-            <button key={k} type="button" onClick={() => { setScope(k); setSel(0); }} className={cx("flex-none rounded-md px-2.5 py-1 text-[14px] font-medium transition", scope === k ? "bg-ink text-white" : "text-[#5C6A64] hover:text-ink")}>
+            <button key={k} type="button" onClick={() => { setScope(k); setSel(0); }} className={cx("flex-none rounded-md px-2.5 py-1 text-[14px] font-medium transition", scope === k ? "bg-ink text-white" : "text-[#4B5A6E] hover:text-ink")}>
               {k === "All" ? "Everything" : k + "s"}
             </button>
           ))}

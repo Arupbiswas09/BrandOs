@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { hexA, onColor, readable } from "@/lib/color";
 import { DUE_COLOR, dueLabel } from "@/lib/time";
@@ -15,19 +16,50 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 }
 
 export function PageHead({
-  eyebrow, title, sub, actions, size = 34,
-}: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; size?: number }) {
+  eyebrow, title, sub, actions, size = 26, children,
+}: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; size?: number; children?: ReactNode }) {
   return (
-    <>
-      <div className="mb-2 flex flex-wrap items-end justify-between gap-5">
+    <div className="head-band -mt-8 mb-8 pb-6 pt-8 sm:-mt-10 sm:pt-10">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          {eyebrow && <Eyebrow className="mb-[9px] tracking-[0.13em]">{eyebrow}</Eyebrow>}
-          <h1 className="m-0 font-serif font-normal leading-[1.1] tracking-[-0.02em]" style={{ fontSize: size }}>{title}</h1>
+          {eyebrow && <Eyebrow className="mb-2">{eyebrow}</Eyebrow>}
+          <h1 className="m-0 font-semibold leading-[1.2] tracking-[-0.02em] text-ink" style={{ fontSize: size }}>{title}</h1>
+          {sub && <p className="mb-0 mt-2 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
         </div>
         {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
       </div>
-      {sub && <p className="mb-7 max-w-[60ch] text-[15px] text-[#566560] text-pretty">{sub}</p>}
-    </>
+      {children}
+    </div>
+  );
+}
+
+/** A section title inside the content area (under a header band that already exists). */
+export function SectionHead({ eyebrow, title, sub, actions }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
+  return (
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0">
+        {eyebrow && <Eyebrow className="mb-1.5">{eyebrow}</Eyebrow>}
+        <h2 className="m-0 text-[20px] font-semibold tracking-[-0.015em] text-ink">{title}</h2>
+        {sub && <p className="mb-0 mt-1.5 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
+      </div>
+      {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/** Underline tabs, as in the kit's page headers. */
+export function Tabs({ items, className }: { items: { key: string; label: ReactNode; href?: string; active: boolean; onClick?: () => void }[]; className?: string }) {
+  return (
+    <div role="tablist" className={cx("mt-5 flex gap-1 overflow-x-auto", className)}>
+      {items.map((t) => {
+        const cls = cx("-mb-px flex-none whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-[14.5px] font-medium transition-colors", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:text-ink");
+        return t.href ? (
+          <Link key={t.key} href={t.href} role="tab" aria-selected={t.active} className={cls} scroll={false}>{t.label}</Link>
+        ) : (
+          <button key={t.key} type="button" role="tab" aria-selected={t.active} className={cls} onClick={t.onClick}>{t.label}</button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -42,7 +74,7 @@ export function H2({ children, className, right }: { children: ReactNode; classN
 }
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("mx-auto max-w-[1060px] animate-rise px-4 pb-[88px] pt-8 sm:px-8 sm:pt-10", className)}>{children}</div>;
+  return <div className={cx("mx-auto max-w-[1180px] animate-rise px-4 pb-[88px] pt-8 sm:px-8 sm:pt-10", className)}>{children}</div>;
 }
 
 /* ---------------------------------------------------------------- buttons */
@@ -52,7 +84,7 @@ type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: BtnVariant
 
 const variants: Record<BtnVariant, string> = {
   primary: "border-0 bg-accent text-on-accent font-semibold hover:brightness-110 theme-fade",
-  secondary: "border border-line bg-white text-ink-3 font-medium hover:border-mute-2",
+  secondary: "border border-line bg-white text-ink-3 font-medium hover:bg-wash hover:border-line-strong",
   ghost: "border-0 bg-transparent text-mute-2 hover:text-ink",
   danger: "border border-line bg-white text-danger font-medium hover:border-[#C99A8E]",
   dark: "border-0 bg-ink text-white font-semibold hover:bg-black",
@@ -137,7 +169,7 @@ export function Blocks({ blocks, size = 12, gap = 3 }: { blocks: { id: string; c
 /* ---------------------------------------------------------------- surfaces */
 
 export function Card({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
-  return <div className={cx("rounded-[14px] border border-line bg-white theme-fade", className)} style={style}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)] theme-fade", className)} style={style}>{children}</div>;
 }
 
 export function Empty({ title, body, children, compact }: { title?: string; body?: ReactNode; children?: ReactNode; compact?: boolean }) {
@@ -178,7 +210,7 @@ export function Warn({ children, className }: { children: ReactNode; className?:
 }
 
 export function Hint({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-[11px] bg-wash px-[15px] py-[13px] text-[15px] leading-[1.55] text-[#566560] text-pretty", className)}>{children}</div>;
+  return <div className={cx("rounded-[11px] bg-wash px-[15px] py-[13px] text-[15px] leading-[1.55] text-[#475569] text-pretty", className)}>{children}</div>;
 }
 
 /* ---------------------------------------------------------------- toggles */
@@ -215,7 +247,7 @@ export function Tick({ on, size = 17 }: { on: boolean; size?: number }) {
     <span
       aria-hidden
       className="flex flex-none items-center justify-center font-bold text-white transition"
-      style={{ width: size, height: size, borderRadius: 5, border: `1.5px solid ${on ? "var(--bos-accent)" : "#AFBDB7"}`, background: on ? "var(--bos-accent)" : "#FFFFFF", fontSize: size * 0.6 }}
+      style={{ width: size, height: size, borderRadius: 5, border: `1.5px solid ${on ? "var(--bos-accent)" : "#CBD5E1"}`, background: on ? "var(--bos-accent)" : "#FFFFFF", fontSize: size * 0.6 }}
     >
       {on ? "✓" : ""}
     </span>
@@ -275,7 +307,7 @@ export function ArchExpander<T extends { id: string; name: string }>({ items, no
 export function DueBadge({ at, now, className, done }: { at: Date | string | null | undefined; now: number; className?: string; done?: boolean }) {
   if (!at) return null;
   const { label, tone } = dueLabel(at, now);
-  const c = done ? "#566560" : DUE_COLOR[tone];
+  const c = done ? "#475569" : DUE_COLOR[tone];
   return (
     <span suppressHydrationWarning title={new Date(at).toDateString()} className={cx("inline-flex flex-none items-center gap-1 rounded-[5px] px-1.5 py-[2px] text-[12px] font-semibold", className)} style={{ background: hexA(c, 0.1), color: readable(c, 0.1) }}>
       <span aria-hidden>◷</span>{done ? `Was ${label.replace(/^Due /, "due ").replace(/^Overdue.*/, "due earlier")}` : label}

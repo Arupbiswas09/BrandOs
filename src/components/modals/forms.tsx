@@ -141,7 +141,7 @@ export function KitModal({ brandId }: { brandId: string }) {
               <button type="button" aria-label="Remove segment" disabled={!!s.orig && counts(s.orig) > 0} title={s.orig && counts(s.orig) > 0 ? "Offers still use this segment" : "Remove"} onClick={() => setSegments(segments.filter((x) => x.key !== s.key))} className="px-1.5 text-mute-5 hover:text-danger disabled:opacity-30">✕</button>
             </div>
           ))}
-          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#566560">All segments</Chip> is always there for offers that speak to everyone.</div>
+          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#475569">All segments</Chip> is always there for offers that speak to everyone.</div>
           <Btn size="sm" className="self-start" onClick={() => setSegments([...segments, { key: nextKey(), name: "", color: SEGMENT_PALETTE[segments.length % SEGMENT_PALETTE.length], orig: "" }])}>+ Add segment</Btn>
         </div>
       </section>
@@ -156,7 +156,7 @@ export function KitModal({ brandId }: { brandId: string }) {
               <button type="button" aria-label="Remove colour" onClick={() => setColours(colours.filter((x) => x.key !== c.key))} className="px-1.5 text-mute-5 hover:text-danger">✕</button>
             </div>
           ))}
-          <Btn size="sm" className="self-start" onClick={() => setColours([...colours, { key: nextKey(), name: "", hex: "#101614", usage: "" }])}>+ Add colour</Btn>
+          <Btn size="sm" className="self-start" onClick={() => setColours([...colours, { key: nextKey(), name: "", hex: "#0F172A", usage: "" }])}>+ Add colour</Btn>
         </div>
       </section>
       <section>
@@ -219,7 +219,7 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
     const r = await run(saveCta, { id: draft.id, brandId: draft.brandId, text: d.text, url: d.url, style: d.style, bg: outline ? "transparent" : d.bg, fg: outline ? d.bg : d.fg });
     if (r.ok) close();
   };
-  const swatches = [b?.primary, b?.secondary, ...(b?.colours.map((c) => c.hex) ?? []), "#101614", "#FFFFFF"].filter((x, i, a): x is string => !!x && a.indexOf(x) === i).slice(0, 8);
+  const swatches = [b?.primary, b?.secondary, ...(b?.colours.map((c) => c.hex) ?? []), "#0F172A", "#FFFFFF"].filter((x, i, a): x is string => !!x && a.indexOf(x) === i).slice(0, 8);
   return (
     <Modal title={draft.id ? "Edit CTA" : "New CTA"} width={480} onSubmit={save} footer={<Footer saveLabel="Save CTA" pending={pending} disabled={!d.text.trim()} />}>
       <div className="flex items-center justify-center rounded-[11px] bg-wash-2 p-6">

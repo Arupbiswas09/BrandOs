@@ -26,20 +26,20 @@ export function ServicePage({ id }: { id: string }) {
 
   return (
     <Page>
-      <div className="flex flex-wrap items-start gap-5">
+      <div className="head-band -mt-8 mb-8 pb-7 pt-8 sm:-mt-10 sm:pt-10 flex flex-wrap items-start gap-5">
         <div className="min-w-0 flex-1">
           <Eyebrow className="mb-[9px] tracking-[0.13em]">Service · {b?.name}</Eyebrow>
-          <h1 className="m-0 mb-1.5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.022em] sm:text-[38px]">{v.name}</h1>
-          <p className="m-0 text-[15px] text-[#566560]">{v.short}</p>
+          <h1 className="m-0 mb-1.5 text-[26px] font-semibold leading-[1.1] tracking-[-0.022em] sm:text-[28px]">{v.name}</h1>
+          <p className="m-0 text-[15px] text-[#475569]">{v.short}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[34px]">
           {canEdit && <Btn onClick={() => open({ kind: "service", draft: v })}>Edit</Btn>}
           {canEdit && <Btn variant="primary" onClick={() => newOffer()}>+ New offer</Btn>}
         </div>
       </div>
-      {v.archived && <ArchivedNote className="mt-[22px]">Archived. Its offers still exist and are reachable from the offers tab.</ArchivedNote>}
-      {v.description && <p className="m-0 mt-[22px] max-w-[62ch] text-[16px] leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
-      <div className="mb-[38px] mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-[#566560]">
+      {v.archived && <ArchivedNote className="mb-5">Archived. Its offers still exist and are reachable from the offers tab.</ArchivedNote>}
+      {v.description && <p className="m-0 max-w-[62ch] text-[16px] leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
+      <div className="mb-[38px] mt-6 flex flex-wrap gap-x-6 gap-y-1 text-[15px] text-[#475569]">
         <span>{plural(liveOffers.length, "offer")}</span>
         <span>{plural(live(ws.assetsOfService(v.id)).length, "asset")} across them</span>
         <span className="text-mute-5">Updated {ws.ago(v.updatedAt)} by {ws.user(v.ownerId).name}</span>

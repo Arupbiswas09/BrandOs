@@ -39,7 +39,7 @@ export const CHANNELS = [
 ] as const;
 
 export const CHANNEL_COLOR: Record<string, string> = {
-  Owned: "#5C6B64",
+  Owned: "#475569",
   Google: "#2D6FA8",
   Meta: "#4B62C4",
   LinkedIn: "#1D6FA3",
@@ -47,7 +47,7 @@ export const CHANNEL_COLOR: Record<string, string> = {
   "Onboarding flow": "#0E7490",
   Email: "#2F8F62",
   "Organic social": "#C2740C",
-  Print: "#6E7C76",
+  Print: "#64748B",
 };
 
 export const ACCESS_LEVELS: Access[] = ["Admin", "Editor", "Reviewer", "Viewer"];
@@ -56,7 +56,7 @@ export const ACCESS_COLOR: Record<Access, string> = {
   Admin: "#8156C7",
   Editor: "#2F8F62",
   Reviewer: "#C2740C",
-  Viewer: "#6E7C76",
+  Viewer: "#64748B",
 };
 
 export const ACCESS_NOTE: Record<Access, string> = {
@@ -81,7 +81,7 @@ export const OFFER_TYPES = ["Audit", "Free consultation", "Lead magnet", "Conten
 export const DELIVERY = ["Designed page", "Doc link", "File download", "Email sequence", "None"];
 
 export const REVIEW_COLOR: Record<Review, string> = {
-  None: "#93A09A",
+  None: "#94A3B8",
   "In review": "#C99A2E",
   "Changes requested": "#C2410C",
   Approved: "#2F8F62",
@@ -91,14 +91,14 @@ export const OFFER_STATUS: Record<OfferStatus, string> = {
   Ideation: "#7C6AC4",
   Active: "#2F8F62",
   Paused: "#C99A2E",
-  Archived: "#9AA6A0",
+  Archived: "#94A3B8",
 };
 
 export const ASSET_STATUS: Record<AssetStatus, string> = {
-  Draft: "#9AA6A0",
+  Draft: "#94A3B8",
   Ready: "#2D6FA8",
   Live: "#1F7A55",
-  Archived: "#B8C2BD",
+  Archived: "#CBD5E1",
 };
 
 export const ROLE_OPTIONS = [
@@ -116,10 +116,11 @@ export const BRAND_PALETTES: [string, string][] = [
   ["#4338CA", "#06B6D4"],
   ["#A3431F", "#4D7C0F"],
   ["#0E7490", "#F97316"],
-  ["#2D4A5C", "#7BA0A8"],
+  ["#0F2A5F", "#7DD3FC"],
+  ["#1D4ED8", "#F59E0B"],
 ];
 
 export const SEGMENT_PALETTE = ["#7C6AC4", "#2D6FA8", "#C2740C", "#2F8F62", "#C2410C", "#0E7490", "#B4553A", "#4B62C4"];
 
-export const NEUTRAL = "#6E7C76";
-export const GLOBAL_ACCENT = "#2D4A5C";
+export const NEUTRAL = "#64748B";
+export const GLOBAL_ACCENT = "#0F2A5F";

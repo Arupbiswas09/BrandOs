@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Asap, Instrument_Serif, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { OfflineBar, ServiceWorker } from "@/components/app/pwa";
 
-const asap = Asap({ variable: "--font-asap", subsets: ["latin", "latin-ext"], style: ["normal", "italic"] });
-const serif = Instrument_Serif({ variable: "--font-instrument", weight: "400", subsets: ["latin"] });
-const mono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"] });
+const inter = Inter({ variable: "--font-inter", subsets: ["latin", "latin-ext"], display: "swap" });
+const mono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   title: { default: "BrandOS", template: "%s · BrandOS" },
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#F7F9F8",
+  themeColor: "#FFFFFF",
   viewportFit: "cover",
   width: "device-width",
   initialScale: 1,
@@ -24,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${asap.variable} ${serif.variable} ${mono.variable}`}>
+    <html lang="en" className={`${inter.variable} ${mono.variable}`}>
       <body>
         {children}
         <ServiceWorker />

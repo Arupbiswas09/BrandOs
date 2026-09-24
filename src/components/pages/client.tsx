@@ -41,11 +41,11 @@ export function ClientPage({ id }: { id: string }) {
 
   return (
     <Page>
-      <div className="flex flex-wrap items-start gap-5">
+      <div className="head-band -mt-8 mb-8 pb-7 pt-8 sm:-mt-10 sm:pt-10 flex flex-wrap items-start gap-5">
         <div className="min-w-0 flex-1">
           <Eyebrow className="mb-[9px] tracking-[0.13em]">Property</Eyebrow>
-          <h1 className="m-0 mb-2 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.02em] sm:text-[38px]">{c.name}</h1>
-          <p className="m-0 text-[15px] text-[#566560]">{c.kind}</p>
+          <h1 className="m-0 mb-2 text-[26px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[28px]">{c.name}</h1>
+          <p className="m-0 text-[15px] text-[#475569]">{c.kind}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[26px]">
           {ws.can("edit") && <Btn onClick={() => open({ kind: "client", draft: c })}>Edit</Btn>}
@@ -53,8 +53,8 @@ export function ClientPage({ id }: { id: string }) {
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "client", id: c.id, label: c.name, back: "/" })}>Delete</Btn>}
         </div>
       </div>
-      {c.archived && <ArchivedNote className="mt-[22px]">Archived. Hidden from the street and from search unless you go looking.</ArchivedNote>}
-      {c.note && <p className="m-0 mt-[22px] max-w-[60ch] text-[15px] leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
+      {c.archived && <ArchivedNote className="mb-5">Archived. Hidden from the street and from search unless you go looking.</ArchivedNote>}
+      {c.note && <p className="m-0 max-w-[60ch] text-[15px] leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
 
       <Card className="mt-7 flex flex-wrap gap-x-9 gap-y-4 px-6 py-5">
         {stats.map((s) => (
@@ -85,7 +85,7 @@ export function ClientPage({ id }: { id: string }) {
                   </span>
                   <span className="flex-none text-[15px] text-mute-2">→</span>
                 </Link>
-                <div className="flex gap-3.5 border-t border-line px-[22px] py-3 text-[14px] text-[#566560]">
+                <div className="flex gap-3.5 border-t border-line px-[22px] py-3 text-[14px] text-[#475569]">
                   <span>{plural(live(ws.offersOf(b.id)).length, "offer")}</span>
                   <span>{plural(live(ws.assetsOf(b.id)).length, "asset")}</span>
                   {subs.length > 0 && <span className="text-mute-4">{plural(subs.length, "sub-brand")}</span>}
@@ -138,7 +138,7 @@ export function ClientPage({ id }: { id: string }) {
                 className="flex w-full items-center gap-2.5 border-t border-divider py-2.5 text-left first:border-t-0">
                 <Avatar initials={ws.user(a.userId).initials} size={20} />
                 <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-3">{ws.first(a.userId)} {a.action} {a.label}{a.field ? ` — ${a.field}` : ""}</span>
-                <span className="flex-none text-[13.5px] text-[#64716B]">{ws.ago(a.createdAt)}</span>
+                <span className="flex-none text-[13.5px] text-[#526077]">{ws.ago(a.createdAt)}</span>
               </button>
             ))}
             {!acts.length && <div className="py-5 text-center text-[15px] text-mute-4">Quiet so far.</div>}

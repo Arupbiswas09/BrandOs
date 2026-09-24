@@ -17,8 +17,9 @@ export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: b
       <PageHead eyebrow="Deleted things" title="Recycle bin"
         actions={allowed && entries.length > 0 && (
           <Btn variant="danger" disabled={pending} onClick={() => { if (window.confirm("Delete everything in the bin for good? This cannot be undone.")) void run(deleteForever, "all"); }}>Empty the bin</Btn>
-        )} />
-      <p className="mb-7 mt-1 max-w-[62ch] text-[15px] text-mute-2">Anything deleted stays here for {days} days, with everything that was inside it. Restore puts it back exactly as it was.</p>
+        )}
+        sub={<>Anything deleted stays here for {days} days, with everything that was inside it. Restore puts it back exactly as it was.</>}
+      />
       {!allowed && <Empty title="Only admins can see the bin" body="Deleting and restoring is an admin job. Ask an admin if something went missing." />}
       {allowed && !entries.length && <Empty title="The bin is empty" body="Nothing has been deleted in the last 30 days." />}
       {allowed && entries.length > 0 && (

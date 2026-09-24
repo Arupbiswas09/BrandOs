@@ -39,17 +39,17 @@ export function OfferPage({ id }: { id: string }) {
 
   return (
     <Page>
-      <div className="mb-1.5 flex flex-wrap items-start gap-5">
+      <div className="head-band -mt-8 mb-8 pb-7 pt-8 sm:-mt-10 sm:pt-10 flex flex-wrap items-start gap-5">
         <div className="min-w-0 flex-1">
           <div className="mb-3 flex flex-wrap items-center gap-[7px]">
             <Chip color={ws.segColor(o.segment, o.brandId)}>{o.segment}</Chip>
             <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
             {sv && <Link href={href.service(sv.id)} className="rounded-[5px] border border-line bg-white px-2 py-0.5 text-[13px] font-semibold text-mute-1 hover:border-accent hover:text-accent">{sv.name} ↗</Link>}
             {!sv && <span className="rounded-[5px] border border-dashed border-line px-2 py-0.5 text-[13px] font-semibold text-mute-3">Standalone</span>}
-            <span className="text-[14px] text-[#64716B]">Updated {ws.ago(o.updatedAt)}</span>
+            <span className="text-[14px] text-[#526077]">Updated {ws.ago(o.updatedAt)}</span>
           </div>
-          <h1 className="m-0 mb-1.5 font-serif text-[32px] font-normal leading-[1.1] tracking-[-0.022em] sm:text-[38px]">{o.name}</h1>
-          <p className="m-0 text-[15px] text-[#566560]">{o.short}</p>
+          <h1 className="m-0 mb-1.5 text-[26px] font-semibold leading-[1.1] tracking-[-0.022em] sm:text-[28px]">{o.name}</h1>
+          <p className="m-0 text-[15px] text-[#475569]">{o.short}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[34px]">
           {canEdit && <Btn onClick={() => open({ kind: "offer", draft: o })}>Edit</Btn>}
@@ -63,14 +63,14 @@ export function OfferPage({ id }: { id: string }) {
         </div>
       </div>
 
-      <div className="mb-[26px] mt-[22px] flex flex-wrap items-center gap-1.5">
+      <div className="mb-[26px] flex flex-wrap items-center gap-1.5">
         <span className="eyebrow mr-1">Status</span>
         {!canEdit && <Chip color={OFFER_STATUS[o.status]} size="md" className="rounded-[7px] px-[11px] py-1">{o.status}</Chip>}
         {canEdit && (Object.keys(OFFER_STATUS) as Offer["status"][]).map((k) => {
           const on = o.status === k; const c = OFFER_STATUS[k];
           return (
             <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="rounded-[7px] border px-[11px] py-1 text-[14px] font-medium transition"
-              style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#5C6A64" }}>{k}</button>
+              style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>{k}</button>
           );
         })}
       </div>
@@ -99,7 +99,7 @@ export function OfferPage({ id }: { id: string }) {
       <div className="mb-[34px] overflow-hidden rounded-2xl border border-line bg-white">
         <div className="border-b border-line px-6 py-[26px] sm:px-7">
           <Eyebrow className="mb-2.5">Positioning</Eyebrow>
-          <p className="m-0 max-w-[44ch] font-serif text-[22px] leading-[1.4] tracking-[-0.012em] text-ink text-pretty sm:text-[24px]">
+          <p className="m-0 max-w-[52ch] text-[19px] font-medium leading-[1.45] tracking-[-0.012em] text-ink text-pretty sm:text-[20px]">
             {o.positioning || <span className="text-mute-4">No positioning written yet.</span>}
           </p>
         </div>
@@ -170,7 +170,7 @@ export function OfferPage({ id }: { id: string }) {
           Decisions about this offer live here, not in a thread somebody has to go find. Type <span className="font-mono text-mute-1">#</span> to tag another offer, <span className="font-mono text-mute-1">@</span> to pull someone in.
         </p>
         {mentions.length > 0 && (
-          <div className="mb-3.5 rounded-xl border border-line bg-[#FBFCFC] px-4 py-3.5">
+          <div className="mb-3.5 rounded-xl border border-line bg-[#F8FAFC] px-4 py-3.5">
             <div className="eyebrow mb-2.5 text-[12px]">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
             <div className="flex flex-col gap-2">
               {mentions.map((m) => {

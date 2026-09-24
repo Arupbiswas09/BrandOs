@@ -6,34 +6,38 @@
  * colours of the brand you are standing in.
  */
 :root {
-  --bos-accent: #2d4a5c;
-  --bos-accent2: #7ba0a8;
-  --bos-tint: #f7f9f8;
-  --bos-soft: #edf2f0;
-  --bos-border: #e1e7e4;
+  --bos-accent: #0f2a5f;
+  --bos-accent2: #7dd3fc;
+  --bos-hl: #7dd3fc;
+  --bos-hl-ink: #0b1b3a;
+  --bos-tint: #f8fafc;
+  --bos-soft: #eef2f7;
+  --bos-border: #e2e8f0;
   --bos-on: #ffffff;
 }
 
 @theme inline {
-  --font-sans: var(--font-asap), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-instrument), Georgia, serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* The kit is all Inter: headings and numbers share the UI face. */
+  --font-serif: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-code: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 
-  --color-ink: #101614;
-  --color-ink-2: #2a3833;
-  --color-ink-3: #3e4a45;
-  --color-mute-1: #4f5d57;
-  --color-mute-2: #566560;
-  --color-mute-3: #5c6a64;
-  --color-mute-4: #5e6b65;
-  --color-mute-5: #5f6c66;
-  --color-line-strong: #afbdb7;
-  --color-divider: #f0f4f2;
-  --color-wash: #f7f9f8;
-  --color-wash-2: #fafbfb;
-  --color-chip: #f1f5f3;
-  --color-avatar: #edf2f0;
-  --color-hover: #f4f7f6;
+  --color-ink: #0F172A;
+  --color-ink-2: #1e293b;
+  --color-ink-3: #334155;
+  --color-mute-1: #475569;
+  --color-mute-2: #475569;
+  --color-mute-3: #4b5a6e;
+  --color-mute-4: #526077;
+  --color-mute-5: #5b6b80;
+  --color-line-strong: #cbd5e1;
+  --color-divider: #f1f5f9;
+  --color-wash: #f8fafc;
+  --color-wash-2: #f8fafc;
+  --color-chip: #f1f5f9;
+  --color-avatar: #eef2f7;
+  --color-hover: #f1f5f9;
   --color-danger: #b0554a;
   --color-warn: #c99a2e;
   --color-warn-ink: #7a5f14;
@@ -48,6 +52,8 @@
   --color-soft: var(--bos-soft);
   --color-tint: var(--bos-tint);
   --color-on-accent: var(--bos-on);
+  --color-hl: var(--bos-hl);
+  --color-hl-ink: var(--bos-hl-ink);
 
   --animate-fade: bos-fade 0.2s ease both;
   --animate-rise: bos-rise 0.35s ease both;
@@ -70,22 +76,23 @@
 html, body { margin: 0; padding: 0; }
 body {
   font-family: var(--font-sans);
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.5;
-  color: #101614;
-  background: #f7f9f8;
+  font-feature-settings: "cv11", "ss01";
+  color: #0F172A;
+  background: #f8fafc;
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
-input, textarea, select { font: inherit; color: #101614; }
+input, textarea, select { font: inherit; color: #0F172A; }
 textarea { resize: vertical; }
-::placeholder { color: #62706a; }
+::placeholder { color: #526077; }
 ::selection { background: var(--bos-soft); }
-:focus-visible { outline: 2px solid var(--bos-accent); outline-offset: 2px; border-radius: 5px; }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--bos-accent) 70%, #38BDF8); outline-offset: 2px; border-radius: 5px; }
 input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !important; outline: none; }
 /* Grid columns may shrink below their content, so long truncated text never widens the page. */
 .grid > * { min-width: 0; }
-[data-scroll] { scrollbar-width: thin; scrollbar-color: #afbdb7 transparent; }
+[data-scroll] { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
 
 }
 
@@ -95,22 +102,29 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
 .h-header { height: calc(60px + env(safe-area-inset-top)); }
 .pt-header { padding-top: calc(60px + env(safe-area-inset-top)); }
 
+/* A white header band that runs the full width of the content area, like the kit's page headers. */
+.head-band { position: relative; isolation: isolate; }
+.head-band::before {
+  content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%; width: 200vw; transform: translateX(-50%);
+  background: #fff; border-bottom: 1px solid var(--bos-border);
+}
+
 .theme-fade { transition: background-color 0.34s ease, border-color 0.34s ease, color 0.34s ease; }
 .text-pretty { text-wrap: pretty; }
 
 @layer components {
   .eyebrow {
-    font-family: var(--font-mono);
+    font-family: var(--font-sans);
     font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #62706a;
+    color: #526077;
   }
   .field {
     width: 100%;
     border: 1px solid var(--bos-border);
-    border-radius: 9px;
+    border-radius: 8px;
     padding: 10px 13px;
     font-size: 15px;
     background: #fff;
@@ -120,7 +134,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
     display: block;
     font-size: 14px;
     font-weight: 600;
-    color: #3e4a45;
+    color: #334155;
     margin-bottom: 6px;
   }
 }

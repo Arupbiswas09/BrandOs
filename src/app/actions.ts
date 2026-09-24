@@ -255,7 +255,7 @@ export async function saveBrand(input: z.input<typeof brandDraft>) {
 
 function withAllSegments(list: { name: string; color: string }[]) {
   const rest = list.filter((x) => x.name !== "All segments");
-  return [...rest, { name: "All segments", color: "#566560" }];
+  return [...rest, { name: "All segments", color: "#475569" }];
 }
 
 /* ================================================================ services */

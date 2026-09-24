@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Bell, BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Keyboard, LayoutDashboard, LogOut, Menu, Plus,
+  RotateCcw, Search, Settings, Trash2, Users,
+} from "lucide-react";
 import { useStored } from "@/lib/stored";
 import { BRAND_TABS, href, parsePath } from "@/lib/routes";
 import { live } from "@/lib/ws";
@@ -10,8 +14,8 @@ import { ACCESS_COLOR } from "@/lib/constants";
 import { hexA, readable } from "@/lib/color";
 import { resetDemo, signOut, switchUser } from "@/app/actions";
 import { useAction, useApp } from "./provider";
-import { themeVars, type Takeover } from "./theme";
-import { Avatar, Mark, cx } from "@/components/ui";
+import { PALETTES, PALETTE_KEYS, themeVars, type Palette, type Takeover } from "./theme";
+import { Avatar, cx } from "@/components/ui";
 import { AssetDrawer } from "@/components/drawer/asset-drawer";
 import { CommandPalette } from "./command-palette";
 import { Inbox } from "./inbox";
@@ -36,21 +40,26 @@ function useActiveBrand() {
 }
 
 export function useTakeover(): [Takeover, (t: Takeover) => void] {
-  return useStored<Takeover>("bos.takeover", "bold", ["bold", "moderate", "off"]);
+  return useStored<Takeover>("bos.takeover", "off", ["bold", "moderate", "off"]);
+}
+
+export function usePalette(): [Palette, (p: Palette) => void] {
+  return useStored<Palette>("bos.palette", "azure", PALETTE_KEYS);
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
   const brand = useActiveBrand();
   const [mode] = useTakeover();
-  const vars = themeVars(brand, mode);
+  const [palette] = usePalette();
+  const vars = themeVars(brand, mode, palette);
   return (
-    <div
-      style={{ ...vars, background: "linear-gradient(var(--bos-tint),var(--bos-tint)), #fff" }}
-      className="theme-fade min-h-screen"
-    >
+    <div style={{ ...vars, background: "var(--bos-tint)" }} className="theme-fade min-h-screen">
       <Sidebar />
-      <Header inBrand={!!brand && mode !== "off"} mark={brand?.mark ?? ""} />
-      <main className="pt-header lg:ml-[288px]">{children}</main>
+      <Header />
+      <main className="pt-header [overflow-x:clip] lg:ml-[264px]">
+        <Crumbs />
+        {children}
+      </main>
       <AssetDrawer />
       <CommandPalette />
       <Inbox />
@@ -64,142 +73,85 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 /* ================================================================ sidebar */
 
-function navRow(active: boolean) {
-  return active ? "bg-soft font-semibold text-ink" : "font-medium text-mute-1 hover:bg-hover";
-}
+const itemCls = (active: boolean) =>
+  cx(
+    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14.5px] font-medium transition-colors",
+    active ? "bg-hl text-hl-ink" : "text-mute-1 hover:bg-hover hover:text-ink",
+  );
 
 function Sidebar() {
-  const { ws, setCmdk, setInbox, nav, setNav, open } = useApp();
+  const { ws, nav, setNav, open } = useApp();
   const pathname = usePathname();
   const p = parsePath(pathname);
-  const me = ws.me;
-  const myQueue = ws.d.queueCounts[me.id] ?? 0;
-  const unread = ws.d.unreadMentions.length;
-  const [whoOpen, setWhoOpen] = useState(false);
+  const [run] = useAction();
   const overdueCount = useMemo(() => {
     const t = new Date(ws.d.now); const start = new Date(t.getFullYear(), t.getMonth(), t.getDate());
     return ws.dated().filter((x) => !x.done && x.dueAt < start).length;
   }, [ws]);
-  const [run] = useAction();
-  const [lastPath, setLastPath] = useState(pathname);
-  if (lastPath !== pathname) { setLastPath(pathname); setWhoOpen(false); }
 
   const activeBrandId = p.view === "brand" ? p.id : p.view === "offer" ? ws.offer(p.id)?.brandId : p.view === "service" ? ws.service(p.id)?.brandId : undefined;
   const brands = live(ws.d.brands);
+  const clients = live(ws.d.clients).map((c) => ({ c, tops: brands.filter((b) => b.clientId === c.id && !b.parentId) }));
 
-  const clients = live(ws.d.clients).map((c) => ({
-    c,
-    count: brands.filter((b) => b.clientId === c.id).length,
-    tops: brands.filter((b) => b.clientId === c.id && !b.parentId),
-  }));
-
-  const tabs = (bid: string, indent: number) => (
-    <div className="mb-[5px] mt-px">
-      {BRAND_TABS.map(([key, label]) => {
-        const on = p.view === "brand" && p.id === bid && p.tab === key;
-        return (
-          <Link
-            key={key}
-            href={href.brand(bid, key)}
-            className={cx("block w-full border-l-2 py-[5px] pr-2.5 text-left text-[14.5px]", on ? "border-accent bg-soft font-semibold text-ink" : "border-[#E8EDEB] font-medium text-[#5C6A64] hover:text-ink")}
-            style={{ paddingLeft: indent }}
-          >
-            {label}
-          </Link>
-        );
-      })}
-    </div>
+  const brandRow = (b: (typeof brands)[number], depth: number) => (
+    <Link key={b.id} href={href.brand(b.id)} className={cx(itemCls(activeBrandId === b.id), "py-1.5")} style={{ paddingLeft: 12 + depth * 14 }}>
+      <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: b.primary }} />
+      <span className="min-w-0 flex-1 truncate">{b.name}</span>
+    </Link>
   );
 
   const content = (
-    <aside className="safe-top flex h-full w-[288px] flex-col border-r border-line bg-white theme-fade">
-      <div className="flex items-center gap-2.5 px-4 pb-3.5 pl-[18px] pt-5">
-        <Link href="/" className="flex items-center gap-2.5 text-left">
-          <Mark mark="B" color="var(--bos-accent)" fg="var(--bos-on)" size={26} radius={7} />
-          <span className="text-[16px] font-semibold tracking-[-0.015em] text-ink">BrandOS</span>
+    <aside className="safe-top flex h-full w-[264px] flex-col border-r border-line bg-white">
+      <div className="flex h-16 flex-none items-center border-b border-line px-4">
+        <Link href="/" className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-[15px] font-bold text-on-accent theme-fade">B</span>
+          <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">BrandOS</span>
         </Link>
       </div>
-      <div className="px-3 pb-2.5">
-        <button type="button" onClick={() => setCmdk(true)} className="flex w-full items-center gap-2 rounded-[9px] border border-line bg-[#FBFCFC] px-2.5 py-2 text-left text-[15px] text-[#566560] transition hover:border-line-strong hover:bg-white">
-          <span className="flex-1">Search everything</span>
-          <kbd className="font-mono text-[13.5px] tracking-[0.04em] text-mute-1">/</kbd>
-        </button>
-      </div>
-      <div className="px-3 pb-2.5">
-        <button type="button" onClick={() => setInbox(true)} className="flex w-full items-center gap-[9px] rounded-[9px] border border-line bg-white px-2.5 py-2 text-left text-[15px] font-medium text-ink-3 hover:border-mute-2">
-          <span className="flex-1">{myQueue ? "Your queue" : unread ? "New mentions" : "Nothing on you"}</span>
-          {unread > 0 && <span className="h-[7px] w-[7px] rounded-full bg-change" title={`${unread} unread mention${unread === 1 ? "" : "s"}`} />}
-          <span className="flex h-[19px] min-w-[19px] items-center justify-center rounded-[10px] px-1.5 font-mono text-[13px] font-bold theme-fade" style={myQueue ? { background: "var(--bos-accent)", color: "var(--bos-on)" } : { background: "#E4EAE7", color: "#5C6A64" }}>
-            {myQueue}
-          </span>
-        </button>
-      </div>
-      <nav data-scroll className="flex-1 overflow-y-auto px-3 pb-3 pt-1" aria-label="Main">
-        <Link href="/" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "street"))}>
-          <span className="w-3.5 text-center text-[13.5px] opacity-55">◻</span><span>The Street</span>
-        </Link>
-        <Link href="/calendar" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "calendar"))}>
-          <span className="w-3.5 text-center text-[12px] opacity-55">◷</span><span className="flex-1">Calendar</span>
-          {overdueCount > 0 && <span className="rounded-full bg-[rgba(180,35,24,.1)] px-1.5 font-mono text-[12px] font-semibold text-[#B42318]" title={`${overdueCount} overdue`}>{overdueCount}</span>}
-        </Link>
-        <Link href="/library" className={cx("mb-0.5 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "library"))}>
-          <span className="w-3.5 text-center text-[13.5px] opacity-55">◫</span><span>Global Library</span>
-        </Link>
-        <Link href="/team" className={cx("mb-4 flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-[15px]", navRow(p.view === "team"))}>
-          <span className="w-3.5 text-center text-[13.5px] opacity-55">◐</span><span className="flex-1">Team</span>
-          <span className="font-mono text-[13.5px] text-mute-4">{ws.d.users.length}</span>
-        </Link>
-        <div className="eyebrow px-2.5 pb-[7px] tracking-[0.11em]">Clients</div>
-        {clients.map(({ c, count, tops }) => (
-          <div key={c.id} className="mb-[3px]">
-            <Link href={href.client(c.id)} className={cx("flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[15px] font-semibold", p.view === "client" && p.id === c.id ? "bg-soft text-ink" : "text-mute-1 hover:bg-hover")}>
-              <span className="flex-1 truncate">{c.name}</span>
-              <span className="text-[13px] font-medium text-mute-4">{count}</span>
-            </Link>
-            {tops.map((b) => {
-              const on = activeBrandId === b.id;
-              const subs = brands.filter((x) => x.parentId === b.id);
-              return (
+      <nav data-scroll className="flex-1 overflow-y-auto px-2 py-3" aria-label="Main">
+        <div className="flex flex-col gap-0.5">
+          <Link href="/" className={itemCls(p.view === "street")}><LayoutDashboard className="h-[18px] w-[18px] flex-none" />The Street</Link>
+          <Link href="/calendar" className={itemCls(p.view === "calendar")}>
+            <CalendarDays className="h-[18px] w-[18px] flex-none" /><span className="flex-1">Calendar</span>
+            {overdueCount > 0 && <span className="rounded-full bg-[#FEE4E2] px-2 text-[12px] font-semibold text-[#B42318]" title={`${overdueCount} overdue`}>{overdueCount}</span>}
+          </Link>
+          <Link href="/library" className={itemCls(p.view === "library")}><BookOpen className="h-[18px] w-[18px] flex-none" />Global Library</Link>
+          <Link href="/team" className={itemCls(p.view === "team")}>
+            <Users className="h-[18px] w-[18px] flex-none" /><span className="flex-1">Team</span>
+            <span className="text-[12.5px] text-mute-4">{ws.d.users.length}</span>
+          </Link>
+        </div>
+
+        <div className="eyebrow mb-1.5 mt-6 px-3">Clients</div>
+        <div className="flex flex-col gap-0.5">
+          {clients.map(({ c, tops }) => (
+            <div key={c.id} className="mb-1">
+              <Link href={href.client(c.id)} className={cx(itemCls(p.view === "client" && p.id === c.id), "py-1.5 font-semibold text-ink-3")}>
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+              </Link>
+              {tops.map((b) => (
                 <div key={b.id}>
-                  <Link href={href.brand(b.id)} className={cx("flex w-full items-center gap-[9px] rounded-lg py-1.5 pl-5 pr-2.5 text-[15px]", navRow(on))}>
-                    <span className="h-[7px] w-[7px] flex-none rounded-[2px]" style={{ background: b.primary }} />
-                    <span className="flex-1 truncate">{b.name}</span>
-                  </Link>
-                  {on && tabs(b.id, 36)}
-                  {subs.map((sb) => {
-                    const son = activeBrandId === sb.id;
-                    return (
-                      <div key={sb.id}>
-                        <Link href={href.brand(sb.id)} className={cx("flex w-full items-center gap-[9px] rounded-lg py-1.5 pl-8 pr-2.5 text-[15px]", navRow(son))}>
-                          <span className="h-[7px] w-[7px] flex-none rounded-[2px]" style={{ background: sb.primary }} />
-                          <span className="flex-1 truncate">{sb.name}</span>
-                        </Link>
-                        {son && tabs(sb.id, 48)}
-                      </div>
-                    );
-                  })}
+                  {brandRow(b, 1)}
+                  {brands.filter((x) => x.parentId === b.id).map((sb) => brandRow(sb, 2))}
                 </div>
-              );
-            })}
-          </div>
-        ))}
-        {ws.can("edit") && (
-          <button type="button" onClick={() => open({ kind: "client" })} className="mt-1.5 w-full rounded-lg px-2.5 py-[7px] text-left text-[15px] text-mute-2 hover:bg-chip hover:text-ink">+ Add client</button>
-        )}
+              ))}
+            </div>
+          ))}
+          {ws.can("edit") && (
+            <button type="button" onClick={() => open({ kind: "client" })} className={cx(itemCls(false), "text-mute-3")}>
+              <Plus className="h-[18px] w-[18px] flex-none" />Add client
+            </button>
+          )}
+        </div>
       </nav>
-      <div className="safe-bottom relative flex items-center gap-[9px] border-t border-line px-3.5 py-[11px] theme-fade">
-        <Avatar initials={me.initials} size={25} className="bg-[#E4EAE7] text-[#4A5A53]" />
-        <button type="button" onClick={() => setWhoOpen((v) => !v)} aria-expanded={whoOpen} className="min-w-0 flex-1 text-left">
-          <span className="block truncate text-[14.5px] font-semibold">{me.name} ⌄</span>
-          <span className="flex items-center gap-1.5 text-[13px] text-mute-4">
-            <span>{me.role}</span>
-            <span className="rounded-[4px] px-1 font-mono text-[12px] font-bold" style={{ background: hexA(ACCESS_COLOR[me.access], 0.14), color: readable(ACCESS_COLOR[me.access]) }}>{me.access}</span>
-          </span>
-        </button>
+      <div className="safe-bottom flex flex-none flex-col gap-0.5 border-t border-line px-2 py-2">
+        {ws.can("del") && <Link href="/trash" className={itemCls(p.view === "trash")}><Trash2 className="h-[18px] w-[18px] flex-none" />Recycle bin</Link>}
+        <Link href="/settings" className={itemCls(p.view === "settings")}><Settings className="h-[18px] w-[18px] flex-none" />Settings</Link>
         {ws.d.authMode === "demo" && (
-          <button type="button" title="Reset demo data" onClick={() => run(resetDemo)} className="p-1 text-[13.5px] text-mute-5 hover:text-ink">Reset</button>
+          <button type="button" onClick={() => { if (window.confirm("Reset the demo to its starting data?")) void run(resetDemo); }} className={cx(itemCls(false), "text-mute-3")}>
+            <RotateCcw className="h-[18px] w-[18px] flex-none" />Reset demo data
+          </button>
         )}
-        {whoOpen && <WhoMenu onClose={() => setWhoOpen(false)} onSwitch={(id) => run(switchUser, id)} />}
       </div>
     </aside>
   );
@@ -209,65 +161,148 @@ function Sidebar() {
       <div className="fixed inset-y-0 left-0 z-40 hidden lg:block">{content}</div>
       {nav && (
         <div className="fixed inset-0 z-[65] lg:hidden">
-          <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.3)]" onClick={() => setNav(false)} />
-          <div className="absolute inset-y-0 left-0 animate-slide-left shadow-[16px_0_44px_rgba(16,22,20,.12)]">{content}</div>
+          <div className="absolute inset-0 animate-fade bg-[rgba(15,23,42,.35)]" onClick={() => setNav(false)} />
+          <div className="absolute inset-y-0 left-0 animate-slide-left shadow-[16px_0_44px_rgba(15,23,42,.16)]">{content}</div>
         </div>
       )}
     </>
   );
 }
 
-function WhoMenu({ onClose, onSwitch }: { onClose: () => void; onSwitch: (id: string) => void }) {
+/* ================================================================ header */
+
+function Header() {
+  const { ws, open, setNav, setCmdk, setInbox } = useApp();
+  const me = ws.me;
+  const readOnly = !ws.can("edit");
+  const waiting = (ws.d.queueCounts[me.id] ?? 0) + ws.d.unreadMentions.length;
+  const [menu, setMenu] = useState(false);
+  const pathname = usePathname();
+  const [lastPath, setLastPath] = useState(pathname);
+  if (lastPath !== pathname) { setLastPath(pathname); setMenu(false); }
+
+  return (
+    <header className="safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3 border-b border-line bg-white px-3 sm:px-6 lg:left-[264px]">
+      <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-mute-1 hover:bg-hover lg:hidden">
+        <Menu className="h-5 w-5" />
+      </button>
+      <button type="button" onClick={() => setCmdk(true)} className="flex h-10 min-w-0 max-w-2xl flex-1 items-center gap-2.5 rounded-md border border-line bg-wash px-3 text-left text-[14.5px] text-mute-4 transition hover:border-line-strong hover:bg-white">
+        <Search className="h-[18px] w-[18px] flex-none text-mute-5" />
+        <span className="min-w-0 flex-1 truncate">Search clients, brands, offers, assets…</span>
+        <kbd className="hidden flex-none rounded border border-line bg-white px-1.5 text-[12px] font-medium text-mute-3 sm:inline">⌘K</kbd>
+      </button>
+      <span className="flex-1" />
+      {readOnly && (
+        <span className="hidden flex-none rounded-md px-2.5 py-1 text-[13px] font-semibold xl:inline" style={{ background: hexA(ACCESS_COLOR[me.access], 0.12), color: readable(ACCESS_COLOR[me.access], 0.12) }}>
+          {me.access === "Reviewer" ? "Reviewer — approve, send back, comment" : "Viewer — read only"}
+        </span>
+      )}
+      {!readOnly && (
+        <button type="button" onClick={() => open({ kind: "new" })} className="flex h-10 flex-none items-center gap-2 rounded-md bg-accent px-4 text-[14.5px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">
+          <Plus className="h-4 w-4" /><span className="hidden sm:inline">New</span>
+        </button>
+      )}
+      <button type="button" onClick={() => setInbox(true)} aria-label={waiting ? `Inbox, ${waiting} waiting` : "Inbox"} className="relative flex h-10 w-10 flex-none items-center justify-center rounded-md text-mute-1 hover:bg-hover">
+        <Bell className="h-5 w-5" />
+        {waiting > 0 && <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-[11px] font-bold text-white">{waiting}</span>}
+      </button>
+      <div className="relative flex-none">
+        <button type="button" onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-haspopup="menu" className="flex items-center gap-2 rounded-md p-1.5 hover:bg-hover">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[13px] font-semibold text-on-accent theme-fade">{me.initials}</span>
+          <span className="hidden text-left md:block">
+            <span className="block text-[14px] font-semibold leading-tight text-ink">{me.name}</span>
+            <span className="block text-[12.5px] leading-tight text-mute-3">{me.role}</span>
+          </span>
+          <ChevronDown className="hidden h-4 w-4 text-mute-4 md:block" />
+        </button>
+        {menu && <UserMenu onClose={() => setMenu(false)} />}
+      </div>
+    </header>
+  );
+}
+
+function UserMenu({ onClose }: { onClose: () => void }) {
   const { ws, open } = useApp();
+  const [run] = useAction();
   const [mode, setMode] = useTakeover();
+  const [palette, setPalette] = usePalette();
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const h = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    box.current?.querySelector<HTMLElement>("button, a")?.focus();
+    return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  const me = ws.me;
+  const row = "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-[14px] text-ink-3 hover:bg-hover";
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute bottom-[58px] left-3 right-3 z-50 animate-pop rounded-xl border border-line bg-white p-1.5 shadow-[0_12px_32px_rgba(16,22,20,.14)]">
+      <div ref={box} role="menu" className="absolute right-0 top-[calc(100%+8px)] z-50 w-[300px] animate-pop rounded-lg border border-line bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,.14)]">
+        <div className="flex items-center gap-3 px-3 pb-3 pt-2">
+          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-accent text-[14px] font-semibold text-on-accent">{me.initials}</span>
+          <span className="min-w-0">
+            <span className="block truncate text-[15px] font-semibold">{me.name}</span>
+            <span className="block truncate text-[13px] text-mute-3">{me.email ?? me.role}</span>
+          </span>
+          <span className="ml-auto flex-none rounded px-1.5 py-0.5 text-[11.5px] font-semibold" style={{ background: hexA(ACCESS_COLOR[me.access], 0.12), color: readable(ACCESS_COLOR[me.access], 0.12) }}>{me.access}</span>
+        </div>
+        <div className="mx-1 mb-1 h-px bg-divider" />
         {ws.d.authMode === "demo" && (
           <>
-            <div className="eyebrow px-2.5 pb-[5px] pt-[7px] text-[12px] tracking-[0.11em]">Viewing as</div>
-            <div data-scroll className="max-h-[300px] overflow-y-auto">
+            <div className="eyebrow px-3 pb-1 pt-2">View as a teammate</div>
+            <div data-scroll className="max-h-[220px] overflow-y-auto">
               {ws.d.users.map((u) => (
-                <button key={u.id} type="button" onClick={() => { onClose(); onSwitch(u.id); }} className={cx("flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[7px] text-left hover:bg-chip", u.id === ws.me.id && "bg-soft")}>
-                  <Avatar initials={u.initials} size={22} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-[14.5px] font-semibold">{u.name}</span>
-                    <span className="block text-[13px] text-mute-4">{u.role} · {u.access}</span>
-                  </span>
-                  <span className="flex-none text-[13px] text-mute-2">{ws.d.queueCounts[u.id] ?? 0}</span>
+                <button key={u.id} type="button" role="menuitem" onClick={() => { onClose(); void run(switchUser, u.id); }} className={cx(row, u.id === me.id && "bg-soft")}>
+                  <Avatar initials={u.initials} size={26} />
+                  <span className="min-w-0 flex-1"><span className="block truncate font-medium">{u.name}</span><span className="block text-[12.5px] text-mute-3">{u.role} · {u.access}</span></span>
+                  {(ws.d.queueCounts[u.id] ?? 0) > 0 && <span className="text-[12.5px] text-mute-3">{ws.d.queueCounts[u.id]}</span>}
                 </button>
               ))}
             </div>
-            <div className="my-1.5 h-px bg-divider" />
+            <div className="mx-1 my-1 h-px bg-divider" />
           </>
         )}
-        <div className="px-2.5 pb-1 pt-1.5 text-[12px] eyebrow tracking-[0.11em]">Brand colours</div>
-        <div className="flex gap-1 px-2 pb-1.5">
-          {(["bold", "moderate", "off"] as const).map((m) => (
-            <button key={m} type="button" onClick={() => setMode(m)} className={cx("flex-1 rounded-md border px-2 py-1 text-[13.5px] capitalize", mode === m ? "border-accent bg-soft font-semibold text-ink" : "border-line text-mute-1 hover:border-mute-4")}>{m}</button>
+        <div className="eyebrow px-3 pb-1.5 pt-2">Colours</div>
+        <div className="flex gap-1.5 px-3 pb-2" role="radiogroup" aria-label="Colour set">
+          {PALETTE_KEYS.map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={palette === k} title={`${PALETTES[k].name} — ${PALETTES[k].note}`} onClick={() => setPalette(k)}
+              className={cx("flex h-8 flex-1 overflow-hidden rounded-md border-2", palette === k ? "border-ink" : "border-transparent")}>
+              <span className="flex-[3]" style={{ background: PALETTES[k].accent }} /><span className="flex-[2]" style={{ background: PALETTES[k].hl }} />
+            </button>
           ))}
         </div>
-        <button type="button" onClick={() => { onClose(); open({ kind: "shortcuts" }); }} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">
-          <span className="flex-1">Keyboard shortcuts</span><kbd className="font-mono text-[13px] text-mute-4">?</kbd>
-        </button>
-        <Link href="/settings" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">Settings</Link>
-        {ws.can("del") && <Link href="/trash" onClick={onClose} className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[13px] text-mute-1 hover:bg-chip">Recycle bin</Link>}
-        <InstallItem onDone={onClose} />
+        <div className="flex gap-1 px-3 pb-2" role="radiogroup" aria-label="Brand colour intensity">
+          {(["bold", "moderate", "off"] as const).map((m) => (
+            <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={cx("flex-1 rounded-md border px-2 py-1 text-[12.5px] capitalize", mode === m ? "border-accent bg-soft font-semibold text-ink" : "border-line text-mute-2 hover:border-mute-4")}>
+              {m === "off" ? "House blue" : m === "moderate" ? "Brand accent" : "Brand tint"}
+            </button>
+          ))}
+        </div>
+        <div className="mx-1 my-1 h-px bg-divider" />
+        <Link href="/settings" onClick={onClose} className={row} role="menuitem"><Settings className="h-4 w-4 text-mute-3" />Settings</Link>
+        <button type="button" role="menuitem" onClick={() => { onClose(); open({ kind: "shortcuts" }); }} className={row}><Keyboard className="h-4 w-4 text-mute-3" /><span className="flex-1">Keyboard shortcuts</span><kbd className="text-[12px] text-mute-4">?</kbd></button>
+        <InstallItem onDone={onClose} className={row} />
         <form action={signOut}>
-          <button type="submit" className="w-full rounded-lg px-2.5 py-[7px] text-left text-[14.5px] text-mute-1 hover:bg-chip">Sign out</button>
+          <button type="submit" role="menuitem" className={row}><LogOut className="h-4 w-4 text-mute-3" />Sign out</button>
         </form>
       </div>
     </>
   );
 }
 
-/* ================================================================ header */
+function InstallItem({ onDone, className }: { onDone: () => void; className: string }) {
+  const { canPrompt, standalone, ios, install } = useInstall();
+  const { open } = useApp();
+  if (standalone || (!canPrompt && !ios)) return null;
+  return (
+    <button type="button" role="menuitem" onClick={async () => { if (canPrompt) await install(); else { onDone(); open({ kind: "install" }); } }} className={cx(className, "font-medium text-accent")}>
+      <Download className="h-4 w-4" />Install the app
+    </button>
+  );
+}
+
+/* ================================================================ breadcrumbs */
 
 function useCrumbs() {
   const { ws } = useApp();
@@ -281,7 +316,7 @@ function useCrumbs() {
       return c && b && c.name !== b.name ? { label: c.name, href: href.client(c.id) } : null;
     };
     switch (p.view) {
-      case "street": out.push({ label: "The Street" }); break;
+      case "street": return [];
       case "library": out.push(street, { label: "Global Library" }); break;
       case "team": out.push(street, { label: "Team" }); break;
       case "settings": out.push(street, { label: "Settings" }); break;
@@ -318,59 +353,33 @@ function useCrumbs() {
         out.push({ label: v?.name ?? "Service" });
         break;
       }
-      default: out.push(street);
+      default: return [];
     }
     return out;
   }, [ws, p.view, p.id, p.tab]);
 }
 
-function Header({ inBrand, mark }: { inBrand: boolean; mark: string }) {
-  const { ws, open, setNav } = useApp();
+function Crumbs() {
   const crumbs = useCrumbs();
-  const me = ws.me;
-  const readOnly = !ws.can("edit");
+  if (!crumbs.length) return null;
   return (
-    <header className="safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3.5 border-b border-line bg-white/92 px-4 backdrop-blur-[10px] theme-fade sm:px-7 lg:left-[288px]">
-      <div className="absolute inset-x-0 bottom-[-1px] h-0.5 bg-accent transition-opacity duration-300" style={{ opacity: inBrand ? 1 : 0 }} />
-      <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="-ml-1 flex h-8 w-8 flex-none items-center justify-center rounded-lg text-mute-1 hover:bg-hover lg:hidden">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-      </button>
-      {inBrand && <Mark mark={mark} color="var(--bos-accent)" fg="var(--bos-on)" size={24} radius={6} />}
-      <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-[7px] overflow-hidden">
+    <nav aria-label="Breadcrumb" className="border-b border-line bg-white px-4 py-2.5 sm:px-8">
+      <ol className="mx-auto flex max-w-[1180px] items-center gap-1.5 overflow-hidden text-[13.5px]">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;
           return (
-            <span key={i} className={cx("flex items-center gap-[7px]", last ? "min-w-0 flex-none" : "hidden min-w-0 shrink sm:flex")} style={last ? undefined : { flex: `0 ${Math.max(1, c.label.length - 6)} auto` }}>
+            <li key={i} className={cx("flex min-w-0 items-center gap-1.5", !last && i < crumbs.length - 2 && "hidden sm:flex")}>
               {c.href && !last ? (
-                <Link href={c.href} className="block min-w-0 truncate text-[15px] font-medium tracking-[-0.005em] text-[#5C6A64] hover:text-ink">{c.label}</Link>
+                <Link href={c.href} className="truncate text-mute-3 hover:text-ink">{c.label}</Link>
               ) : (
-                <span aria-current={last ? "page" : undefined} className={cx("block min-w-0 truncate text-[15px] tracking-[-0.005em]", last ? "font-semibold text-ink" : "font-medium text-[#5C6A64]")}>{c.label}</span>
+                <span aria-current={last ? "page" : undefined} className={cx("truncate", last ? "font-medium text-ink" : "text-mute-3")}>{c.label}</span>
               )}
-              {!last && <span className="flex-none text-[13.5px] text-line-strong">/</span>}
-            </span>
+              {!last && <ChevronRight className="h-3.5 w-3.5 flex-none text-mute-5" />}
+            </li>
           );
         })}
-      </nav>
-      {!readOnly && (
-        <button type="button" onClick={() => open({ kind: "new" })} className="flex-none rounded-lg bg-accent px-[13px] py-[7px] text-[15px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">+ New</button>
-      )}
-      {readOnly && (
-        <span className="hidden flex-none items-center gap-2 rounded-[7px] px-[11px] py-[5px] text-[14.5px] font-semibold md:flex" style={{ background: hexA(ACCESS_COLOR[me.access], 0.14), color: readable(ACCESS_COLOR[me.access]) }}>
-          {me.access === "Reviewer" ? "Reviewer — you can approve, send back and comment, but not edit." : "Viewer — read only. Ask an admin if you need to change something."}
-        </span>
-      )}
-    </header>
+      </ol>
+    </nav>
   );
 }
 
-function InstallItem({ onDone }: { onDone: () => void }) {
-  const { canPrompt, standalone, ios, install } = useInstall();
-  const { open } = useApp();
-  if (standalone || (!canPrompt && !ios)) return null;
-  return (
-    <button type="button" onClick={async () => { if (canPrompt) await install(); else { onDone(); open({ kind: "install" }); } }}
-      className="flex w-full items-center rounded-lg px-2.5 py-[7px] text-left text-[14.5px] font-semibold text-accent hover:bg-chip">
-      <span className="flex-1">Install the app</span><span aria-hidden>↓</span>
-    </button>
-  );
-}

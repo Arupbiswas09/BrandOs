@@ -58,8 +58,9 @@ export function Calendar() {
 
   return (
     <Page>
-      <PageHead eyebrow="What is due" title="Calendar" />
-      <p className="mb-6 max-w-[62ch] text-[15px] text-mute-2">Asset deadlines and offer launches across every brand you can see. Set a date from any asset or offer.</p>
+      <PageHead eyebrow="What is due" title="Calendar"
+        sub={<>Asset deadlines and offer launches across every brand you can see. Set a date from any asset or offer.</>}
+      />
       <Pills className="mb-6" tone="dark" value={brand} onChange={(v) => { setBrand(v); setSelected(null); }} options={brandOptions} label="Brand" />
 
       <div className="mb-8 grid gap-5 md:grid-cols-2">

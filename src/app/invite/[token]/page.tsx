@@ -18,19 +18,19 @@ export default async function Invite({ params }: PageProps<"/invite/[token]">) {
     <main className="flex min-h-screen items-start justify-center bg-wash px-4 py-16 sm:py-24">
       <div className="w-full max-w-[440px] animate-rise">
         <div className="mb-8 flex items-center gap-2.5">
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#2D4A5C] text-[15px] font-bold text-white">B</span>
+          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#0F2A5F] text-[15px] font-bold text-white">B</span>
           <span className="text-[17px] font-semibold tracking-[-0.015em]">BrandOS</span>
         </div>
         {row ? (
           <>
-            <h1 className="m-0 mb-2 font-serif text-[34px] font-normal leading-[1.1] tracking-[-0.02em]">Welcome, {row.name.split(" ")[0]}.</h1>
-            <p className="mb-8 mt-0 text-[15px] text-[#566560]">Set a password and you are in.</p>
+            <h1 className="m-0 mb-2 text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">Welcome, {row.name.split(" ")[0]}.</h1>
+            <p className="mb-8 mt-0 text-[15px] text-[#475569]">Set a password and you are in.</p>
             <InviteForm token={token} email={row.email ?? ""} />
           </>
         ) : (
           <>
-            <h1 className="m-0 mb-2 font-serif text-[34px] font-normal leading-[1.1] tracking-[-0.02em]">This link has expired</h1>
-            <p className="mt-0 text-[15px] text-[#566560]">Invite links work once and last a week. Ask whoever invited you for a fresh one.</p>
+            <h1 className="m-0 mb-2 text-[26px] font-semibold leading-[1.1] tracking-[-0.02em]">This link has expired</h1>
+            <p className="mt-0 text-[15px] text-[#475569]">Invite links work once and last a week. Ask whoever invited you for a fresh one.</p>
           </>
         )}
       </div>

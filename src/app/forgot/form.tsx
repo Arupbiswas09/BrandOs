@@ -19,7 +19,7 @@ export function ForgotForm() {
         <input name="email" type="email" autoComplete="email" required defaultValue={state?.email} className="field" autoFocus />
       </label>
       {state?.error && <div role="alert" className="rounded-[9px] bg-[rgba(194,65,18,.07)] px-3 py-2 text-[14px] text-change-ink">{state.error}</div>}
-      <button type="submit" disabled={pending} className="rounded-[9px] bg-[#2D4A5C] px-4 py-2.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
+      <button type="submit" disabled={pending} className="rounded-[9px] bg-[#0F2A5F] px-4 py-2.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
         {pending ? "Sending…" : "Send me a link"}
       </button>
     </form>
