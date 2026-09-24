@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
@@ -16,10 +16,12 @@ import { Thread } from "@/components/discussion";
 import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, DueBadge, Eyebrow, Hint, cx } from "@/components/ui";
 import { toDateInput } from "@/lib/time";
 import { AiDraftButton } from "@/components/ai";
+import { ProofView } from "@/components/proof";
+import { PinLink, isPinned, proofFiles, type PinnedComment } from "@/components/proof-link";
 
 const IMAGE = /^image\/(png|jpe?g|gif|webp|avif)$/;
 
-type Tab = "overview" | "list" | "prompt" | "copy" | "files" | "discussion" | "history" | "sharing";
+type Tab = "overview" | "list" | "prompt" | "copy" | "files" | "proof" | "discussion" | "history" | "sharing";
 
 export function AssetDrawer() {
   const { assetId, ws } = useApp();
@@ -51,6 +53,9 @@ function Drawer({ a }: { a: Asset }) {
   const initial = (params.get("tab") as Tab) || "overview";
   const [tab, setTab] = useState<Tab>(initial);
   useEffect(() => { void trackVisit("asset", a.id); }, [a.id]);
+  // Which pin the proof view opens on. A new `n` remounts it, so a pinned note in the discussion can jump straight there.
+  const [proofAt, setProofAt] = useState<{ fileKey?: string; pinId?: string; n: number }>(() => ({ pinId: params.get("pin") ?? undefined, n: 0 }));
+  const goPin = useCallback((c: PinnedComment) => { setProofAt((p) => ({ fileKey: c.fileKey, pinId: c.id, n: p.n + 1 })); setTab("proof"); }, []);
 
   const b = ws.brand(a.brandId);
   const color = b?.primary ?? "#64748B";
@@ -60,6 +65,9 @@ function Drawer({ a }: { a: Asset }) {
   const items = a.items ?? [];
   const done = items.filter((i) => i.done).length;
   const files = a.files ?? [];
+  const proof = proofFiles(a);
+  const canProof = proof.images.length > 0 || proof.pdfs.length > 0;
+  const openPins = ws.commentsOf("asset", a.id).filter((c) => isPinned(c) && !c.resolved).length;
 
   const tabs: [Tab, string][] = [
     ["overview", "Overview"],
@@ -67,6 +75,7 @@ function Drawer({ a }: { a: Asset }) {
     ...(a.type === "Prompt" ? [["prompt", "Prompt"] as [Tab, string]] : []),
     ["copy", "Copy"],
     ["files", `Files · ${files.length}`],
+    ...(canProof ? [["proof", `Proof · ${openPins}`] as [Tab, string]] : []),
     ["discussion", `Discussion · ${ws.openCount("asset", a.id)}`],
     ["history", "History"],
     ["sharing", "Client"],
@@ -75,6 +84,7 @@ function Drawer({ a }: { a: Asset }) {
   const editDraft = () => open({ kind: "asset", draft: { ...a, offerIds: offers.map((o) => o.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 });
 
   return (
+    <PinLink.Provider value={goPin}>
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={a.name}>
       <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.28)]" onClick={closeAsset} />
       <div data-scroll className="absolute inset-y-0 right-0 w-[560px] max-w-full animate-slide overflow-y-auto border-l border-line bg-white shadow-[-16px_0_44px_rgba(16,22,20,.10)]">
@@ -160,13 +170,15 @@ function Drawer({ a }: { a: Asset }) {
           {tab === "list" && <Checklist a={a} />}
           {tab === "prompt" && <PromptTab a={a} />}
           {tab === "copy" && <CopyTab a={a} onEdit={editDraft} />}
-          {tab === "files" && <Files a={a} />}
+          {tab === "files" && <Files a={a} onProof={proof.images.length ? () => setTab("proof") : undefined} />}
+          {tab === "proof" && (canProof ? <ProofView key={proofAt.n} a={a} fileKey={proofAt.fileKey} pinId={proofAt.pinId} /> : <Files a={a} />)}
           {tab === "discussion" && <Thread kind="asset" id={a.id} />}
           {tab === "history" && <History a={a} />}
           {tab === "sharing" && <Sharing a={a} />}
         </div>
       </div>
     </div>
+    </PinLink.Provider>
   );
 }
 
@@ -413,7 +425,7 @@ function CopyLink({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="text-[13px] text-mute-4 hover:text-ink">{on ? "Copied" : "Copy"}</button>;
 }
 
-function Files({ a }: { a: Asset }) {
+function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
   const { ws, toast } = useApp();
   const [run] = useAction();
   const router = useRouter();
@@ -446,6 +458,12 @@ function Files({ a }: { a: Asset }) {
       onDrop={(e) => { if (!canEdit) return; e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}
       className={cx("rounded-xl transition", drag && "outline-2 outline-dashed outline-accent outline-offset-4")}
     >
+      {onProof && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-[11px] bg-wash px-[15px] py-[11px]">
+          <span className="flex-1 text-[15px] text-ink-3">Feedback on a visual? Pin notes right where they apply.</span>
+          <Btn size="sm" onClick={onProof}>Open proof view</Btn>
+        </div>
+      )}
       {files.some((f) => f.url && IMAGE.test(f.type ?? "")) && (
         <div className="mb-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
           {files.filter((f) => f.url && IMAGE.test(f.type ?? "")).map((f) => (

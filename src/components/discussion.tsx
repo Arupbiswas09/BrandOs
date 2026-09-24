@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useContext, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Comment } from "@/db/schema";
 import { href } from "@/lib/routes";
 import { deleteComment, editComment, postComment, toggleResolve } from "@/app/actions";
 import { useAction, useApp } from "./app/provider";
 import { Avatar, Btn, cx } from "./ui";
+import { PinLink, isPinned, pinsOn, type PinnedComment } from "./proof-link";
 
 type Seg = { text: string; chip?: "ref" | "at"; go?: () => void };
 
@@ -77,6 +78,7 @@ function Note({ c }: { c: Comment }) {
         <Avatar initials={ws.user(c.userId).initials} size={26} mono />
         <span className="text-[15px] font-semibold">{ws.first(c.userId)}</span>
         {c.isChange && <span className="eyebrow rounded bg-[rgba(194,65,18,.10)] px-[7px] py-[3px] text-change-ink">Change request</span>}
+        {isPinned(c) && <PinChip c={c} />}
         <span className="flex-1" />
         <span className="font-mono text-[12.5px] text-mute-4">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
         {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">Edit</button>}
@@ -100,6 +102,21 @@ function Note({ c }: { c: Comment }) {
         <CommentText c={c} />
       )}
     </div>
+  );
+}
+
+/** "📍 on hero.png" — a note pinned in the proof view. Opens the proof view on that pin. */
+function PinChip({ c }: { c: PinnedComment }) {
+  const { ws, openAsset } = useApp();
+  const go = useContext(PinLink);
+  const file = ws.asset(c.itemId)?.files.find((f) => f.key === c.fileKey);
+  const n = pinsOn(ws.commentsOf("asset", c.itemId), c.fileKey).findIndex((x) => x.id === c.id) + 1;
+  const name = file?.name ?? "a removed image";
+  return (
+    <button type="button" onClick={() => (go ? go(c) : openAsset(c.itemId, "proof"))} aria-label={`Note ${n} on ${name}. Open it in the proof view`}
+      className="max-w-[220px] truncate rounded-[5px] bg-soft px-[7px] py-[2px] text-[13px] font-semibold text-accent hover:underline">
+      <span aria-hidden>📍</span> on {name}
+    </button>
   );
 }
 

@@ -12,6 +12,7 @@ import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, OfferCard, blocksFor } from "@/components/cards";
+import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { CtaButton } from "@/components/drawer/asset-drawer";
 import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, Pills, SectionHead, Tabs, Warn } from "@/components/ui";
 import { NotHere, useVisit } from "./common";
@@ -362,10 +363,19 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
   const shown = live(filtered);
   const types = ["All", ...Object.keys(ASSET_TYPES).filter((k) => camp.some((a) => a.type === k))];
   const newAsset = () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 });
+  const sel = useSelection();
+  // In select mode archived ones join the grid, so they can be restored in bulk too.
+  const grid = sel.on ? [...shown, ...archivedOnly(filtered)] : shown;
 
   return (
     <>
-      <SectionHead eyebrow="Files and content" title="Assets" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
+      <SectionHead eyebrow="Files and content" title="Assets"
+        actions={(ws.can("edit") || canBulk(ws, false)) && (
+          <>
+            {canBulk(ws, false) && camp.length > 0 && <SelectToggle s={sel} />}
+            {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
+          </>
+        )}
         sub={<>{plural(liveCamp.length, "asset")} in this brand. Each one exists once, however many offers point at it.</>}
       />
       {unlinked.length > 0 && (
@@ -378,9 +388,12 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name or tag" aria-label="Filter by name or tag" className="field mb-3 max-w-[280px] text-[15px]" />
       <Pills className="mb-2" value={type} onChange={setType} label="Type" options={types.map((s) => ({ value: s, label: s }))} />
       <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...Object.keys(ASSET_STATUS)].map((s) => ({ value: s, label: s }))} />
-      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">{shown.map((a) => <AssetCard key={a.id} a={a} />)}</div>
-      <ArchExpander items={archivedOnly(filtered)} noun="asset" onOpen={(a) => openAsset(a.id)} />
-      {!shown.length && (
+      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
+        {grid.map((a) => <AssetCard key={a.id} a={a} selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} />)}
+      </div>
+      {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="asset" onOpen={(a) => openAsset(a.id)} />}
+      {sel.on && <BulkBar s={sel} shown={grid} />}
+      {!grid.length && (
         <Empty title="Nothing to show" body={camp.length === 0 ? "No assets yet. Start with the thing you actually need — a landing page, an email, an ad." : "Nothing matches that search."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>Add an asset</Btn>}
         </Empty>

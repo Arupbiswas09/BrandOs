@@ -7,7 +7,7 @@ import { href } from "@/lib/routes";
 import type { WS } from "@/lib/ws";
 import { plural } from "@/lib/ws";
 import { useApp } from "./app/provider";
-import { Avatar, Blocks, Chip, CodeTile, DueBadge, cx } from "./ui";
+import { Avatar, Blocks, Chip, CodeTile, DueBadge, Tick, cx } from "./ui";
 
 /** One square per asset, coloured by where it stands in review. Live assets get a ring. */
 export function blocksFor(list: Asset[], limit = 28) {
@@ -39,7 +39,8 @@ function linkLabel(n: number) {
 
 type AssetVariant = "full" | "recent" | "library" | "kit" | "font";
 
-export function AssetCard({ a, variant = "full" }: { a: Asset; variant?: AssetVariant }) {
+/** `selecting` turns the card into a checkbox for bulk changes instead of opening the asset. */
+export function AssetCard({ a, variant = "full", selecting, selected, onToggle }: { a: Asset; variant?: AssetVariant; selecting?: boolean; selected?: boolean; onToggle?: () => void }) {
   const { ws, openAsset } = useApp();
   const color = ws.colorOf(a);
   const n = ws.linkedOfferIds(a.id).length;
@@ -48,13 +49,16 @@ export function AssetCard({ a, variant = "full" }: { a: Asset; variant?: AssetVa
   return (
     <button
       type="button"
-      onClick={() => openAsset(a.id)}
+      onClick={() => (selecting ? onToggle?.() : openAsset(a.id))}
+      {...(selecting && { role: "checkbox", "aria-checked": !!selected })}
       className={cx(
-        "flex flex-col overflow-hidden rounded-[13px] border border-line bg-white p-0 text-left transition duration-200",
+        "relative flex flex-col overflow-hidden rounded-[13px] border border-line bg-white p-0 text-left transition duration-200",
         variant === "kit" || variant === "font" ? "hover:border-mute-2" : "hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(16,22,20,.08)]",
-        a.archived && "opacity-55",
+        a.archived && !selected && "opacity-55",
+        selected && "border-accent ring-2 ring-accent",
       )}
     >
+      {selecting && <span className="absolute left-2 top-2 z-[1] rounded-[6px] bg-white p-[2px] shadow-[0_1px_4px_rgba(16,22,20,.25)]"><Tick on={!!selected} size={19} /></span>}
       {ws.previewOf(a) ? (
         // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; next/image would proxy it through the optimizer
         <img src={ws.previewOf(a)!} alt="" loading="lazy" className="w-full bg-wash object-cover" style={{ height: tileH }} />

@@ -27,5 +27,8 @@ export type ModalSpec =
   | { kind: "reqChanges"; item: ItemKind; id: string }
   | { kind: "confirm"; item: DeleteKind; id: string; label: string; back?: string }
   | { kind: "share"; brandId: string }
+  /** Bulk changes from select mode. `onDone` gets the ids that were skipped, so they stay ticked. */
+  | { kind: "bulkReview"; ids: string[]; onDone?: (keep: string[]) => void }
+  | { kind: "bulkDelete"; ids: string[]; onDone?: (keep: string[]) => void }
   | { kind: "install" }
   | { kind: "shortcuts" };

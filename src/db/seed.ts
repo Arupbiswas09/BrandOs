@@ -479,7 +479,7 @@ export async function seed(db: DB) {
 
   /* ---------------- conversation ---------------- */
   const C = (id: string, kind: "asset" | "offer", itemId: string, userId: string, text: string, when: string, extra: Partial<s.Comment> = {}): s.Comment =>
-    ({ id, kind, itemId, userId, text, createdAt: at(when), editedAt: null, resolved: false, isChange: false, refs: [], mentions: [], ...extra });
+    ({ id, kind, itemId, userId, text, createdAt: at(when), editedAt: null, fileKey: null, pinX: null, pinY: null, resolved: false, isChange: false, refs: [], mentions: [], ...extra });
   const comments = [
     C("cm1", "asset", "as1", "jw", "Client asked whether we can say “ten thousand” or have to say “up to ten thousand”. Legal says up to. Can we reword without losing the punch?", "4 hours ago"),
     C("cm2", "asset", "as1", "pr", "“Worth up to ten thousand a month. Most of it goes unspent.” Same punch, defensible.", "3 hours ago"),

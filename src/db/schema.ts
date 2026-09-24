@@ -3,6 +3,7 @@ import {
   text,
   boolean,
   integer,
+  real,
   timestamp,
   jsonb,
   index,
@@ -244,6 +245,10 @@ export const comments = pgTable("comments", {
   mentions: text("mentions").array().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   editedAt: timestamp("edited_at", { withTimezone: true }),
+  /** Proofing: the uploaded image this note is pinned to, and where on it (0–100, percent of width and height). */
+  fileKey: text("file_key"),
+  pinX: real("pin_x"),
+  pinY: real("pin_y"),
 }, (t) => [index("comments_item_idx").on(t.kind, t.itemId)]);
 
 export const activity = pgTable("activity", {

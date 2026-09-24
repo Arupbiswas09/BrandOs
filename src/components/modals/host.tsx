@@ -7,6 +7,7 @@ import { KitModal } from "./kit";
 import { ConfirmModal, InstallModal, NewModal, ShortcutsModal } from "./misc";
 import { OfferModal } from "./offer";
 import { ShareModal } from "./share";
+import { BulkDeleteModal, BulkReviewModal } from "./bulk";
 import { GroupModal, PersonModal, ReqChangesModal, SendReviewModal } from "./people";
 
 export function ModalHost() {
@@ -33,6 +34,8 @@ export function ModalHost() {
     case "reqChanges": return <ReqChangesModal item={m.item} id={m.id} />;
     case "confirm": return <ConfirmModal item={m.item} id={m.id} label={m.label} back={m.back} />;
     case "share": return <ShareModal brandId={m.brandId} />;
+    case "bulkReview": return <BulkReviewModal ids={m.ids} onDone={m.onDone} />;
+    case "bulkDelete": return <BulkDeleteModal ids={m.ids} onDone={m.onDone} />;
     case "install": return <InstallModal />;
     case "shortcuts": return <ShortcutsModal />;
   }

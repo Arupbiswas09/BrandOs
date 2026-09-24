@@ -83,6 +83,9 @@ function notify(all: All, userIds: (string | null | undefined)[], build: (firstN
   });
 }
 
+/** Images the browser can show inline, so people can pin notes on them. */
+const PROOFABLE = /^image\/(png|jpe?g|gif|webp|avif)$/;
+
 const itemUrl = (kind: "offer" | "asset", id: string) => (kind === "offer" ? `${appUrl()}/offers/${id}` : `${appUrl()}/?asset=${id}`);
 
 /* ================================================================ session */
@@ -1027,17 +1030,34 @@ export async function requestChanges(kind: "offer" | "asset", id: string, note: 
 
 /* ================================================================ discussion */
 
-export async function postComment(kind: "offer" | "asset", itemId: string, text: string, refs: string[], mentions: string[]) {
+/** Where a proofing note sits: which uploaded image, and how far across and down it, in percent. */
+export type Pin = { fileKey: string; x: number; y: number };
+
+const pinSchema = z.object({
+  fileKey: z.string().min(1).max(600),
+  x: z.number().finite().min(0).max(100),
+  y: z.number().finite().min(0).max(100),
+});
+
+export async function postComment(kind: "offer" | "asset", itemId: string, text: string, refs: string[], mentions: string[], pin?: Pin | null) {
   return run(async () => {
     const { me, vis, db, all } = await context("comment");
     need(kind === "offer" ? vis.offer(itemId) : vis.asset(itemId));
     const t = text.trim();
     if (!t) throw new Denied("Write something first.");
     if (t.length > 8000) throw new Denied("That note is too long. Split it up.");
+    // A pin has to land on an image that is really attached to this asset.
+    let at: { fileKey: string; pinX: number; pinY: number } | null = null;
+    if (pin) {
+      const p = pinSchema.parse(pin);
+      const a = kind === "asset" ? all.assets.find((x) => x.id === itemId) : undefined;
+      need(a?.files.some((f) => f.key === p.fileKey && f.url && PROOFABLE.test(f.type ?? "")), "That image is no longer attached. Refresh and try again.");
+      at = { fileKey: p.fileKey, pinX: Math.round(p.x * 100) / 100, pinY: Math.round(p.y * 100) / 100 };
+    }
     // Keep only the tags and mentions that survived editing.
     const keepRefs = [...new Set(refs)].filter((r) => vis.offer(r) && t.includes("#" + (all.offers.find((o) => o.id === r)?.name ?? "\u0000")));
     const keepMentions = [...new Set(mentions)].filter((m) => t.includes("@" + (all.users.find((u) => u.id === m)?.name ?? "\u0000")));
-    await db.insert(s.comments).values({ id: newId("cm"), kind, itemId, userId: me.id, text: t, refs: keepRefs, mentions: keepMentions });
+    await db.insert(s.comments).values({ id: newId("cm"), kind, itemId, userId: me.id, text: t, refs: keepRefs, mentions: keepMentions, ...at });
     const where = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === itemId)?.name ?? "";
     notify(all, keepMentions, (first) => ({
       subject: `${me.name.split(" ")[0]} mentioned you on ${where}`,
@@ -1223,4 +1243,135 @@ export async function deleteForever(entryId: string | "all") {
     });
     for (const k of list.flatMap((e) => fileKeys(e.rows))) await removeStoredFile(k);
   });
+}
+
+/* ================================================================ bulk asset actions */
+
+export type BulkOp = "archive" | "restore" | "status" | "due" | "review" | "tag" | "clear" | "delete";
+export type BulkPayload = { status?: "Draft" | "Ready" | "Live"; date?: string | null; reviewerId?: string; tag?: string };
+export type BulkSkip = { id: string; reason: string };
+export type BulkResult = { ok: true; done: number; skipped: BulkSkip[] } | { ok: false; error: string };
+
+/** Which permission each bulk change needs, before looking at any one asset. */
+const BULK_PERM: Record<BulkOp, Perm> = {
+  archive: "archive", restore: "archive", status: "edit", due: "edit", review: "edit", tag: "edit", clear: "share", delete: "del",
+};
+
+const bulkInput = z.object({
+  ids: z.array(z.string().min(1).max(64)).min(1, "Pick at least one asset.").max(500, "That is too many at once. Do up to 500."),
+  op: z.enum(["archive", "restore", "status", "due", "review", "tag", "clear", "delete"]),
+  payload: z.object({
+    status: z.enum(["Draft", "Ready", "Live"]).optional(),
+    date: z.string().max(40).nullable().optional(),
+    reviewerId: z.string().max(64).optional(),
+    tag: str(40).optional(),
+  }).default({}),
+});
+
+/**
+ * One change applied to many assets. Every asset is checked on its own, the
+ * same way the single-item action would check it: can this person see it,
+ * does their role allow it, and (for contributors) do they own it. Whatever
+ * passes is changed and logged; whatever does not comes back with a reason.
+ */
+export async function bulkAssets(ids: string[], op: BulkOp, payload: BulkPayload = {}): Promise<BulkResult> {
+  let out: BulkResult = { ok: true, done: 0, skipped: [] };
+  const r = await run(async () => {
+    const d = bulkInput.parse({ ids, op, payload });
+    const { me, vis, db, all } = await context(BULK_PERM[d.op]);
+    const p = d.payload;
+    if (d.op === "status") {
+      need(p.status, "Pick a status.");
+      if (p.status === "Live") need(can(me, "publish"), "Your role cannot mark work Live. Send it for review instead.");
+    }
+    if (d.op === "tag") need(p.tag, "Write the tag first.");
+    const dueAt = d.op === "due" ? dueFrom(p.date ?? null) ?? null : null;
+    const reviewer = d.op === "review" ? all.users.find((u) => u.id === p.reviewerId) : undefined;
+    if (d.op === "review") need(reviewer && can(reviewer, "review"), "That person cannot review. Pick someone whose role can approve.");
+    // A client can only review what has been shared with them.
+    const reviewerVis = reviewer?.access === "Client" ? makeVisibility(all, scopeFor(all, reviewer.id)) : null;
+
+    const skipped: BulkSkip[] = [];
+    const sent: string[] = [];
+    let done = 0;
+    await db.transaction(async (tx) => {
+      for (const id of [...new Set(d.ids)]) {
+        const a = all.assets.find((x) => x.id === id);
+        const skip = (reason: string) => skipped.push({ id, reason });
+        if (!a || !vis.asset(id)) { skip("not visible to you"); continue; }
+        // Changing content is ownership-bound, and the Global Library has its own gate.
+        if (d.op === "status" || d.op === "due" || d.op === "review" || d.op === "tag") {
+          if (!canChange(me, a)) { skip("not yours"); continue; }
+          if (!a.brandId && !can(me, "library")) { skip("Global Library"); continue; }
+        }
+        switch (d.op) {
+          case "archive":
+          case "restore": {
+            const on = d.op === "archive";
+            if (a.archived === on) { skip(on ? "already archived" : "not archived"); continue; }
+            await tx.update(s.assets).set({ archived: on, updatedAt: new Date() }).where(eq(s.assets.id, id));
+            await log(tx, me.id, on ? "archived" : "restored", "asset", id, a.name);
+            break;
+          }
+          case "status": {
+            if (a.status === p.status) { skip(`already ${p.status}`); continue; }
+            await tx.update(s.assets).set({ status: p.status!, updatedAt: new Date() }).where(eq(s.assets.id, id));
+            await log(tx, me.id, "changed status", "asset", id, a.name, `${a.status} → ${p.status}`);
+            break;
+          }
+          case "due": {
+            await tx.update(s.assets).set({ dueAt, updatedAt: new Date() }).where(eq(s.assets.id, id));
+            await log(tx, me.id, dueAt ? "set a due date on" : "cleared the due date on", "asset", id, a.name, dueAt ? dueAt.toDateString() : "");
+            break;
+          }
+          case "review": {
+            if (a.ownerId === reviewer!.id) { skip("they own it"); continue; }
+            if (reviewerVis && !reviewerVis.asset(id)) { skip("client cannot see it"); continue; }
+            await tx.update(s.assets).set({ review: "In review", reviewerId: reviewer!.id, changeNote: "", updatedAt: new Date() }).where(eq(s.assets.id, id));
+            await log(tx, me.id, `asked ${reviewer!.name.split(" ")[0]} to review`, "asset", id, a.name);
+            sent.push(a.name);
+            break;
+          }
+          case "tag": {
+            const tag = p.tag!;
+            if (a.tags.some((t) => t.toLowerCase() === tag.toLowerCase())) { skip("already tagged"); continue; }
+            if (a.tags.length >= 30) { skip("too many tags"); continue; }
+            await tx.update(s.assets).set({ tags: [...a.tags, tag], updatedAt: new Date() }).where(eq(s.assets.id, id));
+            await log(tx, me.id, "tagged", "asset", id, a.name, tag);
+            break;
+          }
+          case "clear": {
+            if (!a.brandId) { skip("Global Library"); continue; }
+            if (a.clientVisible) { skip("already cleared"); continue; }
+            await tx.update(s.assets).set({ clientVisible: true, updatedAt: new Date() }).where(eq(s.assets.id, id));
+            await log(tx, me.id, "cleared to send", "asset", id, a.name);
+            break;
+          }
+          case "delete": {
+            // Into the recycle bin first, exactly like a single delete.
+            const snap = await snapshot(tx, all, "asset", id);
+            await tx.insert(s.trash).values({ id: newId("tr"), kind: "asset", itemId: id, label: snap.label, context: snap.context, rows: snap.rows, deletedBy: me.id });
+            await tx.delete(s.links).where(eq(s.links.assetId, id));
+            await tx.delete(s.comments).where(and(eq(s.comments.kind, "asset"), eq(s.comments.itemId, id)));
+            await tx.delete(s.assetVersions).where(eq(s.assetVersions.assetId, id));
+            await tx.delete(s.assets).where(eq(s.assets.id, id));
+            await log(tx, me.id, "deleted", "asset", id, a.name);
+            break;
+          }
+        }
+        done++;
+      }
+    });
+    if (sent.length) {
+      const by = me.name.split(" ")[0];
+      notify(all, [reviewer!.id], (first) => ({
+        subject: sent.length === 1 ? `${by} asked you to review ${sent[0]}` : `${by} asked you to review ${sent.length} assets`,
+        heading: sent.length === 1 ? `${sent[0]} is waiting on you` : `${sent.length} assets are waiting on you`,
+        body: `Hi ${first}, ${me.name} asked you to review ${sent.slice(0, 12).join(", ")}${sent.length > 12 ? ` and ${sent.length - 12} more` : ""}. Approve them, or send them back with a note.`,
+        action: { label: "Open your queue in BrandOS", href: `${appUrl()}/?inbox=1` },
+      }), me.id);
+    }
+    out = { ok: true, done, skipped };
+  });
+  return r.ok ? out : r;
 }
