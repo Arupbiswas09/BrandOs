@@ -1,12 +1,13 @@
 import "server-only";
 import { cache } from "react";
-import { desc } from "drizzle-orm";
+import { desc, ne } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
 import { can, scopeOf, seesBrand, seesClient, type Scope } from "@/lib/access";
 import { mailEnabled } from "@/server/mail";
 import { slackEnabled } from "@/server/slack";
 import type { PublicUser, Workspace } from "@/lib/types";
 import { waitOn } from "@/lib/types";
+import { SECURITY } from "@/lib/audit";
 
 /**
  * Every table in one go. Agency data sets are small enough for this.
@@ -26,7 +27,8 @@ export async function readAll() {
     db.select().from(s.ctas).orderBy(s.ctas.createdAt),
     db.select().from(s.links),
     db.select().from(s.comments).orderBy(s.comments.createdAt),
-    db.select().from(s.activity).orderBy(desc(s.activity.createdAt)).limit(400),
+    // Sign-ins, password changes and exports live only in the admin audit log.
+    db.select().from(s.activity).where(ne(s.activity.type, SECURITY)).orderBy(desc(s.activity.createdAt)).limit(400),
   ]);
   return { users, groups, clients, brands, services, offers, assets, ctas, links, comments, activity };
 }

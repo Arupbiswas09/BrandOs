@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Bell, BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Keyboard, LayoutDashboard, LogOut, Menu, Plus,
-  PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Settings, Trash2, Users,
+  PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Settings, ShieldCheck, Trash2, Users,
 } from "lucide-react";
 import { useStored } from "@/lib/stored";
 import { BRAND_TABS, href, parsePath } from "@/lib/routes";
@@ -189,6 +189,7 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
       <div className={cx("safe-bottom flex flex-none flex-col gap-0.5 border-t border-line py-2", mini ? "px-3" : "px-2")}>
         {ws.can("del") && <NavItem mini={mini} href="/trash" icon={<Trash2 className={ic} />} label="Recycle bin" active={p.view === "trash"} />}
         <NavItem mini={mini} href="/settings" icon={<Settings className={ic} />} label="Settings" active={p.view === "settings"} />
+        {ws.can("access") && <NavItem mini={mini} href="/audit" icon={<ShieldCheck className={ic} />} label="Audit log" active={p.view === "audit"} />}
         {/* Demo mode only. Production runs with passwords, where this never shows (and the server refuses it). */}
         {ws.d.authMode === "demo" && (
           <NavItem mini={mini} icon={<RotateCcw className={ic} />} label="Reset demo data" onClick={() => { if (window.confirm("Reset the demo to its starting data?")) void run(resetDemo); }} />
@@ -362,6 +363,7 @@ function useCrumbs() {
       case "settings": out.push(street, { label: "Settings" }); break;
       case "calendar": out.push(street, { label: "Calendar" }); break;
       case "trash": out.push(street, { label: "Recycle bin" }); break;
+      case "audit": out.push(street, { label: "Audit log" }); break;
       case "client": out.push(street, { label: ws.client(p.id)?.name ?? "Client" }); break;
       case "brand": {
         const b = ws.brand(p.id);

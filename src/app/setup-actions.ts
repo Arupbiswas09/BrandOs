@@ -7,6 +7,9 @@ import { DEFAULT_GOALS } from "@/lib/constants";
 import { isHex } from "@/lib/color";
 import { hashPassword } from "@/server/password";
 import { authMode, startSession } from "@/server/session";
+import { recordSecurity } from "@/server/audit";
+import { BREACHED_MESSAGE, isBreachedPassword } from "@/server/pwned";
+import { EV } from "@/lib/audit";
 
 export type SetupState = { error?: string } | undefined;
 
@@ -21,6 +24,7 @@ export async function completeSetup(_: SetupState, form: FormData): Promise<Setu
   if (!name) return { error: "Tell us your name." };
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "That email address does not look right." };
   if (authMode() === "password" && password.length < 10) return { error: "Use a password of at least ten characters." };
+  if (password && (await isBreachedPassword(password))) return { error: BREACHED_MESSAGE };
 
   const db = await getDb();
   const id = (p: string) => p + crypto.randomUUID().replace(/-/g, "").slice(0, 10);
@@ -47,5 +51,6 @@ export async function completeSetup(_: SetupState, form: FormData): Promise<Setu
   });
   if (!created) return { error: "This BrandOS is already set up. Sign in instead." };
   await startSession(userId);
+  await recordSecurity({ userId, action: EV.setup, label: email, field: agency, withIp: true });
   redirect("/");
 }

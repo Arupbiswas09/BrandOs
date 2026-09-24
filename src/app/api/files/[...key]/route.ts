@@ -26,6 +26,8 @@ export async function GET(req: Request, ctx: RouteContext<"/api/files/[...key]">
       "Content-Disposition": `${new URL(req.url).searchParams.get("inline") === "1" && PREVIEWABLE.test(ref.type ?? "") ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(ref.name)}`,
       "Cache-Control": "private, max-age=0, must-revalidate",
       "X-Content-Type-Options": "nosniff",
+      // Even if a file is opened directly, nothing in it may run.
+      "Content-Security-Policy": "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; sandbox",
       ...(file.size ? { "Content-Length": String(file.size) } : {}),
     },
   });

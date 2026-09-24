@@ -87,9 +87,25 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 ## Operations
 
 - `GET /api/health` returns 200 when the database answers — point uptime checks at it.
+  It reports `{ ok, db, version, uptime }`; `version` is `GIT_SHA` when set, else the package version.
 - `GET|POST /api/cron/digest` with `Authorization: Bearer $CRON_SECRET` sends the daily digest (safe to call more than once a day).
 - `GET /api/calendar/<token>.ics` serves a person's private calendar feed.
 - Admins can download the whole workspace as JSON from **Settings → Export JSON**.
+
+## Security
+
+- **Audit log** (`/audit`, admins only): sign-ins and failed sign-ins (email only, never the
+  password), sign-outs, password changes, invite and reset links, role and access changes
+  (before → after), client share links, exports and recycle-bin restores and deletions.
+  Filter by person, kind, date and text, and download the result as CSV. Sign-in and other
+  security events never show in the dashboard's activity feed.
+- **Content-Security-Policy** with a per-request nonce, set in `src/proxy.ts`. Only our own
+  scripts run; Google Fonts is allowed for Brand Kit previews. Other headers are in `next.config.ts`.
+- **Breached passwords** are refused when someone sets one (Have I Been Pwned, k-anonymity, so
+  the password never leaves the server). If the service is down the password is allowed.
+  `PWNED_CHECK=off` turns it off.
+- **Uploads** accept images, PDFs, Office documents, fonts, zip, video, audio and text/CSV only;
+  programs, scripts and web pages are refused. The limit is 25 MB, or `MAX_UPLOAD_MB`.
 
 ## Setting up for real use
 

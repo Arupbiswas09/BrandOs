@@ -52,6 +52,9 @@ jobs:
         with:
           context: .
           push: true
+          # Reported by /api/health as "version".
+          build-args: |
+            GIT_SHA=${{ github.sha }}
           tags: |
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.tag }}
             ${{ steps.meta.outputs.image }}:latest

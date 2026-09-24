@@ -20,6 +20,8 @@ import { postSlack, slackEnabled, slackEsc, slackLater, slackLink } from "@/serv
 import { issueFeed, revokeFeed } from "@/server/calendar";
 import { NOTIFY_EVENTS } from "@/lib/notify";
 import { href } from "@/lib/routes";
+import { recordSecurity } from "@/server/audit";
+import { EV } from "@/lib/audit";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -100,6 +102,7 @@ export async function signInAs(userId: string) {
   if (!u) return fail("That person does not exist.");
   await endSession();
   await startSession(u.id);
+  await recordSecurity({ userId: u.id, action: EV.signedIn, field: "demo mode", withIp: true });
   redirect("/");
 }
 
@@ -112,10 +115,13 @@ export async function switchUser(userId: string) {
     need(u, "That person does not exist.");
     await endSession();
     await startSession(userId);
+    await recordSecurity({ userId, action: EV.signedIn, field: "demo mode, switched person", withIp: true });
   });
 }
 
 export async function signOut() {
+  const me = await getViewer();
+  if (me) await recordSecurity({ userId: me.id, action: EV.signedOut, label: me.email ?? me.name, withIp: true });
   await endSession();
   redirect("/sign-in");
 }
@@ -761,7 +767,16 @@ export async function savePerson(input: z.input<typeof personDraft>) {
         throw new Denied("Someone has to stay an admin. Make another person an admin first.");
       }
       await db.update(s.users).set({ ...values, updatedAt: new Date() }).where(eq(s.users.id, d.id));
-      await log(db, me.id, "changed access for", "person", d.id, d.name, d.access);
+      // Before → after, so the audit log shows exactly what changed.
+      const was = target!;
+      const scope = (u: { allClients: boolean; clientIds: string[]; brandIds: string[]; groupIds: string[] }) =>
+        u.allClients ? "every client" : [...u.clientIds, ...u.brandIds, ...u.groupIds].sort().join(",");
+      const changes = [
+        was.access !== d.access ? `${was.access} → ${d.access}` : d.access,
+        scope(was) !== scope(values) && "what they can see changed",
+        (was.email ?? null) !== email && "email changed",
+      ].filter(Boolean).join(" · ");
+      await log(db, me.id, "changed access for", "person", d.id, d.name, changes);
     } else {
       id = newId("u");
       const parts = d.name.split(/\s+/);
@@ -1289,10 +1304,14 @@ export async function restoreFromTrash(entryId: string) {
 
 export async function deleteForever(entryId: string | "all") {
   return run(async () => {
-    const { db } = await context("del");
+    const { me, db } = await context("del");
     const list = entryId === "all" ? await db.select().from(s.trash) : await db.select().from(s.trash).where(eq(s.trash.id, entryId));
+    need(list.length || entryId === "all", "That is no longer in the bin.");
     await db.transaction(async (tx) => {
-      for (const e of list) await tx.delete(s.trash).where(eq(s.trash.id, e.id));
+      for (const e of list) {
+        await tx.delete(s.trash).where(eq(s.trash.id, e.id));
+        await log(tx, me.id, EV.deletedForever, e.kind === "group" ? "person" : e.kind, e.itemId, e.label, entryId === "all" ? "emptied the recycle bin" : "from the recycle bin");
+      }
     });
     for (const k of list.flatMap((e) => fileKeys(e.rows))) await removeStoredFile(k);
   });

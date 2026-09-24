@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { RetryButton } from "./retry";
 
 export const metadata: Metadata = { title: "Offline" };
-export const dynamic = "force-static";
+// Rendered per request like every page, so its scripts carry the CSP nonce.
+// The service worker caches the page together with its matching CSP header.
 
 export default function Offline() {
   return (
