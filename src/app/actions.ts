@@ -131,7 +131,7 @@ export async function resetDemo() {
     if (authMode() !== "demo") throw new Denied("Reset is only available in demo mode.");
     const db = await getDb();
     await db.transaction(async (tx) => {
-      for (const t of [s.notificationQueue, s.calendarFeeds, s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
+      for (const t of [s.notificationQueue, s.calendarFeeds, s.twoFactor, s.loginAttempts, s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
         await tx.delete(t);
       }
       await tx.delete(s.sessions);
@@ -948,6 +948,7 @@ export async function deleteItem(kind: Kind, id: string) {
           await tx.delete(s.sessions).where(eq(s.sessions.userId, id));
           await tx.delete(s.calendarFeeds).where(eq(s.calendarFeeds.userId, id));
           await tx.delete(s.notificationQueue).where(eq(s.notificationQueue.userId, id));
+          await tx.delete(s.twoFactor).where(eq(s.twoFactor.userId, id));
           await tx.delete(s.users).where(eq(s.users.id, id));
           await log(tx, me.id, "removed", "person", id, u!.name);
           break;

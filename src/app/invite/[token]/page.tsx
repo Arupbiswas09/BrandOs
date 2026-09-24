@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { AuthShell } from "@/components/auth-shell";
+import { AuthShell, GoogleButton, OrRule } from "@/components/auth-shell";
+import { googleEnabled } from "@/server/google";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
 import { InviteForm } from "./form";
@@ -18,6 +19,13 @@ export default async function Invite({ params }: PageProps<"/invite/[token]">) {
   return (
     row ? (
       <AuthShell title={`Welcome, ${row.name.split(" ")[0]}`} sub={row.purpose === "reset" ? "Choose a new password and you are back in." : "Set a password and you are in."}>
+        {row.purpose === "invite" && row.email && googleEnabled() && (
+          <>
+            <GoogleButton label="Join with Google" />
+            <p className="mb-0 mt-2 text-center text-[13.5px] text-mute-2">Use the Google account for {row.email}.</p>
+            <OrRule />
+          </>
+        )}
         <InviteForm token={token} email={row.email ?? ""} reset={row.purpose === "reset"} />
       </AuthShell>
     ) : (

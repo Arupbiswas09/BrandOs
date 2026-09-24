@@ -18,6 +18,7 @@ Built from the *BrandOS v3* Claude Design prototype. Developed by Arup.
 - **Editable notes**: edit or delete your own notes; admins can delete any.
 - **Recycle bin**: anything deleted can be restored for 30 days (Settings menu → Recycle bin, admins).
 - **Live updates**: teammates' changes appear within 30 seconds, and immediately when you return to the tab.
+- **Sign-in security** (password mode): optional **Continue with Google** for people already on the team, **two-step verification** with any authenticator app plus recovery codes, **Where you're signed in** in Settings with per-device sign-out, and sign-in throttling that survives restarts.
 - **Email** (when `RESEND_API_KEY` is set): invites, password resets, review requests, requested changes, approvals and @mentions. Each person chooses instant, daily digest or off per kind of event in **Settings → Notifications**.
 - **Daily digest** (when `CRON_SECRET` is set and something calls `/api/cron/digest` each morning): one email with everything queued plus the person's work due in the next two days or overdue. See `docs/DEPLOY.md`.
 - **Slack** (optional, `SLACK_WEBHOOK_URL`): review requests, approvals, change requests and new client links posted to one channel, with links. Admins can send a test message from Settings.
@@ -114,6 +115,15 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 2. Open the site. The first visit shows a setup screen: your agency, your account.
 3. Add the team from **Team → Invite someone**, then send each person their invite link
    (emailed automatically once `RESEND_API_KEY` is set).
+4. Optional: **Sign in with Google.** Create an OAuth client (Web application) in Google Cloud,
+   add the redirect URI `APP_URL/api/auth/google/callback`, and set `GOOGLE_CLIENT_ID` and
+   `GOOGLE_CLIENT_SECRET` (plus `GOOGLE_ALLOWED_DOMAIN` to accept only your company's addresses).
+   Google never creates accounts: the email must already be on the Team page, and invited people
+   can join with Google instead of setting a password.
+5. Ask everyone, and admins and managers above all, to turn on **two-step verification** in
+   Settings. An admin can reset it from the Team page for someone who lost their phone, and can
+   **Sign out everywhere** for a teammate. Set `AUTH_SECRET` if you run more than one instance.
+   Failed sign-ins are limited to 5 per email and 20 per IP address every 15 minutes.
 
 ## Deploying
 

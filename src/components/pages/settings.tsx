@@ -12,8 +12,10 @@ import { useInstall } from "@/components/app/pwa";
 import { usePalette, useTakeover } from "@/components/app/shell";
 import { PALETTES, PALETTE_KEYS } from "@/components/app/theme";
 import { Btn, Card, Field, H2, Hint, Page, PageHead, Select, Warn, cx } from "@/components/ui";
+import { SessionsCard, TwoFactorCard, TwoFactorNudge, type SecurityInfo } from "./security";
 
-export function Settings() {
+/** `security` is null in demo mode, where there is nothing to protect. */
+export function Settings({ security }: { security: SecurityInfo | null }) {
   const { ws, open } = useApp();
   const me = ws.me;
   const [run, pending] = useAction();
@@ -31,6 +33,8 @@ export function Settings() {
         sub={<>You are signed in as {me.email ?? me.name} with <strong className="font-semibold text-ink-3">{me.access}</strong> access. {ws.scopeLabel(me) === "Every client" ? "You can see every client." : `You can see: ${ws.scopeLabel(me)}.`}</>}
       />
 
+      {security && !security.twoFactor && (me.access === "Admin" || me.access === "Manager") && <TwoFactorNudge />}
+
       <H2>Profile</H2>
       <Card className="mb-8 p-6">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void run(updateProfile, { name, role }); }}>
@@ -42,20 +46,26 @@ export function Settings() {
         </form>
       </Card>
 
-      {ws.d.authMode === "password" && (
+      {security && (
         <>
           <H2>Password</H2>
           <Card className="mb-8 p-6">
             <form action={pwAction} className="flex flex-col gap-4">
+              {!security.hasPassword && <p className="m-0 text-[14.5px] text-mute-2">You sign in with Google. Add a password too if you want another way in.</p>}
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Current password" required><input name="current" type="password" autoComplete="current-password" className="field" required /></Field>
+                {security.hasPassword && <Field label="Current password" required><input name="current" type="password" autoComplete="current-password" className="field" required /></Field>}
                 <Field label="New password" required><input name="next" type="password" autoComplete="new-password" minLength={10} className="field" required /></Field>
               </div>
               {pw?.error && <div role="alert" className="text-[15px] text-change-ink">{pw.error}</div>}
-              {pw?.email === "saved" && <div role="status" className="text-[15px] text-ok">Password changed.</div>}
-              <div><Btn type="submit" variant="primary" disabled={pwPending}>Change password</Btn></div>
+              {pw?.email === "saved" && <div role="status" className="text-[15px] text-ok">Password saved. Your other devices were signed out.</div>}
+              <div><Btn type="submit" variant="primary" disabled={pwPending}>{security.hasPassword ? "Change password" : "Set a password"}</Btn></div>
             </form>
           </Card>
+
+          <H2>Two-step verification</H2>
+          <TwoFactorCard info={security} />
+
+          <SessionsCard info={security} />
         </>
       )}
 

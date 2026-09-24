@@ -1,12 +1,16 @@
 "use server";
 
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb, schema as s } from "@/db";
 import { can } from "@/lib/access";
 import { hashPassword, verifyPassword } from "@/server/password";
-import { authMode, endSession, getViewer, startSession } from "@/server/session";
+import { authMode, clearPending, currentSessionId, endSession, getViewer, pendingUserId, startSession } from "@/server/session";
+import { clearFailures, clientIp, isThrottled, LIMITS, recordFailure, type Limit } from "@/server/throttle";
+import { hashRecoveryCode, isRecoveryShape, verifyTotp } from "@/server/totp";
+import { afterFirstFactor, enabledTwoFactor } from "@/server/two-factor";
 import { appUrl, mailEnabled, sendMail } from "@/server/mail";
 import { recordSecurity } from "@/server/audit";
 import { BREACHED_MESSAGE, isBreachedPassword } from "@/server/pwned";
@@ -14,33 +18,20 @@ import { EV } from "@/lib/audit";
 
 export type FormState = { error?: string; email?: string } | undefined;
 
-// A small in-memory brake on password guessing. Per server instance, which is
-// enough to stop a script; put a real limiter in front for anything public.
-const attempts = new Map<string, { n: number; until: number }>();
-function throttled(key: string) {
-  const now = Date.now();
-  const a = attempts.get(key);
-  if (a && a.until > now && a.n >= 5) return true;
-  return false;
-}
-function recordFailure(key: string) {
-  const now = Date.now();
-  const a = attempts.get(key);
-  if (!a || a.until < now) attempts.set(key, { n: 1, until: now + 60_000 });
-  else a.n += 1;
-}
-
+/** Password sign-in. Failures count per email and per IP, in the database (see server/throttle). */
 export async function signInWithPassword(_: FormState, form: FormData): Promise<FormState> {
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!email || !password) return { error: "Enter your email and password.", email };
+  const ip = await clientIp();
+  const keys: Limit[] = [["email:" + email, LIMITS.email], [ip && "ip:" + ip, LIMITS.ip]];
   // Not logged while throttled, so a script cannot flood the audit log for one address.
-  if (throttled(email)) return { error: "Too many tries. Wait a minute and try again.", email };
+  if (await isThrottled(keys)) return { error: "Too many tries. Wait fifteen minutes and try again, or reset your password.", email };
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1);
   const ok = await verifyPassword(password, u?.passwordHash);
   if (!u || !ok) {
-    recordFailure(email);
+    await recordFailure(keys.map(([k]) => k));
     // The email only, never what was typed as the password.
     await recordSecurity({
       userId: u?.id, action: EV.signInFailed, label: email.slice(0, 200),
@@ -48,10 +39,49 @@ export async function signInWithPassword(_: FormState, form: FormData): Promise<
     });
     return { error: "That email and password do not match.", email };
   }
-  attempts.delete(email);
+  await clearFailures(["email:" + email]);
+  redirect(await afterFirstFactor(u.id));
+}
+
+/** The second step: a six-digit code from the authenticator app, or a recovery code. */
+export async function verifySecondStep(_: FormState, form: FormData): Promise<FormState> {
+  const uid = await pendingUserId();
+  if (!uid) return { error: "That took too long. Go back and sign in again.", email: "expired" };
+  const code = String(form.get("code") ?? "").trim();
+  if (!code) return { error: "Enter the code from your authenticator app." };
+  const key = "code:" + uid;
+  if (await isThrottled([[key, LIMITS.code]])) return { error: "Too many wrong codes. Wait fifteen minutes and try again." };
+  const tf = await enabledTwoFactor(uid);
+  if (!tf) {
+    // Two-step was switched off meanwhile (an admin reset it); the first step already passed.
+    await endSession();
+    await startSession(uid);
+    redirect("/");
+  }
+  const db = await getDb();
+  let ok = false;
+  if (isRecoveryShape(code)) {
+    const h = hashRecoveryCode(code);
+    if (tf.recoveryCodes.includes(h)) {
+      await db.update(s.twoFactor).set({ recoveryCodes: tf.recoveryCodes.filter((c) => c !== h) }).where(eq(s.twoFactor.userId, uid));
+      ok = true;
+    }
+  } else {
+    const step = verifyTotp(tf.secret, code, tf.lastStep);
+    if (step !== null) {
+      await db.update(s.twoFactor).set({ lastStep: step }).where(eq(s.twoFactor.userId, uid));
+      ok = true;
+    }
+  }
+  if (!ok) {
+    await recordFailure([key]);
+    return { error: "That code is not right. Check the time on your phone, or use a recovery code." };
+  }
+  await clearFailures([key]);
+  await clearPending();
   await endSession();
-  await startSession(u.id);
-  await recordSecurity({ userId: u.id, action: EV.signedIn, label: email, field: "password", withIp: true });
+  await startSession(uid);
+  await recordSecurity({ userId: uid, action: EV.signedIn, field: "two-step code", withIp: true });
   redirect("/");
 }
 
@@ -90,8 +120,8 @@ export async function requestReset(_: FormState, form: FormData): Promise<FormSt
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "That email address does not look right.", email };
   if (!mailEnabled()) return { error: "Email is not set up on this BrandOS yet, so we cannot send a link. Ask an admin to send you a reset link from the Team page.", email };
-  if (throttled("reset:" + email)) return { email: "sent" };
-  recordFailure("reset:" + email);
+  if (await isThrottled([["reset:" + email, LIMITS.reset]])) return { email: "sent" };
+  await recordFailure(["reset:" + email]);
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1);
   await recordSecurity({ userId: u?.id, action: EV.resetRequested, label: email.slice(0, 200), field: u ? "link emailed" : "no account with that email", withIp: true });
@@ -129,9 +159,8 @@ export async function acceptInvite(_: FormState, form: FormData): Promise<FormSt
     await tx.delete(s.sessions).where(eq(s.sessions.userId, inv.userId));
   });
   await recordSecurity({ userId: inv.userId, action: EV.setPassword, label: email, field: `${inv.purpose} link`, withIp: true });
-  await endSession();
-  await startSession(inv.userId);
-  redirect("/");
+  // A reset link proves the email, not the phone: two-step still applies.
+  redirect(await afterFirstFactor(inv.userId, "link"));
 }
 
 export async function changePassword(_: FormState, form: FormData): Promise<FormState> {
@@ -139,11 +168,16 @@ export async function changePassword(_: FormState, form: FormData): Promise<Form
   if (!me) return { error: "You are signed out." };
   const current = String(form.get("current") ?? "");
   const next = String(form.get("next") ?? "");
-  if (authMode() === "password" && !(await verifyPassword(current, me.passwordHash))) return { error: "Your current password is not right." };
+  // People who joined with Google have no password yet and may set one.
+  if (authMode() === "password" && me.passwordHash && !(await verifyPassword(current, me.passwordHash))) return { error: "Your current password is not right." };
   if (next.length < 10) return { error: "Use at least ten characters." };
   if (await isBreachedPassword(next)) return { error: BREACHED_MESSAGE };
   const db = await getDb();
   await db.update(s.users).set({ passwordHash: await hashPassword(next) }).where(eq(s.users.id, me.id));
   await recordSecurity({ userId: me.id, action: EV.changedPassword, label: me.email ?? me.name, withIp: true });
+  // A new password signs out every other device.
+  const sid = await currentSessionId();
+  if (sid) await db.delete(s.sessions).where(and(eq(s.sessions.userId, me.id), ne(s.sessions.id, sid)));
+  refresh();
   return { error: undefined, email: "saved" };
 }

@@ -1,13 +1,17 @@
 import "server-only";
 import { cache } from "react";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, desc, eq, gt, isNull } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
 import { getDb, schema as s } from "@/db";
+import { sign, unsign } from "@/server/signed";
+import { clientIp } from "@/server/throttle";
 
 const COOKIE = "bos_session";
 const THIRTY_DAYS = 30 * 24 * 3600 * 1000;
+/** How stale "last active" may get before a request writes it again. */
+const SEEN_EVERY = 5 * 60 * 1000;
 
 export type AuthMode = "demo" | "password";
 
@@ -31,13 +35,24 @@ export const getViewer = cache(async () => {
   if (!sid) return null;
   const db = await getDb();
   const rows = await db
-    .select({ user: s.users })
+    .select({ user: s.users, lastSeenAt: s.sessions.lastSeenAt })
     .from(s.sessions)
     .innerJoin(s.users, eq(s.users.id, s.sessions.userId))
     .where(and(eq(s.sessions.id, sid), gt(s.sessions.expiresAt, new Date())))
     .limit(1);
-  return rows[0]?.user ?? null;
+  const row = rows[0];
+  if (!row) return null;
+  // "Last active" for the sessions list, written at most every five minutes.
+  if (Date.now() - row.lastSeenAt.getTime() > SEEN_EVERY) {
+    await db.update(s.sessions).set({ lastSeenAt: new Date() }).where(eq(s.sessions.id, sid));
+  }
+  return row.user;
 });
+
+/** The id of the session this request is signed in with, if any. */
+export async function currentSessionId(): Promise<string | null> {
+  return (await cookies()).get(COOKIE)?.value ?? null;
+}
 
 export async function requireViewer() {
   const user = await getViewer();
@@ -50,8 +65,11 @@ export async function startSession(userId: string) {
   const db = await getDb();
   const id = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + THIRTY_DAYS);
-  await db.insert(s.sessions).values({ id, userId, expiresAt });
+  const userAgent = ((await headers()).get("user-agent") ?? "").slice(0, 400);
+  const ip = await clientIp();
+  await db.insert(s.sessions).values({ id, userId, expiresAt, userAgent, ip });
   const jar = await cookies();
+  jar.delete(PENDING);
   jar.set(COOKIE, id, {
     httpOnly: true,
     sameSite: "lax",
@@ -59,6 +77,35 @@ export async function startSession(userId: string) {
     path: "/",
     expires: expiresAt,
   });
+}
+
+/*
+ * Two-step sign-in. After the password (or Google) checks out for someone
+ * with two-step verification on, they get this short-lived signed cookie
+ * instead of a session. Only a correct code turns it into a session.
+ */
+const PENDING = "bos_2fa";
+const PENDING_TTL = 5 * 60 * 1000;
+
+export async function startPending(userId: string) {
+  const jar = await cookies();
+  jar.set(PENDING, sign({ uid: userId }, PENDING_TTL), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: PENDING_TTL / 1000,
+  });
+}
+
+/** Who is half-way through signing in on this browser, if anyone. */
+export async function pendingUserId(): Promise<string | null> {
+  const v = unsign<{ uid: string }>((await cookies()).get(PENDING)?.value);
+  return typeof v?.uid === "string" ? v.uid : null;
+}
+
+export async function clearPending() {
+  (await cookies()).delete(PENDING);
 }
 
 export async function endSession() {

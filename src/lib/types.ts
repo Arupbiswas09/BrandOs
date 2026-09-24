@@ -3,7 +3,11 @@ import type {
 } from "@/db/schema";
 
 /** A person as the browser sees them. Email choices stay on the server, except my own (Workspace.notify). */
-export type PublicUser = Omit<User, "passwordHash" | "notifyPrefs" | "lastDigestAt"> & { hasPassword: boolean };
+export type PublicUser = Omit<User, "passwordHash" | "notifyPrefs" | "lastDigestAt"> & {
+  hasPassword: boolean;
+  /** Two-step verification is on. Shown to teammates, never to client guests. */
+  twoFactor: boolean;
+};
 
 export type Recent = { kind: string; itemId: string };
 

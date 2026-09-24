@@ -291,6 +291,35 @@ export const sessions = pgTable("sessions", {
   userId: text("user_id").notNull(),
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  /** Browser and address at sign-in, so people can tell their devices apart. */
+  userAgent: text("user_agent").notNull().default(""),
+  ip: text("ip").notNull().default(""),
+  /** Touched at most every five minutes while the session is used. */
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("sessions_user_idx").on(t.userId)]);
+
+/**
+ * Two-step verification (TOTP). Kept out of `users` so the secret can never
+ * travel with a user row to the browser or an export.
+ */
+export const twoFactor = pgTable("two_factor", {
+  userId: text("user_id").primaryKey(),
+  /** Base32 shared secret. */
+  secret: text("secret").notNull(),
+  /** Null while set-up waits for the first code; set once confirmed. */
+  enabledAt: timestamp("enabled_at", { withTimezone: true }),
+  /** SHA-256 hashes of the unused one-time recovery codes. */
+  recoveryCodes: text("recovery_codes").array().notNull().default([]),
+  /** The last 30-second step a code was accepted for, so a code works once. */
+  lastStep: integer("last_step").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Failed sign-in counters per email or IP, shared by every server instance. */
+export const loginAttempts = pgTable("login_attempts", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const invites = pgTable("invites", {
@@ -363,6 +392,7 @@ export const calendarFeeds = pgTable("calendar_feeds", {
 export type QueuedNotification = typeof notificationQueue.$inferSelect;
 export type CalendarFeed = typeof calendarFeeds.$inferSelect;
 export type User = typeof users.$inferSelect;
+export type Session = typeof sessions.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Client = typeof clients.$inferSelect;
 export type Brand = typeof brands.$inferSelect;
