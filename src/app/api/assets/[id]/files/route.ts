@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
-import { can } from "@/lib/access";
+import { can, canChange } from "@/lib/access";
 import { readAll, makeVisibility, scopeFor } from "@/server/data";
 import { getViewer } from "@/server/session";
-import { humanSize, saveFile } from "@/server/storage";
+import { humanSize, saveFile, storageProblem } from "@/server/storage";
 
 const MAX = 25 * 1024 * 1024;
 
@@ -11,11 +11,15 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
   const { id } = await ctx.params;
   const me = await getViewer();
   if (!me) return Response.json({ error: "You are signed out." }, { status: 401 });
+  const problem = storageProblem();
+  if (problem) return Response.json({ error: problem }, { status: 503 });
   if (!can(me, "edit")) return Response.json({ error: "Your access level does not allow uploads." }, { status: 403 });
   const all = await readAll();
   const vis = makeVisibility(all, scopeFor(all, me.id));
   const asset = all.assets.find((a) => a.id === id);
   if (!asset || !vis.asset(id)) return Response.json({ error: "That asset is not here." }, { status: 404 });
+  if (!canChange(me, asset)) return Response.json({ error: "Contributors can only upload to work they own." }, { status: 403 });
+  if (!asset.brandId && !can(me, "library")) return Response.json({ error: "Only managers and admins can change the Global Library." }, { status: 403 });
 
   const form = await req.formData().catch(() => null);
   const files = (form?.getAll("file") ?? []).filter((f): f is File => f instanceof File && f.size > 0);

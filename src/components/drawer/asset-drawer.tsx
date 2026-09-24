@@ -56,7 +56,7 @@ function Drawer({ a }: { a: Asset }) {
   const color = b?.primary ?? "#64748B";
   const offers = ws.linkedOffers(a.id);
   const cat = ws.catOf(a);
-  const canEdit = ws.can("edit");
+  const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
   const items = a.items ?? [];
   const done = items.filter((i) => i.done).length;
   const files = a.files ?? [];
@@ -197,9 +197,12 @@ export function ReviewBar({ kind, item }: { kind: "asset" | "offer"; item: Pick<
         </span>
       )}
       {!w && <span className="min-w-5 flex-1" />}
+      {ws.canChange(item) && (!ws.can("review") || item.review !== "In review") && (
+        <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>{item.review === "In review" ? "Reassign" : "Send for review"}</Btn>
+      )}
       {ws.can("review") && (
         <>
-          <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>{item.review === "In review" ? "Reassign" : "Send for review"}</Btn>
+          {ws.canChange(item) && item.review === "In review" && <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>Reassign</Btn>}
           <Btn size="sm" variant="change" disabled={pending} onClick={() => open({ kind: "reqChanges", item: kind, id: item.id })}>Request changes</Btn>
           <Btn size="sm" variant="approve" disabled={pending || item.review === "Approved"} onClick={() => run(approveItem, kind, item.id)}>{item.review === "Approved" ? "Approved" : "Approve"}</Btn>
         </>
@@ -227,7 +230,7 @@ function Overview({ a }: { a: Asset }) {
           <div key={o.id} className="flex items-center gap-2.5 rounded-[10px] border border-line px-[13px] py-[11px]">
             <button type="button" onClick={() => router.push(href.offer(o.id))} className="flex-1 text-left text-[15px] font-medium text-ink hover:text-accent">{o.name}</button>
             <Chip color={ws.segColor(o.segment, o.brandId)} size="xs">{o.segment}</Chip>
-            {ws.can("edit") && <button type="button" onClick={() => run(toggleLink, a.id, o.id)} className="flex-none px-1 py-0.5 text-[13.5px] text-mute-5 hover:text-danger">Unlink</button>}
+            {ws.canChange(a) && <button type="button" onClick={() => run(toggleLink, a.id, o.id)} className="flex-none px-1 py-0.5 text-[13.5px] text-mute-5 hover:text-danger">Unlink</button>}
           </div>
         ))}
         {!offers.length && a.brandId && (
@@ -418,7 +421,7 @@ function Files({ a }: { a: Asset }) {
   const [busy, setBusy] = useState(false);
   const [drag, setDrag] = useState(false);
   const files = a.files ?? [];
-  const canEdit = ws.can("edit");
+  const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
 
   const upload = async (list: FileList | null) => {
     if (!list?.length) return;
@@ -522,7 +525,7 @@ function History({ a }: { a: Asset }) {
                 <span className="block truncate text-[15px] text-ink-3">{v.headline || v.name}</span>
                 <span className="block text-[13.5px] text-mute-4">replaced {ws.ago(v.createdAt)}{v.userId ? ` by ${ws.first(v.userId)}` : ""}</span>
               </span>
-              {ws.can("edit") && <Btn size="sm" disabled={pending} onClick={() => run(restoreVersion, a.id, v.id)}>Restore</Btn>}
+              {ws.canChange(a) && <Btn size="sm" disabled={pending} onClick={() => run(restoreVersion, a.id, v.id)}>Restore</Btn>}
             </div>
           ))}
         </div>
@@ -543,7 +546,7 @@ function Sharing({ a }: { a: Asset }) {
             <div className="mb-[3px] text-[16px] font-semibold">Cleared to send</div>
             <div className="text-[14.5px] leading-[1.5] text-mute-2">Marks this as signed off and safe to put in front of the client.</div>
           </div>
-          {ws.can("edit") ? (
+          {ws.can("share") ? (
             <button type="button" role="switch" aria-checked={a.clientVisible} disabled={pending} onClick={() => run(toggleClientVisible, a.id)}
               className={cx("flex flex-none items-center gap-2 rounded-[7px] border px-[13px] py-1.5 text-[14.5px] font-medium", a.clientVisible ? "border-ok/40 bg-[rgba(47,143,98,.08)] text-ok" : "border-line bg-white text-ink-3 hover:border-mute-2")}>
               <span className={cx("h-2 w-2 rounded-full", a.clientVisible ? "bg-ok" : "bg-line-strong")} />{label}
@@ -556,8 +559,8 @@ function Sharing({ a }: { a: Asset }) {
           <div className="mt-3 rounded-[9px] bg-[rgba(201,154,46,.08)] px-3 py-2 text-[14.5px] text-warn-ink">Cleared to send, but nobody has approved it yet.</div>
         )}
       </div>
-      <Hint className="mt-3.5">Clients do not log in. Assets cleared to send appear on the brand&apos;s client share page, if one has been created — every other asset stays internal.</Hint>
-      {a.brandId && ws.can("edit") && <Btn className="mt-3" onClick={() => open({ kind: "share", brandId: a.brandId! })}>Manage client links</Btn>}
+      <Hint className="mt-3.5">Assets cleared to send appear for people with the Client role and on the brand&apos;s client share page. Every other asset stays internal.</Hint>
+      {a.brandId && ws.can("share") && <Btn className="mt-3" onClick={() => open({ kind: "share", brandId: a.brandId! })}>Manage client links</Btn>}
     </div>
   );
 }

@@ -12,8 +12,19 @@ holder.__brandos ??= {};
 
 const migrationsFolder = path.join(process.cwd(), "drizzle");
 
+/** Demo data on a fresh database: on in development, off in production. BRANDOS_SEED=on|off overrides. */
+export function seedEnabled() {
+  const v = process.env.BRANDOS_SEED;
+  if (v === "on" || v === "off") return v === "on";
+  return process.env.NODE_ENV !== "production";
+}
+
 async function connect(): Promise<DB> {
   const url = process.env.DATABASE_URL;
+  if (!url && process.env.VERCEL) {
+    // Serverless disks are throwaway; a local database there would lose everything.
+    throw new Error("BrandOS needs DATABASE_URL on Vercel. Connect a Postgres database (for example Neon from the Vercel Marketplace) and redeploy.");
+  }
   let db: DB;
   if (url) {
     // Hosted Postgres (Neon, Supabase, RDS...).
@@ -39,7 +50,7 @@ async function connect(): Promise<DB> {
   }
 
   const existing = await db.select({ id: schema.users.id }).from(schema.users).limit(1);
-  if (existing.length === 0 && process.env.BRANDOS_SEED !== "off") {
+  if (existing.length === 0 && seedEnabled()) {
     await seed(db);
   }
   await ensureAdmin(db);

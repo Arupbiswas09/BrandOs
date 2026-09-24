@@ -36,7 +36,7 @@ test("a viewer only sees their clients and cannot edit", async ({ page }) => {
   await expect(nav.getByText("Quokka For Good")).toHaveCount(0);
   await page.goto("/brands/br1");
   await expect(page.getByText("This brand is not here")).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ New" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "New", exact: true })).toHaveCount(0);
 });
 
 test("search finds things with the keyboard", async ({ page }) => {

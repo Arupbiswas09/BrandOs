@@ -28,6 +28,7 @@ export default async function SharePage({ params }: PageProps<"/share/[token]">)
           <h1 className="m-0 mb-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[30px]">{b.name}</h1>
           <p className="m-0 max-w-[52ch] text-[16px] leading-[1.5] text-[#475569]">{b.tagline}</p>
           <p className="mt-4 text-[15px] text-[#475569]">{assets.length} item{assets.length === 1 ? "" : "s"} ready for you. The team has cleared everything here to send.</p>
+          <a href={`/share/${token}/guidelines`} className="mt-4 inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[15px] font-semibold" style={{ background: b.primary, color: fg }}>Open the brand guidelines →</a>
         </div>
       </header>
 

@@ -7,7 +7,7 @@ import { z } from "zod";
 import { getDb, schema as s } from "@/db";
 import type { DB } from "@/db";
 import { seed } from "@/db/seed";
-import { can, type Perm } from "@/lib/access";
+import { can, canChange, type Perm } from "@/lib/access";
 import { DEFAULT_GOALS, ASSET_TYPES } from "@/lib/constants";
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
@@ -32,7 +32,7 @@ function newId(prefix: string) {
 async function context(perm?: Perm) {
   const me = await getViewer();
   if (!me) throw new Denied("You are signed out. Sign in again to keep working.");
-  if (perm && !can(me, perm)) throw new Denied("Your access level does not allow that.");
+  if (perm && !can(me, perm)) throw new Denied("Your role does not allow that. Ask an admin if you need it.");
   const all = await readAll();
   const vis = makeVisibility(all, scopeFor(all, me.id));
   const db = await getDb();
@@ -58,6 +58,15 @@ async function log(db: DB | Parameters<Parameters<DB["transaction"]>[0]>[0], use
 
 function need(cond: unknown, msg = "You cannot see that.") {
   if (!cond) throw new Denied(msg);
+}
+
+/** Contributors change only work they own; editors and up change anything they can see. */
+function own(me: Parameters<typeof canChange>[0], item: { ownerId?: string | null } | undefined) {
+  if (!canChange(me, item)) throw new Denied("Contributors can only change work they own. Ask its owner or an editor.");
+}
+
+function needAny(me: Parameters<typeof can>[0], ...perms: Perm[]) {
+  if (!perms.some((p) => can(me, p))) throw new Denied("Your role does not allow that. Ask an admin if you need it.");
 }
 
 const str = (max = 5000) => z.string().trim().max(max);
@@ -155,7 +164,7 @@ const clientDraft = z.object({
 export async function saveClient(input: z.input<typeof clientDraft>) {
   let id = input.id;
   const r = await run(async () => {
-    const { me, vis, db } = await context("edit");
+    const { me, vis, db } = await context("structure");
     const d = clientDraft.parse(input);
     if (d.id) {
       need(vis.client(d.id));
@@ -175,6 +184,27 @@ export async function saveClient(input: z.input<typeof clientDraft>) {
 
 /* ================================================================ brands */
 
+const colourSchema = z.object({
+  name: str(80), hex: z.string().refine(isHex, "Colours must be hex values like #1F6F5C."), usage: str(300),
+  role: z.enum(["Primary", "Secondary", "Accent", "Neutral", "Background", "Text"]).optional(),
+  cmyk: str(40).optional(), pantone: str(40).optional(),
+});
+const fontSchema = z.object({ name: str(80), role: str(120), files: str(120), weights: str(80).optional(), fallback: str(160).optional(), source: str(300).optional() });
+const list = (n = 30, len = 200) => z.array(str(len)).max(n).optional();
+const kitSchema = z.object({
+  mission: str(1000).optional(),
+  values: list(), weAre: list(), weAreNot: list(), wordsUse: list(60, 80), wordsAvoid: list(60, 80),
+  voiceExamples: z.array(z.object({ context: str(80), say: str(500), dont: str(500) })).max(20).optional(),
+  typeScale: z.array(z.object({
+    name: str(40).min(1), font: str(80), size: z.number().min(6).max(200), weight: z.number().min(100).max(900),
+    lineHeight: z.number().min(0.8).max(3), tracking: z.number().min(-0.2).max(0.5).optional(), sample: str(200).optional(),
+  })).max(16).optional(),
+  logo: z.object({ clearSpace: str(300).optional(), minDigital: str(80).optional(), minPrint: str(80).optional(), notes: str(1000).optional(), misuse: list(20, 200) }).optional(),
+  imagery: str(1500).optional(), imageryDo: list(), imageryDont: list(),
+  dos: list(), donts: list(),
+  version: str(40).optional(),
+});
+
 const segmentSchema = z.object({ name: str(80).min(1), color: z.string().refine(isHex, "Colours must be hex values.") });
 const brandDraft = z.object({
   id: z.string().optional(),
@@ -189,8 +219,8 @@ const brandDraft = z.object({
   voice: str().default(""),
   boilerplate: str().optional(),
   segments: z.array(segmentSchema).max(24).optional(),
-  colours: z.array(z.object({ name: str(80), hex: z.string().refine(isHex), usage: str(300) })).max(24).optional(),
-  fonts: z.array(z.object({ name: str(80), role: str(120), files: str(120) })).max(24).optional(),
+  colours: z.array(colourSchema).max(24).optional(),
+  fonts: z.array(fontSchema).max(24).optional(),
   /** [from, to] pairs from the kit editor, so offers follow a renamed segment. */
   segmentRenames: z.array(z.tuple([str(80), str(80)])).max(24).optional(),
 });
@@ -198,8 +228,12 @@ const brandDraft = z.object({
 export async function saveBrand(input: z.input<typeof brandDraft>) {
   let id = input.id;
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context();
     const d = brandDraft.parse(input);
+    // Setting a brand up is structure; its colours, fonts and voice are the kit.
+    const structure = can(me, "structure");
+    if (!d.id) need(structure, "Your role cannot add brands. Ask a manager.");
+    else needAny(me, "structure", "kit");
     need(vis.client(d.clientId), "You cannot add brands to that client.");
     if (d.parentId) need(vis.brand(d.parentId));
     const mark = (d.mark || d.name.slice(0, 2)).toUpperCase();
@@ -214,6 +248,14 @@ export async function saveBrand(input: z.input<typeof brandDraft>) {
     if (d.id) {
       need(vis.brand(d.id));
       const before = all.brands.find((b) => b.id === d.id)!;
+      if (!structure) {
+        // Kit editors keep the brand's identity as it is.
+        Object.assign(patch, { name: before.name, tagline: before.tagline, mark: before.mark, description: before.description, clientId: before.clientId });
+        d.clientId = before.clientId;
+      }
+      if (!can(me, "kit")) {
+        Object.assign(patch, { primary: before.primary, secondary: before.secondary, voice: before.voice, boilerplate: before.boilerplate, colours: before.colours, fonts: before.fonts });
+      }
       if (d.segments) {
         const keep = new Set(d.segments.map((x) => x.name));
         const renamed = new Set((d.segmentRenames ?? []).map(([f]) => f));
@@ -253,6 +295,45 @@ export async function saveBrand(input: z.input<typeof brandDraft>) {
   });
 }
 
+const kitDraft = z.object({
+  brandId: z.string(),
+  voice: str().default(""),
+  boilerplate: str().default(""),
+  colours: z.array(colourSchema).max(24),
+  fonts: z.array(fontSchema).max(24),
+  segments: z.array(segmentSchema).max(24),
+  segmentRenames: z.array(z.tuple([str(80), str(80)])).max(24).default([]),
+  kit: kitSchema,
+});
+
+/** Everything in the Brand Kit editor, in one save. Managers and admins only. */
+export async function saveKit(input: z.input<typeof kitDraft>) {
+  return run(async () => {
+    const { me, vis, db, all } = await context("kit");
+    const d = kitDraft.parse(input);
+    need(vis.brand(d.brandId));
+    const b = all.brands.find((x) => x.id === d.brandId)!;
+    const keep = new Set(d.segments.map((x) => x.name));
+    const renamed = new Set(d.segmentRenames.map(([f]) => f));
+    const orphaned = b.segments.filter((x) => x.name !== "All segments" && !keep.has(x.name) && !renamed.has(x.name))
+      .filter((x) => all.offers.some((o) => o.brandId === b.id && o.segment === x.name));
+    if (orphaned.length) throw new Denied(`Offers still use ${orphaned[0].name}. Move them before removing it.`);
+    const primary = d.colours.find((c) => c.role === "Primary")?.hex ?? d.colours[0]?.hex ?? b.primary;
+    const secondary = d.colours.find((c) => c.role === "Secondary" || c.role === "Accent")?.hex ?? d.colours[1]?.hex ?? b.secondary;
+    await db.transaction(async (tx) => {
+      await tx.update(s.brands).set({
+        voice: d.voice, boilerplate: d.boilerplate, colours: d.colours, fonts: d.fonts,
+        segments: withAllSegments(d.segments), kit: d.kit, primary, secondary, updatedAt: new Date(),
+      }).where(eq(s.brands.id, b.id));
+      for (const [from, to] of d.segmentRenames) {
+        if (!from || !to || from === to || from === "All segments") continue;
+        await tx.update(s.offers).set({ segment: to }).where(and(eq(s.offers.brandId, b.id), eq(s.offers.segment, from)));
+      }
+      await log(tx, me.id, "updated", "brand", b.id, b.name, "Brand Kit");
+    });
+  });
+}
+
 function withAllSegments(list: { name: string; color: string }[]) {
   const rest = list.filter((x) => x.name !== "All segments");
   return [...rest, { name: "All segments", color: "#475569" }];
@@ -271,11 +352,12 @@ const serviceDraft = z.object({
 export async function saveService(input: z.input<typeof serviceDraft>) {
   let id = input.id;
   return run(async () => {
-    const { me, vis, db } = await context("edit");
+    const { me, vis, db, all } = await context("edit");
     const d = serviceDraft.parse(input);
     need(vis.brand(d.brandId));
     if (d.id) {
       need(vis.service(d.id));
+      own(me, all.services.find((v) => v.id === d.id));
       await db.update(s.services).set({ name: d.name, short: d.short, description: d.description, updatedAt: new Date() }).where(eq(s.services.id, d.id));
       await log(db, me.id, "updated", "service", d.id, d.name, "Details");
     } else {
@@ -338,11 +420,13 @@ export async function saveOffer(input: z.input<typeof offerDraft>) {
     };
     if (d.id) {
       need(vis.offer(d.id));
+      own(me, all.offers.find((o) => o.id === d.id));
+      if (me.access === "Contributor") delete (values as { ownerId?: string }).ownerId;
       await db.update(s.offers).set({ ...values, updatedAt: new Date() }).where(eq(s.offers.id, d.id));
       await log(db, me.id, "updated", "offer", d.id, d.name, "Details");
     } else {
       id = newId("of");
-      await db.insert(s.offers).values({ id, ...values, ownerId: d.ownerId || me.id });
+      await db.insert(s.offers).values({ id, ...values, ownerId: me.access === "Contributor" ? me.id : d.ownerId || me.id });
       await log(db, me.id, "created", "offer", id, d.name);
     }
     return ok(id);
@@ -390,6 +474,7 @@ export async function saveAsset(input: z.input<typeof assetDraft>) {
     const { me, vis, db, all } = await context("edit");
     const d = assetDraft.parse(input);
     if (d.brandId) need(vis.brand(d.brandId));
+    else need(can(me, "library"), "Only managers and admins can change the Global Library.");
     for (const oid of d.offerIds) {
       const o = all.offers.find((x) => x.id === oid);
       need(o && vis.offer(oid) && o.brandId === d.brandId, "Assets can only be linked to offers in their own brand.");
@@ -412,6 +497,9 @@ export async function saveAsset(input: z.input<typeof assetDraft>) {
       if (d.id) {
         need(vis.asset(d.id));
         const before = all.assets.find((a) => a.id === d.id)!;
+        own(me, before);
+        if (!before.brandId) need(can(me, "library"), "Only managers and admins can change the Global Library.");
+        if (d.status === "Live" && before.status !== "Live") need(can(me, "publish"), "Your role cannot mark work Live. Send it for review instead.");
         await tx.insert(s.assetVersions).values({ id: newId("av"), assetId: d.id, version: before.version, data: assetSnapshot(before), userId: me.id });
         await tx.update(s.assets).set({ ...values, version: before.version + 1, updatedAt: new Date() }).where(eq(s.assets.id, d.id));
         await tx.delete(s.links).where(eq(s.links.assetId, d.id));
@@ -419,6 +507,7 @@ export async function saveAsset(input: z.input<typeof assetDraft>) {
       } else {
         id = newId("as");
         const type = ASSET_TYPES[d.type];
+        if (d.status === "Live") need(can(me, "publish"), "Your role cannot mark work Live. Send it for review instead.");
         await tx.insert(s.assets).values({
           id: id!, ...values, ownerId: me.id,
           isTemplate: d.isTemplate ?? d.type === "Template",
@@ -451,6 +540,7 @@ export async function cloneAsset(input: z.input<typeof cloneDraft>) {
     const d = cloneDraft.parse(input);
     need(vis.asset(d.srcId));
     if (d.brandId) need(vis.brand(d.brandId));
+    else need(can(me, "library"), "Only managers and admins can add to the Global Library.");
     const src = all.assets.find((a) => a.id === d.srcId)!;
     for (const oid of d.offerIds) need(all.offers.find((o) => o.id === oid)?.brandId === d.brandId, "Link the clone to offers in its new brand.");
     id = newId("as");
@@ -474,6 +564,7 @@ export async function restoreVersion(assetId: string, versionId: string) {
     const { me, vis, db, all } = await context("edit");
     need(vis.asset(assetId));
     const current = all.assets.find((a) => a.id === assetId)!;
+    own(me, current);
     const [v] = await db.select().from(s.assetVersions).where(and(eq(s.assetVersions.id, versionId), eq(s.assetVersions.assetId, assetId)));
     need(v, "That version no longer exists.");
     const data = v.data as Partial<s.Asset>;
@@ -515,6 +606,7 @@ export async function toggleLink(assetId: string, offerId: string) {
     need(vis.asset(assetId) && vis.offer(offerId));
     const a = all.assets.find((x) => x.id === assetId)!;
     const o = all.offers.find((x) => x.id === offerId)!;
+    own(me, a);
     need(!a.brandId || a.brandId === o.brandId, "An asset can only be linked to offers in its own brand.");
     const has = all.links.some((l) => l.assetId === assetId && l.offerId === offerId);
     if (has) {
@@ -548,6 +640,7 @@ export async function saveCta(input: z.input<typeof ctaDraft>) {
     const values = { brandId: d.brandId, text: d.text, url: d.url, bg: d.bg, fg: d.fg || onColor(d.bg), style: d.style };
     if (d.id) {
       need(vis.cta(d.id));
+      own(me, { ownerId: null });
       await db.update(s.ctas).set({ ...values, updatedAt: new Date() }).where(eq(s.ctas.id, d.id));
       await log(db, me.id, "updated", "cta", d.id, d.text);
     } else {
@@ -563,7 +656,8 @@ export async function saveCta(input: z.input<typeof ctaDraft>) {
 
 export async function saveGoal(input: { brandId: string; name: string; description?: string; original?: string }) {
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context();
+    needAny(me, "structure", "kit");
     need(vis.brand(input.brandId));
     const nm = input.name.trim();
     if (!nm) throw new Denied("Give the goal a name.");
@@ -594,7 +688,8 @@ export async function saveGoal(input: { brandId: string; name: string; descripti
 
 export async function mergeGoal(brandId: string, from: string, into: string) {
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context();
+    needAny(me, "structure", "kit");
     need(vis.brand(brandId));
     if (!into || into === from) throw new Denied("Pick a goal to merge into.");
     const b = all.brands.find((x) => x.id === brandId)!;
@@ -611,7 +706,8 @@ export async function mergeGoal(brandId: string, from: string, into: string) {
 
 export async function deleteGoal(brandId: string, goal: string) {
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context();
+    needAny(me, "structure", "kit");
     need(vis.brand(brandId));
     const b = all.brands.find((x) => x.id === brandId)!;
     await db.transaction(async (tx) => {
@@ -631,7 +727,7 @@ const personDraft = z.object({
   name: name("person"),
   email: z.string().trim().toLowerCase().email("That email address does not look right.").or(z.literal("")).optional(),
   role: str(80).default("Team member"),
-  access: z.enum(["Admin", "Editor", "Reviewer", "Viewer"]),
+  access: z.enum(["Admin", "Manager", "Editor", "Contributor", "Reviewer", "Viewer", "Client"]),
   allClients: z.boolean().default(false),
   clientIds: z.array(z.string()).default([]),
   brandIds: z.array(z.string()).default([]),
@@ -645,6 +741,8 @@ export async function savePerson(input: z.input<typeof personDraft>) {
     const d = personDraft.parse(input);
     const email = d.email || null;
     if (email && all.users.some((u) => u.email === email && u.id !== d.id)) throw new Denied("Someone already uses that email address.");
+    // Guests never see every client.
+    if (d.access === "Client") d.allClients = false;
     const values = {
       name: d.name, role: d.role, access: d.access, allClients: d.allClients, email,
       clientIds: d.allClients ? [] : d.clientIds, brandIds: d.allClients ? [] : d.brandIds, groupIds: d.allClients ? [] : d.groupIds,
@@ -845,12 +943,15 @@ export async function setStatus(kind: "offer" | "asset", id: string, status: str
       need(vis.offer(id));
       const st = z.enum(["Ideation", "Active", "Paused", "Archived"]).parse(status);
       const o = all.offers.find((x) => x.id === id)!;
+      own(me, o);
       await db.update(s.offers).set({ status: st, updatedAt: new Date() }).where(eq(s.offers.id, id));
       await log(db, me.id, "changed status", "offer", id, o.name, `${o.status} → ${st}`);
     } else {
       need(vis.asset(id));
       const st = z.enum(["Draft", "Ready", "Live", "Archived"]).parse(status);
       const a = all.assets.find((x) => x.id === id)!;
+      own(me, a);
+      if (st === "Live") need(can(me, "publish"), "Your role cannot mark work Live. Send it for review instead.");
       await db.update(s.assets).set({ status: st, updatedAt: new Date() }).where(eq(s.assets.id, id));
       await log(db, me.id, "changed status", "asset", id, a.name, `${a.status} → ${st}`);
     }
@@ -863,11 +964,14 @@ function reviewTarget(kind: "offer" | "asset") {
 
 export async function sendForReview(kind: "offer" | "asset", id: string, reviewerId: string) {
   return run(async () => {
-    const { me, vis, db, all } = await context("review");
+    const { me, vis, db, all } = await context("edit");
     need(kind === "offer" ? vis.offer(id) : vis.asset(id));
     const reviewer = all.users.find((u) => u.id === reviewerId);
-    need(reviewer && can(reviewer, "review"), "That person cannot review. Pick someone with Reviewer, Editor or Admin access.");
     const item = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === id)!;
+    own(me, item);
+    need(reviewer && can(reviewer, "review"), "That person cannot review. Pick someone whose role can approve.");
+    // A client can only review what has been shared with them.
+    need(reviewer!.access !== "Client" || makeVisibility(all, scopeFor(all, reviewer!.id))[kind](id), "That client cannot see this yet. Mark it visible to the client first.");
     const t = reviewTarget(kind);
     await db.update(t).set({ review: "In review", reviewerId, changeNote: "", updatedAt: new Date() }).where(eq(t.id, id));
     await log(db, me.id, `asked ${reviewer!.name.split(" ")[0]} to review`, kind, id, item.name);
@@ -958,9 +1062,10 @@ export async function toggleResolve(commentId: string) {
 
 async function editItems(assetId: string, perm: Perm, fn: (items: s.CheckItem[]) => s.CheckItem[]) {
   return run(async () => {
-    const { vis, db, all } = await context(perm);
+    const { me, vis, db, all } = await context(perm);
     need(vis.asset(assetId));
     const a = all.assets.find((x) => x.id === assetId)!;
+    if (perm === "edit") own(me, a);
     await db.update(s.assets).set({ items: fn((a.items ?? []).map((i) => ({ ...i }))) }).where(eq(s.assets.id, assetId));
   });
 }
@@ -990,7 +1095,7 @@ export async function moveItem(assetId: string, index: number, dir: -1 | 1) {
 
 export async function toggleClientVisible(assetId: string) {
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context("share");
     need(vis.asset(assetId));
     const a = all.assets.find((x) => x.id === assetId)!;
     await db.update(s.assets).set({ clientVisible: !a.clientVisible, updatedAt: new Date() }).where(eq(s.assets.id, assetId));
@@ -1003,6 +1108,7 @@ export async function removeFile(assetId: string, fileName: string) {
     const { me, vis, db, all } = await context("edit");
     need(vis.asset(assetId));
     const a = all.assets.find((x) => x.id === assetId)!;
+    own(me, a);
     const gone = a.files.find((f) => f.name === fileName);
     await db.update(s.assets).set({ files: a.files.filter((f) => f.name !== fileName), updatedAt: new Date() }).where(eq(s.assets.id, assetId));
     await log(db, me.id, "removed a file from", "asset", assetId, a.name, fileName);
@@ -1015,7 +1121,7 @@ export async function removeFile(assetId: string, fileName: string) {
 
 export async function createShareLink(brandId: string, label: string) {
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context("share");
     need(vis.brand(brandId));
     const { randomBytes } = await import("node:crypto");
     const token = randomBytes(18).toString("base64url");
@@ -1028,7 +1134,7 @@ export async function createShareLink(brandId: string, label: string) {
 
 export async function revokeShareLink(token: string) {
   return run(async () => {
-    const { me, vis, db, all } = await context("edit");
+    const { me, vis, db, all } = await context("share");
     const [l] = await db.select().from(s.shareLinks).where(eq(s.shareLinks.token, token));
     need(l && vis.brand(l.brandId), "That link no longer exists.");
     await db.update(s.shareLinks).set({ revokedAt: new Date() }).where(eq(s.shareLinks.token, token));
@@ -1059,6 +1165,7 @@ export async function setDue(kind: "offer" | "asset", id: string, date: string |
     need(kind === "offer" ? vis.offer(id) : vis.asset(id));
     const t = kind === "offer" ? s.offers : s.assets;
     const item = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === id)!;
+    own(me, item);
     const dueAt = dueFrom(date) ?? null;
     await db.update(t).set({ dueAt, updatedAt: new Date() }).where(eq(t.id, id));
     await log(db, me.id, dueAt ? "set a due date on" : "cleared the due date on", kind, id, item.name, dueAt ? dueAt.toDateString() : "");

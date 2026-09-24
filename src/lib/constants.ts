@@ -1,4 +1,5 @@
 import type { Access, AssetStatus, OfferStatus, Review } from "@/db/schema";
+import { ROLES, ROLE_INFO } from "@/lib/access";
 
 export type AssetCategory = "campaign" | "master" | "global";
 
@@ -50,21 +51,11 @@ export const CHANNEL_COLOR: Record<string, string> = {
   Print: "#64748B",
 };
 
-export const ACCESS_LEVELS: Access[] = ["Admin", "Editor", "Reviewer", "Viewer"];
+export const ACCESS_LEVELS: Access[] = ROLES;
 
-export const ACCESS_COLOR: Record<Access, string> = {
-  Admin: "#8156C7",
-  Editor: "#2F8F62",
-  Reviewer: "#C2740C",
-  Viewer: "#64748B",
-};
+export const ACCESS_COLOR = Object.fromEntries(ROLES.map((r) => [r, ROLE_INFO[r].color])) as Record<Access, string>;
 
-export const ACCESS_NOTE: Record<Access, string> = {
-  Admin: "Everything, everywhere. Invites people and is the only role that can delete.",
-  Editor: "Creates, edits and archives inside their scope. Reviews and approves.",
-  Reviewer: "Reads, comments, approves or sends back. Changes nothing themselves.",
-  Viewer: "Reads. Useful for people who need to find things, not change them.",
-};
+export const ACCESS_NOTE = Object.fromEntries(ROLES.map((r) => [r, ROLE_INFO[r].summary])) as Record<Access, string>;
 
 export const DEFAULT_GOALS = [
   { name: "Awareness", description: "Be known by people who have never heard of us." },

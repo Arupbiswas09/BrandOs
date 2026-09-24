@@ -6,7 +6,7 @@ import { getViewer } from "@/server/session";
 export async function GET() {
   const me = await getViewer();
   if (!me) return new Response("Sign in first.", { status: 401 });
-  if (!can(me, "access")) return new Response("Only admins can export the workspace.", { status: 403 });
+  if (!can(me, "export")) return new Response("Only admins can export the workspace.", { status: 403 });
   const all = await readAll();
   const users = all.users.map(({ passwordHash: _p, ...u }) => u);
   const body = JSON.stringify({ exportedAt: new Date().toISOString(), exportedBy: me.email ?? me.id, ...all, users }, null, 2);

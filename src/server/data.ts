@@ -35,7 +35,7 @@ export type All = Awaited<ReturnType<typeof readAll>>;
 
 export function scopeFor(all: All, userId: string): Scope {
   const u = all.users.find((x) => x.id === userId);
-  if (!u) return { all: false, clients: new Set(), brands: new Set() };
+  if (!u) return { all: false, clients: new Set(), brands: new Set(), guest: true };
   return scopeOf(u, all.groups);
 }
 
@@ -47,14 +47,23 @@ export function makeVisibility(all: All, scope: Scope) {
   const assetById = new Map(all.assets.map((a) => [a.id, a]));
   const serviceById = new Map(all.services.map((v) => [v.id, v]));
   const ctaById = new Map(all.ctas.map((c) => [c.id, c]));
+  // Client guests see only finished work that has been cleared for them.
+  const offer = (id: string) => {
+    const o = offerById.get(id);
+    if (!o || !brand(o.brandId)) return false;
+    return !scope.guest || (!o.archived && o.status !== "Ideation");
+  };
+  const asset = (id: string) => {
+    const a = assetById.get(id);
+    if (!a) return false;
+    if (scope.guest) return !!a.brandId && a.clientVisible && !a.archived && brand(a.brandId);
+    return !a.brandId || brand(a.brandId);
+  };
   return {
     brand,
     client: (id: string) => seesClient(scope, id, all.brands),
-    offer: (id: string) => brand(offerById.get(id)?.brandId),
-    asset: (id: string) => {
-      const a = assetById.get(id);
-      return !!a && (!a.brandId || brand(a.brandId));
-    },
+    offer,
+    asset,
     service: (id: string) => brand(serviceById.get(id)?.brandId),
     cta: (id: string) => brand(ctaById.get(id)?.brandId),
   };
@@ -86,14 +95,20 @@ export async function buildWorkspace(
   const scope = scopeFor(all, meId);
   const vis = makeVisibility(all, scope);
 
-  const users: PublicUser[] = all.users.map(({ passwordHash, ...u }) => ({ ...u, hasPassword: !!passwordHash }));
-  const offers = all.offers.filter((o) => vis.brand(o.brandId));
-  const assets = all.assets.filter((a) => !a.brandId || vis.brand(a.brandId));
+  const guest = scope.guest;
+  // Guests get names and roles for the people they work with, never emails or access.
+  const users: PublicUser[] = all.users
+    .filter((u) => !guest || u.id === meId || u.access !== "Client")
+    .map(({ passwordHash, ...u }) => (guest && u.id !== meId
+      ? { ...u, email: null, clientIds: [], brandIds: [], groupIds: [], allClients: false, hasPassword: !!passwordHash }
+      : { ...u, hasPassword: !!passwordHash }));
+  const offers = all.offers.filter((o) => vis.offer(o.id));
+  const assets = all.assets.filter((a) => vis.asset(a.id));
   const offerIds = new Set(offers.map((o) => o.id));
   const assetIds = new Set(assets.map((a) => a.id));
   const comments = all.comments.filter((c) => (c.kind === "asset" ? assetIds.has(c.itemId) : offerIds.has(c.itemId)));
 
-  const activity = all.activity.filter((a) => {
+  const activity = guest ? [] : all.activity.filter((a) => {
     switch (a.type) {
       case "asset": return assetIds.has(a.itemId);
       case "offer": return offerIds.has(a.itemId);
@@ -116,7 +131,7 @@ export async function buildWorkspace(
     aiEnabled: !!process.env.ANTHROPIC_API_KEY,
     uploadsEnabled: true,
     users,
-    groups: all.groups,
+    groups: guest ? [] : all.groups,
     clients: all.clients.filter((c) => vis.client(c.id)),
     brands: all.brands.filter((b) => vis.brand(b.id)),
     services: all.services.filter((v) => vis.brand(v.brandId)),
@@ -127,8 +142,8 @@ export async function buildWorkspace(
     comments,
     activity,
     recents: extra.recents,
-    shareLinks: extra.shareLinks.filter((l) => vis.brand(l.brandId)),
-    queueCounts: queueCounts(all),
+    shareLinks: guest ? [] : extra.shareLinks.filter((l) => vis.brand(l.brandId)),
+    queueCounts: guest ? { [meId]: queueCounts(all)[meId] ?? 0 } : queueCounts(all),
     unreadMentions,
   };
 }

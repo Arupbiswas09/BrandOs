@@ -1,5 +1,5 @@
 import type { Asset, Brand, Offer } from "@/db/schema";
-import { can, scopeLabel, type Perm } from "./access";
+import { can, canChange, scopeLabel, type Perm } from "./access";
 import { ASSET_TYPES, GOAL_PALETTE, NEUTRAL, type AssetCategory } from "./constants";
 import { timeAgo } from "./time";
 import type { PublicUser, Workspace } from "./types";
@@ -55,6 +55,9 @@ export class WS {
   /* ---------- identity ---------- */
   get me(): PublicUser { return this.user(this.d.meId); }
   can(p: Perm) { return can(this.me, p); }
+  /** Whether I can change this particular item (contributors: only their own). */
+  canChange(item?: { ownerId?: string | null } | null) { return canChange(this.me, item); }
+  get isGuest() { return this.me.access === "Client"; }
   user(id: string | null | undefined): PublicUser { return (id && this.byId.users.get(id)) || UNKNOWN_USER; }
   first(id: string | null | undefined) { return this.user(id).name.split(" ")[0]; }
   ago(d: Date | string | number) { return timeAgo(d, this.d.now); }

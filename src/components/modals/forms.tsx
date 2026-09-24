@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Brand, Client, Cta, Service } from "@/db/schema";
 import { hexA, isHex, onColor } from "@/lib/color";
-import { BRAND_PALETTES, OFFER_STATUS, SEGMENT_PALETTE } from "@/lib/constants";
+import { BRAND_PALETTES, OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { deleteGoal, mergeGoal, saveBrand, saveClient, saveCta, saveGoal, saveService } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
@@ -24,7 +24,7 @@ export function ClientModal({ draft }: { draft?: Partial<Client> }) {
   };
   return (
     <Modal title={draft?.id ? "Edit client" : "New client"} width={480} onSubmit={save} footer={<Footer saveLabel="Save client" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="Client name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
+      <Field label="Client name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
       <Field label="Sector and location"><input className="field" value={d.kind} onChange={(e) => setD({ ...d, kind: e.target.value })} placeholder="Wildlife conservation · Western Australia" /></Field>
       <Field label="What we do for them"><textarea rows={3} className="field leading-[1.55]" value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></Field>
     </Modal>
@@ -33,7 +33,7 @@ export function ClientModal({ draft }: { draft?: Partial<Client> }) {
 
 /* ---------------------------------------------------------------- brand */
 
-function ColourInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
+export function ColourInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const [text, setText] = useState(value);
   return (
     <span className="flex items-center gap-2 rounded-[9px] border border-line bg-white py-1 pl-1 pr-2">
@@ -68,13 +68,13 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
         </span>
         <span className="h-6 w-6 rounded-md" style={{ background: d.secondary }} title="Secondary colour" />
       </div>
-      <Field label="Brand name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
+      <Field label="Brand name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
       <div className="grid grid-cols-[2fr_1fr] gap-3">
         <Field label="Tagline"><input className="field" value={d.tagline} onChange={(e) => setD({ ...d, tagline: e.target.value })} placeholder="Small animal. Big mandate." /></Field>
         <Field label="Monogram"><input className="field uppercase" maxLength={3} value={d.mark} onChange={(e) => setD({ ...d, mark: e.target.value })} placeholder={mark} /></Field>
       </div>
       {!draft.parentId && (
-        <Field label="Client">
+        <Field label="Client" required>
           <Select value={d.clientId} onChange={(v) => setD({ ...d, clientId: v })} options={ws.d.clients.filter((c) => !c.archived || c.id === d.clientId).map((c) => ({ value: c.id, label: c.name }))} />
         </Field>
       )}
@@ -98,87 +98,6 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
   );
 }
 
-/* ---------------------------------------------------------------- brand kit editor */
-
-type Row = { key: number; name: string; color: string; orig: string };
-
-export function KitModal({ brandId }: { brandId: string }) {
-  const { ws, close } = useApp();
-  const [run, pending] = useAction();
-  const b = ws.brand(brandId)!;
-  let k = 0;
-  const [segments, setSegments] = useState<Row[]>(b.segments.filter((s) => s.name !== "All segments").map((s) => ({ key: k++, name: s.name, color: s.color, orig: s.name })));
-  const [colours, setColours] = useState(b.colours.map((c) => ({ key: k++, ...c })));
-  const [fonts, setFonts] = useState(b.fonts.map((f) => ({ key: k++, ...f })));
-  const [voice, setVoice] = useState(b.voice);
-  const [boilerplate, setBoilerplate] = useState(b.boilerplate);
-  const nextKey = () => Date.now() + Math.random();
-
-  const save = async () => {
-    const r = await run(saveBrand, {
-      id: b.id, clientId: b.clientId, parentId: b.parentId, name: b.name, tagline: b.tagline, mark: b.mark,
-      primary: b.primary, secondary: b.secondary, description: b.description, voice, boilerplate,
-      segments: segments.filter((s) => s.name.trim()).map((s) => ({ name: s.name.trim(), color: s.color })),
-      segmentRenames: segments.filter((s) => s.orig && s.name.trim() && s.orig !== s.name.trim()).map((s) => [s.orig, s.name.trim()] as [string, string]),
-      colours: colours.filter((c) => c.name.trim() && isHex(c.hex)).map(({ key: _k, ...c }) => c),
-      fonts: fonts.filter((f) => f.name.trim()).map(({ key: _k, ...f }) => f),
-    });
-    if (r.ok) close();
-  };
-
-  const counts = (name: string) => ws.offersOf(b.id).filter((o) => o.segment === name).length;
-
-  return (
-    <Modal title="Edit the Brand Kit" sub={`${b.name}. Renaming a segment moves its offers with it.`} width={620} onSubmit={save} footer={<Footer saveLabel="Save kit" pending={pending} />} bodyClass="max-h-[62vh] overflow-y-auto">
-      <section>
-        <div className="label">Segments</div>
-        <div className="flex flex-col gap-2">
-          {segments.map((s) => (
-            <div key={s.key} className="flex items-center gap-2">
-              <input type="color" aria-label={`${s.name} colour`} value={s.color} onChange={(e) => setSegments(segments.map((x) => (x.key === s.key ? { ...x, color: e.target.value.toUpperCase() } : x)))} className="h-8 w-9 flex-none cursor-pointer rounded-md border border-line bg-white p-0.5" />
-              <input className="field flex-1" value={s.name} aria-label="Segment name" onChange={(e) => setSegments(segments.map((x) => (x.key === s.key ? { ...x, name: e.target.value } : x)))} />
-              <span className="w-[62px] flex-none text-right text-[14px] text-mute-3">{s.orig ? counts(s.orig) : 0} offers</span>
-              <button type="button" aria-label="Remove segment" disabled={!!s.orig && counts(s.orig) > 0} title={s.orig && counts(s.orig) > 0 ? "Offers still use this segment" : "Remove"} onClick={() => setSegments(segments.filter((x) => x.key !== s.key))} className="px-1.5 text-mute-5 hover:text-danger disabled:opacity-30">✕</button>
-            </div>
-          ))}
-          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#475569">All segments</Chip> is always there for offers that speak to everyone.</div>
-          <Btn size="sm" className="self-start" onClick={() => setSegments([...segments, { key: nextKey(), name: "", color: SEGMENT_PALETTE[segments.length % SEGMENT_PALETTE.length], orig: "" }])}>+ Add segment</Btn>
-        </div>
-      </section>
-      <section>
-        <div className="label">Colours</div>
-        <div className="flex flex-col gap-2">
-          {colours.map((c) => (
-            <div key={c.key} className="grid grid-cols-[auto_1fr_1.6fr_auto] items-center gap-2">
-              <ColourInput label={`${c.name || "Colour"}`} value={c.hex} onChange={(v) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, hex: v } : x)))} />
-              <input className="field" placeholder="Name" aria-label="Colour name" value={c.name} onChange={(e) => setColours(colours.map((x) => (x.key === c.key ? { ...x, name: e.target.value } : x)))} />
-              <input className="field" placeholder="Where it is used" aria-label="Usage" value={c.usage} onChange={(e) => setColours(colours.map((x) => (x.key === c.key ? { ...x, usage: e.target.value } : x)))} />
-              <button type="button" aria-label="Remove colour" onClick={() => setColours(colours.filter((x) => x.key !== c.key))} className="px-1.5 text-mute-5 hover:text-danger">✕</button>
-            </div>
-          ))}
-          <Btn size="sm" className="self-start" onClick={() => setColours([...colours, { key: nextKey(), name: "", hex: "#0F172A", usage: "" }])}>+ Add colour</Btn>
-        </div>
-      </section>
-      <section>
-        <div className="label">Fonts</div>
-        <div className="flex flex-col gap-2">
-          {fonts.map((f) => (
-            <div key={f.key} className="grid grid-cols-[1.2fr_1fr_1fr_auto] items-center gap-2">
-              <input className="field" placeholder="Typeface" aria-label="Typeface" value={f.name} onChange={(e) => setFonts(fonts.map((x) => (x.key === f.key ? { ...x, name: e.target.value } : x)))} />
-              <input className="field" placeholder="Role" aria-label="Role" value={f.role} onChange={(e) => setFonts(fonts.map((x) => (x.key === f.key ? { ...x, role: e.target.value } : x)))} />
-              <input className="field" placeholder="Files" aria-label="Files" value={f.files} onChange={(e) => setFonts(fonts.map((x) => (x.key === f.key ? { ...x, files: e.target.value } : x)))} />
-              <button type="button" aria-label="Remove font" onClick={() => setFonts(fonts.filter((x) => x.key !== f.key))} className="px-1.5 text-mute-5 hover:text-danger">✕</button>
-            </div>
-          ))}
-          <Btn size="sm" className="self-start" onClick={() => setFonts([...fonts, { key: nextKey(), name: "", role: "", files: "" }])}>+ Add font</Btn>
-        </div>
-      </section>
-      <Field label="Voice and tone"><textarea rows={3} className="field leading-[1.55]" value={voice} onChange={(e) => setVoice(e.target.value)} /></Field>
-      <Field label="Boilerplate"><textarea rows={3} className="field leading-[1.55]" value={boilerplate} onChange={(e) => setBoilerplate(e.target.value)} /></Field>
-    </Modal>
-  );
-}
-
 /* ---------------------------------------------------------------- service */
 
 export function ServiceModal({ draft }: { draft: Partial<Service> & { brandId: string } }) {
@@ -193,9 +112,9 @@ export function ServiceModal({ draft }: { draft: Partial<Service> & { brandId: s
   return (
     <Modal title={draft.id ? "Edit service" : "New service"} sub={`In ${ws.brand(d.brandId)?.name}. A capability you sell — offers hang off it, one per segment.`} onSubmit={save} footer={<Footer saveLabel="Save service" pending={pending} disabled={!d.name.trim()} />}>
       {!draft.id && (
-        <Field label="Brand"><Select value={d.brandId} onChange={(v) => setD({ ...d, brandId: v })} options={ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name }))} /></Field>
+        <Field label="Brand" required><Select value={d.brandId} onChange={(v) => setD({ ...d, brandId: v })} options={ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name }))} /></Field>
       )}
-      <Field label="Service name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
+      <Field label="Service name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
       <Field label="One line"><input className="field" value={d.short} onChange={(e) => setD({ ...d, short: e.target.value })} placeholder="Ten thousand a month, actually spent" /></Field>
       <Field label="What it is"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="The capability itself, before it is aimed at anyone." /></Field>
     </Modal>
@@ -225,7 +144,7 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
       <div className="flex items-center justify-center rounded-[11px] bg-wash-2 p-6">
         <span className="inline-block rounded-[7px] px-[18px] py-[9px] text-[16px] font-semibold" style={preview}>{d.text || "Button text"}</span>
       </div>
-      <Field label="Button text"><input className="field text-[16px]" value={d.text} onChange={(e) => setD({ ...d, text: e.target.value })} placeholder="Book a Grant Audit" maxLength={80} /></Field>
+      <Field label="Button text" required><input required className="field text-[16px]" value={d.text} onChange={(e) => setD({ ...d, text: e.target.value })} placeholder="Book a Grant Audit" maxLength={80} /></Field>
       <Field label="Destination"><input className="field" value={d.url} onChange={(e) => setD({ ...d, url: e.target.value })} placeholder="quokkaforgood.org/grant-audit" /></Field>
       <div>
         <div className="label">{outline ? "Colour" : "Button colour"}</div>
@@ -251,7 +170,7 @@ export function GoalModal({ brandId, name, description, original }: { brandId: s
   return (
     <Modal title={original ? "Edit goal" : "New goal"} sub={`In ${ws.brand(brandId)?.name}. Keep it broad enough that a tactic never fits it exactly.`} width={480} onSubmit={save}
       footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <button type="button" onClick={remove} className="px-0.5 py-1.5 text-[14.5px] text-danger hover:underline">Remove from every offer</button> : undefined} />}>
-      <Field label="Goal"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
+      <Field label="Goal" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
       <Field label="What it means here"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="Grow the audience we own — list, followers, members." /></Field>
     </Modal>
   );

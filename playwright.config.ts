@@ -21,7 +21,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: {
-    command: `rm -rf .data/pw && npx next build && PGLITE_DIR=.data/pw npx next start -p ${PORT}`,
+    command: `rm -rf .data/pw && npx next build && PGLITE_DIR=.data/pw BRANDOS_AUTH=demo BRANDOS_SEED=on npx next start -p ${PORT}`,
     url: `http://localhost:${PORT}/sign-in`,
     reuseExistingServer: false,
     timeout: 300_000,

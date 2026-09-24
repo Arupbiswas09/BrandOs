@@ -50,7 +50,7 @@ export function SectionHead({ eyebrow, title, sub, actions }: { eyebrow?: ReactN
 /** Underline tabs, as in the kit's page headers. */
 export function Tabs({ items, className }: { items: { key: string; label: ReactNode; href?: string; active: boolean; onClick?: () => void }[]; className?: string }) {
   return (
-    <div role="tablist" className={cx("mt-5 flex gap-1 overflow-x-auto", className)}>
+    <div role="tablist" className={cx("mt-5 flex flex-none gap-1 overflow-x-auto", className)}>
       {items.map((t) => {
         const cls = cx("-mb-px flex-none whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-[14.5px] font-medium transition-colors", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:text-ink");
         return t.href ? (
@@ -266,13 +266,26 @@ export function CheckRow({ on, onClick, children, sub, className }: { on: boolea
 
 /* ---------------------------------------------------------------- form fields */
 
-export function Field({ label, children, hint, className }: { label: ReactNode; children: ReactNode; hint?: ReactNode; className?: string }) {
+/**
+ * A labelled form control. `required` adds the red asterisk (and tells
+ * screen readers); `error` shows a message under the control.
+ */
+export function Field({ label, children, hint, className, required, error }: { label: ReactNode; children: ReactNode; hint?: ReactNode; className?: string; required?: boolean; error?: ReactNode }) {
   return (
-    <label className={cx("block", className)}>
-      <span className="label flex justify-between gap-2"><span>{label}</span>{hint}</span>
+    <label className={cx("block", className)} data-invalid={error ? "" : undefined}>
+      <span className="label flex justify-between gap-2">
+        <span>{label}{required && <><span aria-hidden className="ml-0.5 text-[#DC2626]">*</span><span className="sr-only"> (required)</span></>}</span>
+        {hint}
+      </span>
       {children}
+      {error && <span role="alert" className="mt-1.5 block text-[13.5px] font-medium text-[#B42318]">{error}</span>}
     </label>
   );
+}
+
+/** The "* Required" legend that sits at the top of forms with required fields. */
+export function RequiredNote({ className }: { className?: string }) {
+  return <p className={cx("m-0 text-[13px] text-mute-3", className)}><span aria-hidden className="text-[#DC2626]">*</span> Required</p>;
 }
 
 export function Select({ value, onChange, options, className, ...rest }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; className?: string } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange" | "value">) {

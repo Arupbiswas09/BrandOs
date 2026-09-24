@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { Access, Group } from "@/db/schema";
-import { can } from "@/lib/access";
+import { PERM_INFO, can } from "@/lib/access";
+import { cellFor } from "@/components/pages/access";
 import { ACCESS_COLOR, ACCESS_LEVELS, ACCESS_NOTE, ROLE_OPTIONS } from "@/lib/constants";
 import type { PublicUser } from "@/lib/types";
 import { requestChanges, saveGroup, savePerson, sendForReview } from "@/app/actions";
@@ -30,34 +31,45 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
   const roles = ROLE_OPTIONS.includes(d.role) ? ROLE_OPTIONS : [...ROLE_OPTIONS, d.role];
 
   return (
-    <Modal title={draft?.id ? "Edit access" : "Invite someone"} sub="Two decisions: what they can do, and which clients they can see." width={560} onSubmit={save}
+    <Modal title={draft?.id ? "Edit access" : "Invite someone"} sub="Two decisions: their role (what they can do) and their scope (which clients they can see)." width={640} onSubmit={save}
       footer={<Footer saveLabel={draft?.id ? "Save access" : "Add to the team"} pending={pending} disabled={!d.name.trim()} />} bodyClass="max-h-[60vh] gap-[18px] overflow-y-auto">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Marta Vieira" /></Field>
+        <Field label="Name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Marta Vieira" /></Field>
         <Field label="What they do"><Select value={d.role} onChange={(v) => setD({ ...d, role: v })} options={roles.map((r) => ({ value: r, label: r }))} /></Field>
       </div>
       <Field label="Email" hint={<span className="font-normal text-mute-4">used to sign in</span>}>
         <input type="email" className="field" value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} placeholder="marta@agency.com" />
       </Field>
       <div>
-        <div className="label">What they can do</div>
-        <div className="flex flex-col gap-[7px]" role="radiogroup">
+        <div className="label">Role — what they can do<span aria-hidden className="ml-0.5 text-[#DC2626]">*</span></div>
+        <div className="grid gap-[7px] sm:grid-cols-2" role="radiogroup" aria-label="Role" aria-required="true">
           {ACCESS_LEVELS.map((a) => (
-            <button key={a} type="button" role="radio" aria-checked={d.access === a} onClick={() => setD({ ...d, access: a })}
-              className={cx("flex w-full items-start gap-[11px] rounded-[11px] border px-3.5 py-3 text-left transition", d.access === a ? "border-accent bg-soft" : "border-line bg-white")}>
-              <span className="mt-1 h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: ACCESS_COLOR[a] }} />
+            <button key={a} type="button" role="radio" aria-checked={d.access === a} onClick={() => setD({ ...d, access: a, ...(a === "Client" && { allClients: false }) })}
+              className={cx("flex w-full items-start gap-[10px] rounded-[11px] border px-3 py-2.5 text-left transition", d.access === a ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-white hover:border-mute-4")}>
+              <span className="mt-[7px] h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: ACCESS_COLOR[a] }} />
               <span className="flex-1">
-                <span className="block text-[16px] font-semibold">{a}</span>
-                <span className="mt-0.5 block text-[14.5px] leading-[1.45] text-mute-1">{ACCESS_NOTE[a]}</span>
+                <span className="block text-[15px] font-semibold">{a}{a === "Client" && <span className="ml-1.5 text-[11.5px] font-semibold uppercase tracking-[0.06em] text-mute-3">Guest</span>}</span>
+                <span className="mt-0.5 block text-[13px] leading-[1.4] text-mute-2">{ACCESS_NOTE[a]}</span>
               </span>
             </button>
           ))}
         </div>
+        <div className="mt-3 rounded-[11px] bg-wash px-3.5 py-3">
+          <div className="mb-1.5 text-[13px] font-semibold text-mute-1">As {/^[AEIOU]/.test(d.access) ? "an" : "a"} {d.access}, {d.name.split(" ")[0] || "they"} can:</div>
+          <div className="flex flex-wrap gap-1.5">
+            {PERM_INFO.map((p) => {
+              const c = cellFor(d.access, p.perm);
+              if (c === "no") return null;
+              return <span key={p.perm} className="rounded-full bg-white px-2.5 py-1 text-[12.5px] font-medium text-ink-3 ring-1 ring-line">{p.label}{c === "own" ? " (own work)" : c === "shared" ? " (shared items)" : ""}</span>;
+            })}
+          </div>
+        </div>
       </div>
       <div>
-        <div className="label">What they can see</div>
-        <button type="button" role="checkbox" aria-checked={d.allClients} onClick={() => setD({ ...d, allClients: !d.allClients, clientIds: [], brandIds: [], groupIds: [] })}
-          className="mb-2.5 flex w-full items-center gap-2.5 rounded-[11px] border border-line bg-white px-3.5 py-[11px] text-left hover:border-mute-2">
+        <div className="label">Scope — what they can see</div>
+        {d.access === "Client" && <p className="mb-2.5 mt-0 text-[13.5px] text-mute-2">Clients only ever see work marked <b className="font-semibold text-ink">cleared to send</b> in the clients or brands you pick here.</p>}
+        <button type="button" role="checkbox" aria-checked={d.allClients} disabled={d.access === "Client"} onClick={() => setD({ ...d, allClients: !d.allClients, clientIds: [], brandIds: [], groupIds: [] })}
+          className="mb-2.5 flex w-full items-center gap-2.5 rounded-[11px] border border-line bg-white px-3.5 py-[11px] text-left hover:border-mute-2 disabled:cursor-not-allowed disabled:opacity-40">
           <Tick on={d.allClients} /><span className="text-[16px] font-medium">Every client, including ones added later</span>
         </button>
         <div style={{ opacity: d.allClients ? 0.4 : 1 }}>
@@ -110,7 +122,7 @@ export function GroupModal({ draft }: { draft?: Partial<Group> }) {
   const save = async () => { const r = await run(saveGroup, { id: draft?.id, ...d }); if (r.ok) close(); };
   return (
     <Modal title={draft?.id ? "Edit group" : "New group"} sub="A saved set of clients. Everyone in the group sees all of them." width={540} onSubmit={save} footer={<Footer saveLabel="Save group" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="Name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Nonprofit pod" /></Field>
+      <Field label="Name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Nonprofit pod" /></Field>
       <Field label="What it is for"><input className="field" value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder="Everyone who touches faith and community work." /></Field>
       <div>
         <div className="label">Clients in it</div>

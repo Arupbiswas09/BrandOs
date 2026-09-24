@@ -52,7 +52,7 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={label ?? (typeof title === "string" ? title : undefined)}
-        className="relative w-full animate-pop overflow-hidden rounded-2xl bg-white shadow-[0_24px_64px_rgba(16,22,20,.22)]"
+        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl bg-white shadow-[0_24px_64px_rgba(16,22,20,.22)]"
         style={{ maxWidth: width }}
       >
         <Inner
@@ -64,7 +64,12 @@ export function Modal({
             {sub && <div className="mt-1 text-[15px] leading-[1.5] text-mute-2">{sub}</div>}
           </div>
           {children && <div className={cx("flex flex-col gap-4 px-6 pb-6 pt-[22px] sm:px-7", bodyClass)}>{children}</div>}
-          {footer && <div className="flex flex-wrap items-center justify-end gap-[9px] border-t border-line bg-wash-2 px-6 py-3.5 sm:px-7">{footer}</div>}
+          {footer && (
+            <div className="flex flex-wrap items-center justify-end gap-[9px] border-t border-line bg-wash-2 px-6 py-3.5 sm:px-7">
+              <span className="mr-auto hidden text-[13px] text-mute-3 group-has-[[required]]/dlg:inline"><span aria-hidden className="text-[#DC2626]">*</span> Required</span>
+              {footer}
+            </div>
+          )}
         </Inner>
       </div>
     </div>
@@ -81,7 +86,7 @@ export function Footer({ saveLabel, pending, disabled, onCancel, left, saveVaria
       {left}
       {left && <span className="flex-1" />}
       <Btn size="md" onClick={onCancel ?? close} className="px-[15px] py-2">Cancel</Btn>
-      <Btn type="submit" variant="primary" disabled={pending || disabled} className={cx("px-[17px] py-2", solid && `${solid} text-white`)}>
+      <Btn type="submit" variant="primary" disabled={pending || disabled} title={disabled && !pending ? "Fill in the fields marked *" : undefined} className={cx("px-[17px] py-2", solid && `${solid} text-white`)}>
         {pending ? "Saving…" : saveLabel}
       </Btn>
     </>

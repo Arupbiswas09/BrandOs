@@ -54,17 +54,17 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
   return (
     <Modal
       title={draft.id ? "Edit offer" : "New offer"}
-      sub={`In ${b?.name}. ${draft.id ? "" : "Positioning first. You can pull existing assets in once the room exists."}`}
+      sub={`In ${b?.name}. ${draft.id ? "" : "Positioning first. You can pull existing assets in once the offer exists."}`}
       width={640}
       onSubmit={save}
       footer={<Footer saveLabel="Save offer" pending={pending} disabled={!d.name.trim()} />}
     >
       {!draft.id && ws.d.brands.filter((x) => !x.archived).length > 1 && (
-        <Field label="Brand">
+        <Field label="Brand" required>
           <Select value={d.brandId} onChange={(v) => setD((x) => ({ ...x, brandId: v, serviceId: "", segment: "All segments", goals: [], primaryCtaId: "", secondaryCtaId: "" }))} options={ws.d.brands.filter((x) => !x.archived).map((x) => ({ value: x.id, label: x.name }))} />
         </Field>
       )}
-      <Field label="Offer name"><input className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" /></Field>
+      <Field label="Offer name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" /></Field>
       <Field label="Short description" hint={<span className="font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#526077" }}>{shortLen}/30</span>}>
         <input className="field text-[16px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Grow grant-funded traffic" />
       </Field>

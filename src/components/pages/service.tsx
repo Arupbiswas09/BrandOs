@@ -17,7 +17,7 @@ export function ServicePage({ id }: { id: string }) {
   const b = ws.brand(v.brandId);
   const so = ws.offersOfService(v.id);
   const liveOffers = live(so);
-  const canEdit = ws.can("edit");
+  const canEdit = ws.canChange(v);
   const groups = (b?.segments ?? [])
     .map((sg) => ({ ...sg, list: liveOffers.filter((o) => o.segment === sg.name) }))
     .filter((g) => g.name !== "All segments" || g.list.length);

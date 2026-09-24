@@ -109,7 +109,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
 
       {step === 1 && (
         <div>
-          <div className="mb-3.5 text-[15px] text-mute-1">A {d.type || "new asset"}. Which building does it belong to?</div>
+          <div className="mb-3.5 text-[15px] text-mute-1">A {d.type || "new asset"}. Which brand does it belong to?</div>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {ws.d.brands.filter((b) => !b.archived).map((b) => (
               <button key={b.id} type="button" onClick={() => { setD((x) => ({ ...x, brandId: b.id, offerIds: x.brandId === b.id ? x.offerIds : [], ctaId: x.brandId === b.id ? x.ctaId : "" })); setStep(2); }}
@@ -146,7 +146,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       {step === 3 && (
         <>
           <div className="text-[14.5px] text-mute-2">{d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}</div>
-          <Field label="Asset name"><input className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
+          <Field label="Asset name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
           {dupes.length > 0 && (
             <div className="rounded-[10px] border border-[rgba(201,154,46,.4)] bg-[rgba(201,154,46,.07)] px-[15px] py-[13px]">
               <div className="mb-2 text-[15px] font-semibold text-warn-ink">Similar assets already exist. Reuse before you rebuild.</div>
@@ -165,7 +165,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
             <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Type"><Select value={d.type} onChange={(v) => set("type", v)} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
+            <Field label="Type" required><Select value={d.type} onChange={(v) => set("type", v)} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
             <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
           </div>
           {d.brandId && (
@@ -237,7 +237,7 @@ export function CloneModal({ srcId, brandId, name, offerIds }: { srcId: string; 
   };
   return (
     <Modal title="Clone and adapt" sub={`A real copy of ${src?.name}, with a reference back to the original.`} width={560} onSubmit={save} footer={<Footer saveLabel="Create clone" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="New name"><input className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
+      <Field label="New name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
       <Field label="Target brand">
         <Select value={d.brandId ?? ""} onChange={(v) => setD({ ...d, brandId: v || null, offerIds: [] })}
           options={[{ value: "", label: "Global Library — no brand" }, ...ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name + (b.parentId ? ` (sub-brand of ${ws.brand(b.parentId)?.name})` : "") }))]} />
@@ -280,7 +280,7 @@ export function LinkModal({ offerId }: { offerId: string }) {
   });
   const color = ws.brand(o.brandId)?.primary ?? "#64748B";
   return (
-    <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and gains one more room." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
+    <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and appears in one more offer." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
       <input className="field text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
       <Pills tone="dark" value={scope} onChange={setScope} options={[{ value: "unlinked", label: "Not yet linked" }, { value: "linked", label: "Already linked" }, { value: "all", label: "Everything" }]} />
       <div data-scroll className="-mx-2 max-h-[340px] overflow-y-auto">
@@ -317,7 +317,7 @@ export function LinkAssetModal({ assetId }: { assetId: string }) {
   const linked = new Set(ws.linkedOfferIds(assetId));
   const pool = ws.offersOf(a.brandId ?? "").filter((o) => !o.archived || linked.has(o.id));
   return (
-    <Modal title="Which offers use this?" sub={`${a.name} stays a single asset. Linking just adds another room.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[360px] gap-[7px] overflow-y-auto px-5 pt-3.5">
+    <Modal title="Which offers use this?" sub={`${a.name} stays a single asset. Linking just adds it to another offer.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[360px] gap-[7px] overflow-y-auto px-5 pt-3.5">
       {pool.map((o) => {
         const on = linked.has(o.id);
         return (

@@ -48,7 +48,7 @@ export function ClientPage({ id }: { id: string }) {
           <p className="m-0 text-[15px] text-[#475569]">{c.kind}</p>
         </div>
         <div className="flex flex-wrap gap-2 sm:pt-[26px]">
-          {ws.can("edit") && <Btn onClick={() => open({ kind: "client", draft: c })}>Edit</Btn>}
+          {ws.can("structure") && <Btn onClick={() => open({ kind: "client", draft: c })}>Edit</Btn>}
           {ws.can("archive") && <Btn onClick={() => run(setArchived, "client", c.id, !c.archived)}>{c.archived ? "Restore client" : "Archive client"}</Btn>}
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "client", id: c.id, label: c.name, back: "/" })}>Delete</Btn>}
         </div>
@@ -71,7 +71,7 @@ export function ClientPage({ id }: { id: string }) {
       </Card>
 
       <div className="mt-10">
-        <H2 right={ws.can("edit") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add brand</button>}>Buildings on this property</H2>
+        <H2 right={ws.can("structure") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add brand</button>}>Brands</H2>
         <div className="grid gap-4 md:grid-cols-2">
           {tops.map((b) => {
             const subs = live(ws.subBrands(b.id));
@@ -103,9 +103,9 @@ export function ClientPage({ id }: { id: string }) {
         </div>
         {!tops.length && (
           <div className="rounded-[14px] border border-dashed border-line-strong p-10 text-center">
-            <div className="mb-1.5 text-[15px] font-semibold">No buildings yet</div>
+            <div className="mb-1.5 text-[15px] font-semibold">No brands yet</div>
             <div className="mb-4 text-[15px] text-mute-2">A brand is where offers and assets live.</div>
-            {ws.can("edit") && <Btn variant="primary" size="lg" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })}>Add the first brand</Btn>}
+            {ws.can("structure") && <Btn variant="primary" size="lg" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })}>Add the first brand</Btn>}
           </div>
         )}
         <ArchExpander items={archivedOnly(bs)} noun="brand" onOpen={(b) => router.push(href.brand(b.id))} />

@@ -1,4 +1,4 @@
-export type BrandTab = "home" | "services" | "offers" | "assets" | "kit" | "ctas";
+export type BrandTab = "home" | "services" | "offers" | "assets" | "kit" | "strategy" | "ctas";
 
 export const BRAND_TABS: [BrandTab, string][] = [
   ["home", "Home"],
@@ -6,6 +6,7 @@ export const BRAND_TABS: [BrandTab, string][] = [
   ["offers", "Offers"],
   ["assets", "Assets"],
   ["kit", "Brand Kit"],
+  ["strategy", "Strategy"],
   ["ctas", "CTAs"],
 ];
 

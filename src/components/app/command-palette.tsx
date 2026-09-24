@@ -41,7 +41,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       }).filter(Boolean).slice(0, 6) as Row[];
       const actions: Row[] = [
         ...(ws.can("edit") ? [{ key: "new", title: "Create something", sub: "Offer, asset, service, CTA, brand or client", code: "+", color: "#2D4A5C", run: () => { onClose(); open({ kind: "new" }); } }] : []),
-        { key: "street", title: "Go to the Street", sub: "Home", code: "◻", color: NEUTRAL, run: () => go("/") },
+        { key: "street", title: "Go to Dashboard", sub: "Home", code: "◻", color: NEUTRAL, run: () => go("/") },
         { key: "lib", title: "Open the Global Library", sub: "Checklists, prompts, templates, SOPs", code: "◫", color: NEUTRAL, run: () => go("/library") },
         { key: "team", title: "Team and access", sub: `${ws.d.users.length} people`, code: "◐", color: NEUTRAL, run: () => go("/team") },
       ];

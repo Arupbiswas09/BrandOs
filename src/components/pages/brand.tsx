@@ -16,6 +16,7 @@ import { CtaButton } from "@/components/drawer/asset-drawer";
 import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, Pills, SectionHead, Tabs, Warn } from "@/components/ui";
 import { NotHere, useVisit } from "./common";
 import { BrandHealth } from "@/components/health";
+import { BrandKit } from "./kit";
 
 export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?: string }) {
   const { ws } = useApp();
@@ -27,7 +28,8 @@ export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?:
       case "services": return <Services b={b} />;
       case "offers": return <Offers b={b} />;
       case "assets": return <Assets key={type ?? "all"} b={b} initialType={type} />;
-      case "kit": return <Kit b={b} />;
+      case "kit": return <BrandKit b={b} />;
+      case "strategy": return <Strategy b={b} />;
       case "ctas": return <Ctas b={b} />;
       default: return <Home b={b} />;
     }
@@ -123,9 +125,9 @@ function Home({ b }: { b: Brand }) {
         {b.archived && <ArchivedNote className="mt-[22px]">Archived. Everything inside is untouched and comes back exactly as it was.</ArchivedNote>}
         {b.description && <p className="m-0 mt-[34px] max-w-[64ch] text-[15px] leading-[1.6] text-ink-3 text-pretty">{b.description}</p>}
 
-        {(subs.length > 0 || (canEdit && !b.parentId)) && (
+        {(subs.length > 0 || (ws.can("structure") && !b.parentId)) && (
           <div className="mt-10">
-            <H2 right={canEdit && !b.parentId && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: b.clientId, parentId: b.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add sub-brand</button>}>Wings of this building</H2>
+            <H2 right={ws.can("structure") && !b.parentId && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: b.clientId, parentId: b.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add sub-brand</button>}>Sub-brands</H2>
             {subs.length > 0 ? (
               <div className="grid gap-3.5 md:grid-cols-2">
                 {subs.map((sb) => (
@@ -145,8 +147,8 @@ function Home({ b }: { b: Brand }) {
         {camp.length > 0 && (
           <div className="mt-11">
             <div className="mb-1 flex items-baseline justify-between gap-4">
-              <h2 className="m-0 text-[17px] font-semibold">Everything in this building</h2>
-              <span className="text-[15px] text-mute-3">{plural(camp.length, "asset")} in this building</span>
+              <h2 className="m-0 text-[17px] font-semibold">Everything in this brand</h2>
+              <span className="text-[15px] text-mute-3">{plural(camp.length, "asset")} in this brand</span>
             </div>
             <p className="mb-4 mt-0 text-[15px] text-mute-3">One square per asset, coloured by where it stands. Hover any square to name it.</p>
             <Card className="overflow-hidden">
@@ -178,15 +180,15 @@ function Home({ b }: { b: Brand }) {
               {recent.map((a) => <AssetCard key={a.id} a={a} variant="recent" />)}
             </div>
           ) : (
-            <Empty title="This building is empty" body="Start with the thing you actually need, not with a database record.">
+            <Empty title="This brand is empty" body="Start with the thing you actually need, not with a database record.">
               {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 })}>Add the first asset</Btn>}
             </Empty>
           )}
         </div>
 
         <div className="mt-11 flex flex-wrap items-center gap-2.5 border-t border-line pt-5">
-          {canEdit && <Btn onClick={() => open({ kind: "brand", draft: b })}>Edit brand identity</Btn>}
-          {canEdit && <Btn onClick={() => open({ kind: "share", brandId: b.id })}>Share with the client{ws.d.shareLinks.some((l) => l.brandId === b.id) ? ` · ${ws.d.shareLinks.filter((l) => l.brandId === b.id).length} live` : ""}</Btn>}
+          {ws.can("structure") && <Btn onClick={() => open({ kind: "brand", draft: b })}>Edit brand identity</Btn>}
+          {ws.can("share") && <Btn onClick={() => open({ kind: "share", brandId: b.id })}>Share with the client{ws.d.shareLinks.some((l) => l.brandId === b.id) ? ` · ${ws.d.shareLinks.filter((l) => l.brandId === b.id).length} live` : ""}</Btn>}
           {ws.can("archive") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "brand", id: b.id, label: b.name, back: href.client(b.clientId) })}>Delete brand</Btn>}
           <span className="flex-1" />
@@ -225,7 +227,7 @@ function Services({ b }: { b: Brand }) {
 
   return (
     <>
-      <SectionHead eyebrow="Floors" title="Services" actions={canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>+ New service</Btn>}
+      <SectionHead eyebrow="What the brand sells" title="Services" actions={canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>+ New service</Btn>}
         sub={<>A service is what you sell. An offer is that service argued at one segment. Keeping them apart is what makes a missing version visible.</>}
       />
 
@@ -324,7 +326,7 @@ function Offers({ b }: { b: Brand }) {
   const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: seg !== "All" ? seg : "All segments", status: "Ideation" } });
   return (
     <>
-      <SectionHead eyebrow="Rooms" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
+      <SectionHead eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
         sub={<>Each offer holds one piece of positioning and everything that supports it. Assets can sit in several at once.</>}
       />
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter offers" aria-label="Filter offers" className="field mb-3 max-w-[280px] text-[15px]" />
@@ -333,7 +335,7 @@ function Offers({ b }: { b: Brand }) {
       <div className="grid gap-4 md:grid-cols-2">{shown.map((o) => <OfferCard key={o.id} o={o} />)}</div>
       <ArchExpander items={archivedOnly(filtered)} noun="offer" onOpen={(o) => router.push(href.offer(o.id))} />
       {!shown.length && (
-        <Empty title="No offers here" body={all.length === 0 ? "No offers in this building yet. An offer is a room — it holds the positioning and everything that supports it." : "Nothing matches those filters."}>
+        <Empty title="No offers here" body={all.length === 0 ? "No offers yet. An offer is a campaign or package — it holds the positioning and every asset that supports it." : "Nothing matches those filters."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>{all.length ? "Create an offer" : "Create the first offer"}</Btn>}
         </Empty>
       )}
@@ -363,8 +365,8 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
 
   return (
     <>
-      <SectionHead eyebrow="Furniture" title="Assets" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
-        sub={<>{plural(liveCamp.length, "asset")} in this building. Each one exists once, however many offers point at it.</>}
+      <SectionHead eyebrow="Files and content" title="Assets" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
+        sub={<>{plural(liveCamp.length, "asset")} in this brand. Each one exists once, however many offers point at it.</>}
       />
       {unlinked.length > 0 && (
         <button type="button" onClick={() => { setUnlinkedOnly(!unlinkedOnly); setType("All"); setStat("All"); }} className="mb-[18px] block w-full text-left">
@@ -379,7 +381,7 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">{shown.map((a) => <AssetCard key={a.id} a={a} />)}</div>
       <ArchExpander items={archivedOnly(filtered)} noun="asset" onOpen={(a) => openAsset(a.id)} />
       {!shown.length && (
-        <Empty title="Nothing to show" body={camp.length === 0 ? "Nothing in this building yet. Start with the thing you actually need — a landing page, an email, an ad." : "Nothing matches that search."}>
+        <Empty title="Nothing to show" body={camp.length === 0 ? "No assets yet. Start with the thing you actually need — a landing page, an email, an ad." : "Nothing matches that search."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>Add an asset</Btn>}
         </Empty>
       )}
@@ -389,74 +391,16 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
 
 /* ================================================================ brand kit */
 
-function Kit({ b }: { b: Brand }) {
-  const { ws, open, toast } = useApp();
-  const all = live(ws.assetsOf(b.id));
-  const logos = all.filter((a) => a.type === "Logo");
-  const fontAssets = all.filter((a) => a.type === "Font" || a.type === "Guidelines");
-  const templates = all.filter((a) => a.isTemplate);
+function Strategy({ b }: { b: Brand }) {
+  const { ws, open } = useApp();
   const offers = live(ws.offersOf(b.id));
-  const canEdit = ws.can("edit");
+  const canEdit = ws.can("kit") || ws.can("structure");
 
   return (
     <>
-      <SectionHead eyebrow="Foundation" title="Brand Kit" actions={canEdit && <Btn onClick={() => open({ kind: "kit", brandId: b.id })}>Edit kit</Btn>}
-        sub={<>Master files, not campaign work. Nothing in here is tied to an offer.</>}
+      <SectionHead eyebrow="Who it is for and why" title="Strategy"
+        sub={<>Goals, segments and offer types. Offers are tagged with these, so gaps show up in the grid on the Services tab.</>}
       />
-
-      <H2 right={canEdit && <button type="button" onClick={() => open({ kind: "asset", draft: { brandId: b.id, type: "Logo", status: "Ready", offerIds: [] }, step: 3 })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add master file</button>}>Logos and typefaces</H2>
-      <div className="mb-[38px] grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
-        {logos.map((a) => <AssetCard key={a.id} a={a} variant="kit" />)}
-        {fontAssets.map((a) => <AssetCard key={a.id} a={a} variant="font" />)}
-        {!logos.length && !fontAssets.length && <div className="col-span-full rounded-[13px] border border-dashed border-line-strong p-6 text-center text-[15px] text-mute-2">No logo files yet.</div>}
-      </div>
-
-      <H2>Colours</H2>
-      <div className="mb-[38px] grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
-        {b.colours.map((c) => (
-          <button key={c.name + c.hex} type="button" title="Copy hex" onClick={() => { void navigator.clipboard?.writeText(c.hex).catch(() => {}); toast(`${c.hex} copied`); }} className="flex flex-col overflow-hidden rounded-[13px] border border-line bg-white p-0 text-left hover:border-mute-2">
-            <span className="flex h-24 items-end p-3 text-[14.5px] font-semibold tracking-[0.02em]" style={{ background: c.hex, color: onColor(c.hex) }}>{c.hex}</span>
-            <span className="block px-3.5 py-[13px]"><span className="block text-[15px] font-semibold">{c.name}</span><span className="mt-[3px] block text-[14.5px] leading-[1.4] text-mute-2">{c.usage}</span></span>
-          </button>
-        ))}
-        {!b.colours.length && <div className="col-span-full text-[15px] text-mute-3">No colours recorded.</div>}
-      </div>
-
-      <div className="mb-[38px] grid gap-6 md:grid-cols-2">
-        <div>
-          <H2>Fonts</H2>
-          <Card className="rounded-[13px] px-[18px] py-1.5">
-            {b.fonts.map((f) => (
-              <div key={f.name + f.role} className="flex items-center gap-3 border-t border-divider py-[13px] first:border-t-0">
-                <span className="flex-1"><span className="block text-[15px] font-semibold">{f.name}</span><span className="mt-0.5 block text-[14.5px] text-mute-2">{f.role}</span></span>
-                <span className="text-[14px] text-[#526077]">{f.files}</span>
-              </div>
-            ))}
-            {!b.fonts.length && <div className="py-3 text-[15px] text-mute-3">No fonts recorded.</div>}
-          </Card>
-        </div>
-        <div>
-          <H2>Guidelines</H2>
-          <Card className="rounded-[13px] px-[18px] py-1.5">
-            {b.guidelines.map((g) => (
-              <div key={g.name} className="flex items-center gap-3 border-t border-divider py-[13px] first:border-t-0">
-                <span className="flex-1 truncate text-[15px] font-medium">{g.name}</span>
-                <span className="flex-none text-[14px] text-[#526077]">{g.size}</span>
-              </div>
-            ))}
-            {!b.guidelines.length && <div className="py-3 text-[15px] text-mute-3">No guideline documents yet. Add a Guidelines master file above.</div>}
-          </Card>
-        </div>
-      </div>
-
-      <H2>Templates</H2>
-      {templates.length ? (
-        <div className="mb-[38px] grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
-          {templates.map((a) => <TemplateCard key={a.id} id={a.id} name={a.name} short={a.short} />)}
-        </div>
-      ) : (
-        <div className="mb-[38px] rounded-[13px] border border-dashed border-line-strong p-8 text-center text-[15px] text-mute-2">No templates saved for this brand yet.</div>
-      )}
 
       <H2 className="mb-[5px]" right={canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id })} className="text-[14.5px] text-mute-2 hover:text-ink">+ New goal</button>}>Goals</H2>
       <p className="mb-[13px] mt-0 max-w-[64ch] text-[15px] text-mute-2">Broad business outcomes this brand is chasing — not channels or tactics. {b.goals.length} goals · five is usually enough. If two of them keep catching the same offers, merge them.</p>
@@ -503,28 +447,7 @@ function Kit({ b }: { b: Brand }) {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="rounded-[13px] px-[22px] py-5">
-          <h2 className="m-0 mb-[9px] text-[17px] font-semibold">Voice and tone</h2>
-          <p className="m-0 text-[15px] leading-[1.6] text-ink-3 text-pretty">{b.voice || <span className="text-mute-4">Not written yet.</span>}</p>
-        </Card>
-        <Card className="rounded-[13px] px-[22px] py-5">
-          <h2 className="m-0 mb-[9px] text-[17px] font-semibold">Boilerplate</h2>
-          <p className="m-0 text-[15px] leading-[1.6] text-ink-3 text-pretty">{b.boilerplate || <span className="text-mute-4">Not written yet.</span>}</p>
-        </Card>
-      </div>
     </>
-  );
-}
-
-function TemplateCard({ id, name, short }: { id: string; name: string; short: string }) {
-  const { openAsset } = useApp();
-  return (
-    <button type="button" onClick={() => openAsset(id)} className="flex flex-col rounded-[13px] border border-dashed border-line-strong bg-white p-4 text-left hover:border-mute-2">
-      <span className="mb-[9px] block font-mono text-[12px] font-bold tracking-[0.11em] text-mute-4">TEMPLATE</span>
-      <span className="block text-[15px] font-semibold leading-[1.35]">{name}</span>
-      <span className="mt-1 block text-[14.5px] text-mute-2">{short}</span>
-    </button>
   );
 }
 
@@ -536,7 +459,7 @@ function Ctas({ b }: { b: Brand }) {
   const newCta = () => open({ kind: "cta", draft: { brandId: b.id, bg: b.primary, fg: onColor(b.primary), style: "solid" } });
   return (
     <>
-      <SectionHead eyebrow="Doorhandles" title="CTA Library" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>+ New CTA</Btn>}
+      <SectionHead eyebrow="Buttons and calls to action" title="CTA Library" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>+ New CTA</Btn>}
         sub={<>Written once, used everywhere. These render in their real colours so you can see what a reader sees.</>}
       />
       <div className="grid gap-3.5 md:grid-cols-2">
@@ -554,7 +477,7 @@ function Ctas({ b }: { b: Brand }) {
                 {used.length > 0 && <div className="mt-0.5 text-[14px] text-[#526077]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
               </div>
               <div className="flex gap-[7px] border-t border-divider pt-3">
-                {ws.can("edit") && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
+                {ws.canChange({ ownerId: null }) && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
                 {ws.can("del") && <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "cta", id: c.id, label: c.text })}>Delete</Btn>}
                 <span className="flex-1" />
                 <span className="self-center text-[13.5px] text-[#526077]">{c.style}</span>

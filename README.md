@@ -1,17 +1,19 @@
 # BrandOS
 
-Every client, brand, offer and asset an agency works on, in one building.
-Built from the *BrandOS v3* Claude Design prototype.
+Every client, brand, offer and asset an agency works on, in one place.
+Built from the *BrandOS v3* Claude Design prototype. Developed by Arup.
 
-- **The Street**: what is waiting on you, where you left off, every client.
+- **Dashboard**: KPIs, a get-set-up checklist, and tabs for what is waiting on you, what is due soon and recent activity.
 - **Clients → brands → sub-brands**: each brand re-skins the app in its own colours.
 - **Services and offers**: an offer is a service argued at one segment. The coverage grid shows which combinations nobody has written yet.
 - **Assets**: exist once and link to as many offers as they support. Files, copy, checklists, prompts, versions, discussion and client sign-off in one drawer.
-- **Brand Kit**: logos, colours, fonts, goals, segments, voice, boilerplate and the CTA library.
+- **Brand Kit**: industry-standard guidelines — logo rules (clear space, minimum sizes, misuse), colours with HEX, RGB, CMYK and Pantone plus WCAG contrast checks and a pairing grid, typefaces and a type scale, voice (we are / we are not, words to use and avoid, examples), imagery, do's and don'ts, files, and a completeness score. **Guidelines PDF** prints the whole kit as a document; client share links include it.
+- **Strategy**: goals, segments and offer types for each brand.
 - **Review**: send for review, request changes, approve; everything lands in the right person's queue.
-- **Team**: four access levels × client scope (per person, per group).
+- **Access**: seven roles × client scope. **Admin**, **Manager**, **Editor**, **Contributor** (edits only their own work), **Reviewer**, **Viewer**, and **Client**, an outside guest who sees only work cleared to send. Team → *Roles and permissions* shows the full matrix and *Who sees what* shows everyone who can open each client. The browser hides what you cannot do; every server action and API route checks again.
+- **Notifications**: the bell, the tab title and the installed app's icon count what needs you (reviews, requested changes, unread @mentions). New items pop up as they arrive, with optional desktop notifications (Settings → Notifications).
 - **Due dates and Calendar**: assets have due dates and offers have launch dates. Late work is flagged everywhere, the queue sorts by urgency, and the Calendar shows what is overdue, the next two weeks, and the month.
-- **Building inspection**: eight checks on each brand (proof, CTAs, goals, unlinked assets, coverage gaps, overdue work, stale reviews, unapproved client items), each linking to what needs fixing.
+- **Brand health**: eight checks on each brand (proof, CTAs, goals, unlinked assets, coverage gaps, overdue work, stale reviews, unapproved client items), each linking to what needs fixing.
 - **Image previews**: uploaded images show on asset cards and in the asset panel.
 - **Editable notes**: edit or delete your own notes; admins can delete any.
 - **Recycle bin**: anything deleted can be restored for 30 days (Settings menu → Recycle bin, admins).
@@ -28,7 +30,8 @@ npm run dev
 
 Open http://localhost:3000 and pick a teammate. The database is created and
 seeded with a demo agency on first request (stored in `.data/`). Delete
-`.data/` to start over, or use **Reset** at the bottom of the sidebar.
+`.data/` to start over, or use **Reset demo data** at the bottom of the sidebar (demo mode only;
+it never appears in production). Press `[` to fold the sidebar to icons.
 
 Configuration lives in `.env.local`; see `.env.example`.
 
@@ -85,7 +88,8 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 
 ## Setting up for real use
 
-1. Set `BRANDOS_AUTH=password` and `BRANDOS_SEED=off` (see `.env.example`).
+1. In production (`next build` + `next start`) password sign-in is on and demo data is off by
+   default. Override with `BRANDOS_AUTH` and `BRANDOS_SEED` (see `.env.example`).
 2. Open the site. The first visit shows a setup screen: your agency, your account.
 3. Add the team from **Team → Invite someone**, then send each person their invite link
    (emailed automatically once `RESEND_API_KEY` is set).
@@ -93,4 +97,14 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 ## Deploying
 
 Any Node host works. On Vercel: add a Postgres database (e.g. Neon) and a Blob store
-from the Marketplace, set `BRANDOS_AUTH=password`, `BRANDOS_SEED=off`, `APP_URL` and (for email) `RESEND_API_KEY`, then deploy and open the site to run setup.
+from the Marketplace, set `APP_URL` and (for email) `RESEND_API_KEY`, then deploy and open the site to run setup.
+Without `DATABASE_URL` or a Blob store the app says so clearly instead of losing data.
+
+With Docker:
+
+```bash
+docker build -t brandos .
+docker run -p 3000:3000 -v brandos-data:/app/.data brandos
+```
+
+Search engines are told to stay away (`robots.txt` and `X-Robots-Tag`).

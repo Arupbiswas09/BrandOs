@@ -17,7 +17,15 @@ function safeLocal(key: string) {
   return p;
 }
 
+/** Why uploads cannot work here, if they cannot. */
+export function storageProblem(): string | null {
+  if (process.env.VERCEL && !blobEnabled()) return "File storage is not set up. Connect a Vercel Blob store to this project so uploads survive a redeploy.";
+  return null;
+}
+
 export async function saveFile(key: string, file: File): Promise<void> {
+  const problem = storageProblem();
+  if (problem) throw new Error(problem);
   if (blobEnabled()) {
     const { put } = await import("@vercel/blob");
     await put(key, file, { access: "private", contentType: file.type || undefined, addRandomSuffix: false });

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { refresh } from "next/cache";
 import { z } from "zod";
 import { getDb, schema as s } from "@/db";
-import { can } from "@/lib/access";
+import { can, canChange } from "@/lib/access";
 import { readAll, makeVisibility, scopeFor } from "@/server/data";
 import { getViewer } from "@/server/session";
 
@@ -30,11 +30,12 @@ type DraftResult = { ok: true; options: CopyOption[] } | { ok: false; error: str
 export async function draftCopy(assetId: string, steer: string): Promise<DraftResult> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, error: "AI drafting is off. Set ANTHROPIC_API_KEY to turn it on." };
   const me = await getViewer();
-  if (!me || !can(me, "edit")) return { ok: false, error: "Your access level does not allow editing copy." };
+  if (!me || !can(me, "edit")) return { ok: false, error: "Your role does not allow editing copy." };
   const all = await readAll();
   const vis = makeVisibility(all, scopeFor(all, me.id));
   const a = all.assets.find((x) => x.id === assetId);
   if (!a || !vis.asset(assetId) || !a.brandId) return { ok: false, error: "That asset is not here." };
+  if (!canChange(me, a)) return { ok: false, error: "Contributors can only draft copy for work they own." };
   const b = all.brands.find((x) => x.id === a.brandId)!;
   const offerIds = new Set(all.links.filter((l) => l.assetId === a.id).map((l) => l.offerId));
   const offers = all.offers.filter((o) => offerIds.has(o.id));
@@ -86,11 +87,12 @@ export async function draftCopy(assetId: string, steer: string): Promise<DraftRe
 /** Saves chosen copy as a new version of the asset. */
 export async function useCopy(assetId: string, copy: { headline: string; body: string; cta: string }) {
   const me = await getViewer();
-  if (!me || !can(me, "edit")) return { ok: false as const, error: "Your access level does not allow editing copy." };
+  if (!me || !can(me, "edit")) return { ok: false as const, error: "Your role does not allow editing copy." };
   const all = await readAll();
   const vis = makeVisibility(all, scopeFor(all, me.id));
   const a = all.assets.find((x) => x.id === assetId);
   if (!a || !vis.asset(assetId)) return { ok: false as const, error: "That asset is not here." };
+  if (!canChange(me, a)) return { ok: false as const, error: "Contributors can only change work they own." };
   const db = await getDb();
   const { id: _i, createdAt: _c, ...snapshot } = a;
   await db.transaction(async (tx) => {

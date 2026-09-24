@@ -31,7 +31,7 @@ export function OfferPage({ id }: { id: string }) {
   const b = ws.brand(o.brandId);
   const sv = ws.service(o.serviceId);
   const assets = ws.linkedAssets(o.id);
-  const canEdit = ws.can("edit");
+  const canEdit = ws.canChange(o);
   const mentions = ws.mentionsOf("offer", o.id);
   const openNotes = ws.openCount("offer", o.id);
   const nudgeAsset = nudge?.offerId === o.id ? ws.asset(nudge.assetId) : null;
@@ -86,7 +86,7 @@ export function OfferPage({ id }: { id: string }) {
         <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />
       </div>
 
-      {o.archived && <ArchivedNote className="mb-3.5">Archived. Its assets are still in the library — only this room is closed.</ArchivedNote>}
+      {o.archived && <ArchivedNote className="mb-3.5">Archived. Its assets are still in the library — only this offer is closed.</ArchivedNote>}
       <ReviewBar kind="offer" item={o} />
       {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mb-5">{o.changeNote}</ChangeNote>}
 
@@ -155,7 +155,7 @@ export function OfferPage({ id }: { id: string }) {
       {assets.length > 0 ? (
         <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">{assets.map((a) => <AssetCard key={a.id} a={a} />)}</div>
       ) : (
-        <Empty title="This room is empty" body="Something in the library probably already fits. Look before you build.">
+        <Empty title="No assets in this offer yet" body="Something in the library probably already fits. Look before you build.">
           {canEdit && <Btn variant="outline-accent" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link an existing asset</Btn>}
           {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}>Make something new</Btn>}
         </Empty>

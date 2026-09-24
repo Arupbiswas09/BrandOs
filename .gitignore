@@ -46,3 +46,8 @@ next-env.d.ts
 # playwright
 /test-results
 /playwright-report
+
+# local screenshot scripts
+/.shoot.mjs
+/.anon.mjs
+/.mini.mjs

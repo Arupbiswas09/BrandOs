@@ -1,17 +1,24 @@
 "use client";
 
-import { ACCESS_COLOR, ACCESS_LEVELS, ACCESS_NOTE } from "@/lib/constants";
+import { ACCESS_COLOR } from "@/lib/constants";
 import { hexA, readable } from "@/lib/color";
 import { switchUser } from "@/app/actions";
 import { createInvite } from "@/app/auth-actions";
 import { useAction, useApp } from "@/components/app/provider";
-import { Avatar, Btn, Card, H2, Page, PageHead } from "@/components/ui";
+import { Avatar, Btn, Card, H2, Page, PageHead, Tabs } from "@/components/ui";
+import { useStored } from "@/lib/stored";
+import { AccessMap, RoleMatrix } from "./access";
+
+const TEAM_TABS = [["people", "People"], ["roles", "Roles and permissions"], ["map", "Who sees what"], ["groups", "Groups"]] as const;
+type TeamTab = (typeof TEAM_TABS)[number][0];
+const TEAM_KEYS = TEAM_TABS.map((t) => t[0]);
 
 export function Team() {
   const { ws, open, toast } = useApp();
   const [run] = useAction();
   const canAccess = ws.can("access");
   const demo = ws.d.authMode === "demo";
+  const [tab, setTab] = useStored<TeamTab>("bos:team-tab", "people", TEAM_KEYS);
   const invite = async (id: string) => {
     const r = await createInvite(id);
     if (!r.ok) return toast(r.error, "error");
@@ -23,27 +30,17 @@ export function Team() {
   return (
     <Page>
       <PageHead
-        eyebrow="Who is in the building"
-        title="Team"
+        eyebrow="People and permissions"
+        title="Team and access"
         actions={canAccess && <Btn variant="primary" size="lg" onClick={() => open({ kind: "person" })}>+ Invite someone</Btn>}
-     
-        sub={<>Two things decide what a person gets: what they are allowed to do, and which clients they can see. Everything else follows from those.</>}
+        sub={<>Two things decide what a person gets: their <b className="font-semibold text-ink">role</b> says what they can do, and their <b className="font-semibold text-ink">scope</b> says which clients they can see. The server checks both on every change.</>}
       />
 
-      <div className="mb-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {ACCESS_LEVELS.map((a) => (
-          <Card key={a} className="rounded-xl px-[17px] py-[15px]">
-            <div className="mb-2 flex items-center gap-2">
-              <AccessChip access={a} />
-              <span className="flex-1" />
-              <span className="font-mono text-[14.5px] text-mute-3">{ws.d.users.filter((u) => u.access === a).length}</span>
-            </div>
-            <div className="text-[14.5px] leading-[1.5] text-mute-1 text-pretty">{ACCESS_NOTE[a]}</div>
-          </Card>
-        ))}
-      </div>
+      <Tabs className="-mt-3 mb-6 border-b border-line" items={TEAM_TABS.map(([k, l]) => ({ key: k, label: l, active: tab === k, onClick: () => setTab(k) }))} />
 
-      <H2>People</H2>
+      {tab === "roles" && <RoleMatrix />}
+      {tab === "map" && <AccessMap />}
+      {tab === "people" && <>
       <Card className="mb-9 overflow-hidden">
         {ws.d.users.map((u) => {
           const isMe = u.id === ws.me.id;
@@ -69,6 +66,9 @@ export function Team() {
         })}
       </Card>
 
+      </>}
+
+      {tab === "groups" && <>
       <H2 className="mb-[5px]" right={canAccess && <button type="button" onClick={() => open({ kind: "group" })} className="text-[14.5px] text-mute-2 hover:text-ink">+ New group</button>}>Groups</H2>
       <p className="mb-[13px] mt-0 max-w-[62ch] text-[15px] text-mute-3">A group is a saved set of clients. Put someone in the pod and they get everything the pod covers — no per-person list to maintain.</p>
       <div className="grid gap-3.5 md:grid-cols-2">
@@ -100,11 +100,12 @@ export function Team() {
           );
         })}
       </div>
+      </>}
     </Page>
   );
 }
 
-function AccessChip({ access }: { access: keyof typeof ACCESS_COLOR }) {
+export function AccessChip({ access }: { access: keyof typeof ACCESS_COLOR }) {
   const c = ACCESS_COLOR[access];
   return <span className="flex-none rounded-[5px] px-[9px] py-[3px] font-mono text-[13.5px] font-bold tracking-[0.04em]" style={{ background: hexA(c, 0.14), color: readable(c) }}>{access}</span>;
 }

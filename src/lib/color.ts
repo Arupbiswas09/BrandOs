@@ -49,3 +49,26 @@ export function readable(hex: string, tint = 0.16): string {
   for (let i = 0; i < 24 && contrast(toHex(), bg) < 4.6; i++) { r *= 0.9; g *= 0.9; b *= 0.9; }
   return toHex();
 }
+
+/** "31, 111, 92" */
+export function rgbText(hex: string): string {
+  return rgb(hex).join(", ");
+}
+
+/**
+ * A naive CMYK conversion (no ICC profile). Good enough as a starting
+ * point; printers should confirm against a proof.
+ */
+export function cmykText(hex: string): string {
+  const [r, g, b] = rgb(hex).map((v) => v / 255);
+  const k = 1 - Math.max(r, g, b);
+  if (k >= 1) return "0, 0, 0, 100";
+  const f = (c: number) => Math.round(((1 - c - k) / (1 - k)) * 100);
+  return [f(r), f(g), f(b), Math.round(k * 100)].join(", ");
+}
+
+/** WCAG grade for text of this colour on that background. */
+export function wcag(fg: string, bg: string): { ratio: number; grade: "AAA" | "AA" | "AA large" | "Fail" } {
+  const ratio = contrast(fg, bg);
+  return { ratio, grade: ratio >= 7 ? "AAA" : ratio >= 4.5 ? "AA" : ratio >= 3 ? "AA large" : "Fail" };
+}

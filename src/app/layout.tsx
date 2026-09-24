@@ -8,7 +8,7 @@ const mono = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], 
 
 export const metadata: Metadata = {
   title: { default: "BrandOS", template: "%s · BrandOS" },
-  description: "Every client, brand, offer and asset your agency works on, in one building.",
+  description: "Every client, brand, offer and asset your agency works on, in one place.",
   applicationName: "BrandOS",
   appleWebApp: { capable: true, title: "BrandOS", statusBarStyle: "default" },
   formatDetection: { telephone: false },

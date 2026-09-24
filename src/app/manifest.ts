@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "BrandOS",
     short_name: "BrandOS",
-    description: "Every client, brand, offer and asset your agency works on, in one building.",
+    description: "Every client, brand, offer and asset your agency works on, in one place.",
     start_url: "/",
     scope: "/",
     display: "standalone",

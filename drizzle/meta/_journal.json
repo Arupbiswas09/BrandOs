@@ -36,6 +36,13 @@
       "when": 1790193900599,
       "tag": "0004_trash_and_resets",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790237065419,
+      "tag": "0005_brand_kit",
+      "breakpoints": true
     }
   ]
 }

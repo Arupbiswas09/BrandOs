@@ -12,7 +12,8 @@ test("pages meet WCAG AA, contrast included", async ({ page }) => {
     if (name === "sign-in") continue;
     await page.goto(path);
     await settle(page);
-    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    // Contrast samples in the Brand Kit show failing pairs on purpose; they are labelled with the ratio.
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).exclude("[data-contrast-sample]").analyze();
     for (const v of r.violations) {
       problems.push(`${name}: ${v.id} (${v.impact}) × ${v.nodes.length} — ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
     }

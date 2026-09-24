@@ -5,12 +5,13 @@ export async function signIn(page: Page, name = "Priya Raman") {
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: new RegExp(name) }).click();
   await page.waitForURL("/");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
 }
 
 /** Waits for the page to settle: network idle plus the entrance animation. */
 export async function settle(page: Page) {
-  await page.waitForLoadState("networkidle");
+  // Pages that load brand fonts from Google may never go fully idle offline.
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(700);
 }
 
@@ -25,6 +26,8 @@ export const PAGES: [string, string][] = [
   ["brand-assets", "/brands/br1/assets"],
   ["brand-kit", "/brands/br1/kit"],
   ["brand-ctas", "/brands/br1/ctas"],
+  ["brand-strategy", "/brands/br1/strategy"],
+  ["guidelines", "/guidelines/br1"],
   ["service", "/services/sv1"],
   ["offer", "/offers/of1"],
   ["asset-drawer", "/offers/of1?asset=as1"],

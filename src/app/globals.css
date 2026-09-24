@@ -129,7 +129,11 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
     font-size: 15px;
     background: #fff;
     outline: none;
+    transition: border-color .15s, box-shadow .15s;
   }
+  .field:focus { border-color: var(--bos-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bos-accent) 16%, transparent); }
+  [data-invalid] .field, .field[aria-invalid="true"] { border-color: #DC2626; }
+  [data-invalid] .field:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, .15); }
   .label {
     display: block;
     font-size: 14px;
@@ -137,4 +141,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
     color: #334155;
     margin-bottom: 6px;
   }
+}
+
+@media print {
+  @page { size: A4; margin: 14mm; }
+  html, body { background: #fff !important; }
+  .guidelines * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

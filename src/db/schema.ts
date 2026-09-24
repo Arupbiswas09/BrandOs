@@ -24,15 +24,49 @@ const stamps = {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
-export type Access = "Admin" | "Editor" | "Reviewer" | "Viewer";
+export type Access = "Admin" | "Manager" | "Editor" | "Contributor" | "Reviewer" | "Viewer" | "Client";
 export type Review = "None" | "In review" | "Changes requested" | "Approved";
 export type OfferStatus = "Ideation" | "Active" | "Paused" | "Archived";
 export type AssetStatus = "Draft" | "Ready" | "Live" | "Archived";
 
 export type Segment = { name: string; color: string };
 export type Goal = { name: string; description: string };
-export type BrandFont = { name: string; role: string; files: string };
-export type BrandColour = { name: string; hex: string; usage: string };
+export type BrandFont = {
+  name: string; role: string; files: string;
+  /** e.g. "400, 600, 700" */
+  weights?: string;
+  /** System font stack used when the brand font is missing. */
+  fallback?: string;
+  /** Where to get it: Google Fonts URL, foundry, licence note. */
+  source?: string;
+};
+export type ColourRole = "Primary" | "Secondary" | "Accent" | "Neutral" | "Background" | "Text";
+export type BrandColour = {
+  name: string; hex: string; usage: string;
+  role?: ColourRole;
+  /** Print values. CMYK is worked out from the hex when left empty. */
+  cmyk?: string;
+  pantone?: string;
+};
+export type TypeStyle = { name: string; font: string; size: number; weight: number; lineHeight: number; tracking?: number; sample?: string };
+/** The written half of a brand's guidelines. Everything is optional. */
+export type BrandKit = {
+  mission?: string;
+  values?: string[];
+  weAre?: string[];
+  weAreNot?: string[];
+  wordsUse?: string[];
+  wordsAvoid?: string[];
+  voiceExamples?: { context: string; say: string; dont: string }[];
+  typeScale?: TypeStyle[];
+  logo?: { clearSpace?: string; minDigital?: string; minPrint?: string; notes?: string; misuse?: string[] };
+  imagery?: string;
+  imageryDo?: string[];
+  imageryDont?: string[];
+  dos?: string[];
+  donts?: string[];
+  version?: string;
+};
 export type FileRef = { name: string; size: string; url?: string; key?: string; type?: string };
 export type AssetCopy = { headline: string; body: string; cta: string };
 export type CheckItem = { text: string; done: boolean };
@@ -91,6 +125,7 @@ export const brands = pgTable("brands", {
   fonts: jsonb("fonts").$type<BrandFont[]>().notNull().default([]),
   colours: jsonb("colours").$type<BrandColour[]>().notNull().default([]),
   guidelines: jsonb("guidelines").$type<FileRef[]>().notNull().default([]),
+  kit: jsonb("kit").$type<BrandKit>().notNull().default({}),
   archived: boolean("archived").notNull().default(false),
   ...stamps,
 }, (t) => [index("brands_client_idx").on(t.clientId)]);

@@ -15,8 +15,14 @@ export type AuthMode = "demo" | "password";
  * Demo mode lets anyone pick a teammate to sign in as, which is how the
  * prototype worked. Set BRANDOS_AUTH=password to require real sign-in.
  */
+/**
+ * Real passwords in production, the teammate picker everywhere else.
+ * BRANDOS_AUTH=demo|password overrides either way.
+ */
 export function authMode(): AuthMode {
-  return process.env.BRANDOS_AUTH === "password" ? "password" : "demo";
+  const v = process.env.BRANDOS_AUTH;
+  if (v === "password" || v === "demo") return v;
+  return process.env.NODE_ENV === "production" ? "password" : "demo";
 }
 
 export const getViewer = cache(async () => {

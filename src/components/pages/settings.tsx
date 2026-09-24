@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useSyncExternalStore } from "react";
 import { ROLE_OPTIONS } from "@/lib/constants";
 import { signOut, updateProfile } from "@/app/actions";
 import { changePassword } from "@/app/auth-actions";
@@ -32,7 +32,7 @@ export function Settings() {
       <Card className="mb-8 p-6">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void run(updateProfile, { name, role }); }}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Name"><input className="field" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
+            <Field label="Name" required><input required className="field" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
             <Field label="What you do"><Select value={role} onChange={setRole} options={roles.map((r) => ({ value: r, label: r }))} /></Field>
           </div>
           <div><Btn type="submit" variant="primary" disabled={pending || (name === me.name && role === me.role)}>Save profile</Btn></div>
@@ -45,8 +45,8 @@ export function Settings() {
           <Card className="mb-8 p-6">
             <form action={pwAction} className="flex flex-col gap-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Current password"><input name="current" type="password" autoComplete="current-password" className="field" required /></Field>
-                <Field label="New password"><input name="next" type="password" autoComplete="new-password" minLength={10} className="field" required /></Field>
+                <Field label="Current password" required><input name="current" type="password" autoComplete="current-password" className="field" required /></Field>
+                <Field label="New password" required><input name="next" type="password" autoComplete="new-password" minLength={10} className="field" required /></Field>
               </div>
               {pw?.error && <div role="alert" className="text-[15px] text-change-ink">{pw.error}</div>}
               {pw?.email === "saved" && <div role="status" className="text-[15px] text-ok">Password changed.</div>}
@@ -94,6 +94,9 @@ export function Settings() {
         </div>
       </Card>
 
+      <H2>Notifications</H2>
+      <NotificationsCard />
+
       <H2>App</H2>
       <Card className="mb-8 p-6">
         {standalone ? (
@@ -107,7 +110,7 @@ export function Settings() {
         )}
       </Card>
 
-      {ws.can("access") && (
+      {ws.can("export") && (
         <>
           <H2>Workspace data</H2>
           <Card className="mb-8 flex flex-wrap items-center gap-4 p-6">
@@ -119,5 +122,31 @@ export function Settings() {
 
       <form action={signOut}><Btn type="submit" variant="danger">Sign out</Btn></form>
     </Page>
+  );
+}
+
+const noop = () => () => {};
+type Perm = NotificationPermission | "unsupported";
+
+/** Desktop notifications: opt in once per browser. */
+function NotificationsCard() {
+  const [, bump] = useState(0);
+  const perm = useSyncExternalStore<Perm>(noop, () => (typeof Notification === "undefined" ? "unsupported" : Notification.permission), () => "default");
+  const ask = async () => { await Notification.requestPermission().catch(() => {}); bump((n) => n + 1); };
+  return (
+    <Card className="mb-8 flex flex-wrap items-center gap-4 p-6">
+      <div className="min-w-[240px] flex-1">
+        <p className="m-0 text-[15px] text-mute-1">The bell, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you. New ones pop up as they arrive.</p>
+        <p className="m-0 mt-2 text-[14px] text-mute-3">
+          {perm === "granted" ? "Desktop notifications are on for this browser. You will get one when BrandOS is in the background."
+            : perm === "denied" ? "Desktop notifications are blocked. Allow them for this site in your browser settings."
+            : perm === "unsupported" ? "This browser does not support desktop notifications."
+            : "Turn on desktop notifications to hear about new work when BrandOS is in the background."}
+          {" "}Email notifications go out when the admin has set up email.
+        </p>
+      </div>
+      {perm === "default" && <Btn variant="primary" onClick={ask}>Turn on desktop notifications</Btn>}
+      {perm === "granted" && <span className="rounded-full bg-[#DCFCE7] px-3 py-1 text-[13.5px] font-semibold text-[#166534]">On</span>}
+    </Card>
   );
 }

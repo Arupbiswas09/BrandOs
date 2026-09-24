@@ -25,14 +25,14 @@ export function NewModal() {
   const clientId = active?.clientId ?? (p.view === "client" ? p.id : undefined) ?? ws.d.clients.find((c) => !c.archived)?.id;
 
   const options = [
-    b && { label: "A landing page, email or ad", sub: "A campaign asset that supports an offer", run: () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: offerHere ? [offerHere.id] : [] }, step: 0 }) },
-    b && { label: "An offer", sub: "Positioning, goals, promise and proof", run: () => open({ kind: "offer", draft: { brandId: b.id, serviceId: serviceHere?.id ?? null, segment: "All segments", status: "Ideation" } }) },
-    b && { label: "A service", sub: "A capability you sell, positioned per segment", run: () => open({ kind: "service", draft: { brandId: b.id } }) },
-    b && { label: "A goal", sub: "A broad outcome offers can chase", run: () => open({ kind: "goal", brandId: b.id }) },
-    { label: "A checklist or prompt", sub: "Reusable process, kept in the Global Library", run: () => open({ kind: "asset", draft: { brandId: null, type: "Checklist", status: "Live", offerIds: [] }, step: 3 }) },
-    b && { label: "A CTA", sub: "Reusable button with real colours", run: () => open({ kind: "cta", draft: { brandId: b.id, bg: b.primary, fg: onColor(b.primary), style: "solid" } }) },
-    clientId && { label: "A brand", sub: "A new building under a client", run: () => open({ kind: "brand", draft: { clientId } }) },
-    { label: "A client", sub: "A new property on the street", run: () => open({ kind: "client" }) },
+    b && ws.can("edit") && { label: "A landing page, email or ad", sub: "A campaign asset that supports an offer", run: () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: offerHere ? [offerHere.id] : [] }, step: 0 }) },
+    b && ws.can("edit") && { label: "An offer", sub: "Positioning, goals, promise and proof", run: () => open({ kind: "offer", draft: { brandId: b.id, serviceId: serviceHere?.id ?? null, segment: "All segments", status: "Ideation" } }) },
+    b && ws.can("edit") && { label: "A service", sub: "A capability you sell, positioned per segment", run: () => open({ kind: "service", draft: { brandId: b.id } }) },
+    b && (ws.can("structure") || ws.can("kit")) && { label: "A goal", sub: "A broad outcome offers can chase", run: () => open({ kind: "goal", brandId: b.id }) },
+    ws.can("library") && { label: "A checklist or prompt", sub: "Reusable process, kept in the Global Library", run: () => open({ kind: "asset", draft: { brandId: null, type: "Checklist", status: "Live", offerIds: [] }, step: 3 }) },
+    b && ws.can("edit") && { label: "A CTA", sub: "Reusable button with real colours", run: () => open({ kind: "cta", draft: { brandId: b.id, bg: b.primary, fg: onColor(b.primary), style: "solid" } }) },
+    clientId && ws.can("structure") && { label: "A brand", sub: "A new brand under a client", run: () => open({ kind: "brand", draft: { clientId } }) },
+    ws.can("structure") && { label: "A client", sub: "A new organisation you work for", run: () => open({ kind: "client" }) },
   ].filter(Boolean) as { label: string; sub: string; run: () => void }[];
 
   return (
@@ -81,7 +81,8 @@ const KEYS: [string, string][] = [
   ["⌘ K  or  /", "Search everything"],
   ["N", "Create something new"],
   ["I", "Open your queue"],
-  ["G then S", "Go to the Street"],
+  ["[", "Fold or unfold the sidebar"],
+  ["G then S", "Go to Dashboard"],
   ["G then L", "Go to the Global Library"],
   ["G then T", "Go to the Team"],
   ["G then C", "Calendar"],

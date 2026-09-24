@@ -2,7 +2,8 @@
 
 import { useApp } from "@/components/app/provider";
 import { AssetModal, CloneModal, LinkAssetModal, LinkModal } from "./asset";
-import { BrandModal, ClientModal, CtaModal, GoalModal, GoalOffersModal, KitModal, MergeGoalModal, ServiceModal } from "./forms";
+import { BrandModal, ClientModal, CtaModal, GoalModal, GoalOffersModal, MergeGoalModal, ServiceModal } from "./forms";
+import { KitModal } from "./kit";
 import { ConfirmModal, InstallModal, NewModal, ShortcutsModal } from "./misc";
 import { OfferModal } from "./offer";
 import { ShareModal } from "./share";
