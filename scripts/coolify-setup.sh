@@ -48,6 +48,8 @@ setenv BRANDOS_ADMIN_NAME "Arup"
 [ -n "${RESEND_API_KEY:-}" ] && setenv RESEND_API_KEY "$RESEND_API_KEY"
 [ -n "${MAIL_FROM:-}" ] && setenv MAIL_FROM "$MAIL_FROM"
 [ -n "${ANTHROPIC_API_KEY:-}" ] && setenv ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+[ -n "${CRON_SECRET:-}" ] && setenv CRON_SECRET "$CRON_SECRET"
+[ -n "${SLACK_WEBHOOK_URL:-}" ] && setenv SLACK_WEBHOOK_URL "$SLACK_WEBHOOK_URL"
 
 echo "Deploying…"
 api -X POST "$CO/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=true" | jq -r '.deployments[0].deployment_uuid // .message'

@@ -18,7 +18,10 @@ Built from the *BrandOS v3* Claude Design prototype. Developed by Arup.
 - **Editable notes**: edit or delete your own notes; admins can delete any.
 - **Recycle bin**: anything deleted can be restored for 30 days (Settings menu → Recycle bin, admins).
 - **Live updates**: teammates' changes appear within 30 seconds, and immediately when you return to the tab.
-- **Email** (when `RESEND_API_KEY` is set): invites, password resets, review requests, requested changes, approvals and @mentions.
+- **Email** (when `RESEND_API_KEY` is set): invites, password resets, review requests, requested changes, approvals and @mentions. Each person chooses instant, daily digest or off per kind of event in **Settings → Notifications**.
+- **Daily digest** (when `CRON_SECRET` is set and something calls `/api/cron/digest` each morning): one email with everything queued plus the person's work due in the next two days or overdue. See `docs/DEPLOY.md`.
+- **Slack** (optional, `SLACK_WEBHOOK_URL`): review requests, approvals, change requests and new client links posted to one channel, with links. Admins can send a test message from Settings.
+- **Calendar feed**: a private `.ics` link per person (Settings or Calendar page) with due dates and offer launches they can see, and a reminder the day before. Regenerate or turn it off at any time.
 - **Client share links, AI copy drafting, version history, installable app**: see below.
 
 ## Run it
@@ -84,6 +87,8 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 ## Operations
 
 - `GET /api/health` returns 200 when the database answers — point uptime checks at it.
+- `GET|POST /api/cron/digest` with `Authorization: Bearer $CRON_SECRET` sends the daily digest (safe to call more than once a day).
+- `GET /api/calendar/<token>.ics` serves a person's private calendar feed.
 - Admins can download the whole workspace as JSON from **Settings → Export JSON**.
 
 ## Setting up for real use

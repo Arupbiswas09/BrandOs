@@ -14,8 +14,12 @@ import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
 import { removeStoredFile } from "@/server/storage";
 import { fileKeys, restoreSnapshot, snapshot } from "@/server/trash";
-import { after } from "next/server";
-import { appUrl, sendMail, type Mail } from "@/server/mail";
+import { appUrl } from "@/server/mail";
+import { itemUrl, notifyPeople } from "@/server/notify";
+import { postSlack, slackEnabled, slackEsc, slackLater, slackLink } from "@/server/slack";
+import { issueFeed, revokeFeed } from "@/server/calendar";
+import { NOTIFY_EVENTS } from "@/lib/notify";
+import { href } from "@/lib/routes";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -72,18 +76,17 @@ function needAny(me: Parameters<typeof can>[0], ...perms: Perm[]) {
 const str = (max = 5000) => z.string().trim().max(max);
 const name = (what: string) => z.string().trim().min(1, `Give the ${what} a name.`).max(200);
 
-/** Emails people about something that happened, after the response is sent. */
-function notify(all: All, userIds: (string | null | undefined)[], build: (firstName: string) => Omit<Mail, "to">, skip?: string) {
-  const people = [...new Set(userIds.filter((x): x is string => !!x && x !== skip))]
-    .map((id) => all.users.find((u) => u.id === id))
-    .filter((u): u is NonNullable<typeof u> => !!u?.email);
-  if (!people.length) return;
-  after(async () => {
-    for (const u of people) await sendMail({ to: u.email!, ...build(u.name.split(" ")[0]) });
-  });
-}
+/**
+ * Emails people about something that happened, after the response is sent.
+ * Each person's choices in Settings → Notifications decide instant, digest or off.
+ */
+const notify = notifyPeople;
 
-const itemUrl = (kind: "offer" | "asset", id: string) => (kind === "offer" ? `${appUrl()}/offers/${id}` : `${appUrl()}/?asset=${id}`);
+/** "Item (Brand · kind)" with a link, for the team's Slack channel. */
+function slackItem(all: All, kind: "offer" | "asset", item: { id: string; name: string; brandId: string | null }) {
+  const brand = item.brandId ? all.brands.find((b) => b.id === item.brandId)?.name ?? "" : "Global Library";
+  return `${slackLink(itemUrl(kind, item.id), item.name)} (${slackEsc(brand)} · ${kind})`;
+}
 
 /* ================================================================ session */
 
@@ -119,7 +122,7 @@ export async function resetDemo() {
     if (authMode() !== "demo") throw new Denied("Reset is only available in demo mode.");
     const db = await getDb();
     await db.transaction(async (tx) => {
-      for (const t of [s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
+      for (const t of [s.notificationQueue, s.calendarFeeds, s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
         await tx.delete(t);
       }
       await tx.delete(s.sessions);
@@ -925,6 +928,8 @@ export async function deleteItem(kind: Kind, id: string) {
           if (id === me.id) throw new Denied("You cannot remove yourself.");
           if (u!.access === "Admin" && all.users.filter((x) => x.access === "Admin").length === 1) throw new Denied("Someone has to stay an admin.");
           await tx.delete(s.sessions).where(eq(s.sessions.userId, id));
+          await tx.delete(s.calendarFeeds).where(eq(s.calendarFeeds.userId, id));
+          await tx.delete(s.notificationQueue).where(eq(s.notificationQueue.userId, id));
           await tx.delete(s.users).where(eq(s.users.id, id));
           await log(tx, me.id, "removed", "person", id, u!.name);
           break;
@@ -975,7 +980,8 @@ export async function sendForReview(kind: "offer" | "asset", id: string, reviewe
     const t = reviewTarget(kind);
     await db.update(t).set({ review: "In review", reviewerId, changeNote: "", updatedAt: new Date() }).where(eq(t.id, id));
     await log(db, me.id, `asked ${reviewer!.name.split(" ")[0]} to review`, kind, id, item.name);
-    notify(all, [reviewerId], (first) => ({
+    slackLater(`:eyes: *${slackEsc(me.name)}* asked *${slackEsc(reviewer!.name)}* to review ${slackItem(all, kind, item)}`);
+    notify(all, "review", [reviewerId], (first) => ({
       subject: `${me.name.split(" ")[0]} asked you to review ${item.name}`,
       heading: `${item.name} is waiting on you`,
       body: `Hi ${first}, ${me.name} asked you to review this ${kind}. Approve it, or send it back with a note.`,
@@ -993,7 +999,8 @@ export async function approveItem(kind: "offer" | "asset", id: string) {
     const extra = kind === "asset" && (item as s.Asset).status === "Draft" ? { status: "Ready" as const } : {};
     await db.update(t).set({ review: "Approved", changeNote: "", reviewerId: me.id, updatedAt: new Date(), ...extra }).where(eq(t.id, id));
     await log(db, me.id, "approved", kind, id, item.name);
-    notify(all, [item.ownerId], (first) => ({
+    slackLater(`:white_check_mark: *${slackEsc(me.name)}* approved ${slackItem(all, kind, item)}`);
+    notify(all, "approved", [item.ownerId], (first) => ({
       subject: `${item.name} was approved`,
       heading: "Approved",
       body: `Good news, ${first}: ${me.name} approved ${item.name}.`,
@@ -1015,7 +1022,8 @@ export async function requestChanges(kind: "offer" | "asset", id: string, note: 
       await tx.insert(s.comments).values({ id: newId("cm"), kind, itemId: id, userId: me.id, text, isChange: true, mentions: item.ownerId ? [item.ownerId] : [] });
       await log(tx, me.id, "requested changes on", kind, id, item.name, text);
     });
-    notify(all, [item.ownerId], (first) => ({
+    slackLater(`:leftwards_arrow_with_hook: *${slackEsc(me.name)}* requested changes on ${slackItem(all, kind, item)}\n>${slackEsc(text.slice(0, 280)).replace(/\n/g, "\n>")}`);
+    notify(all, "changes", [item.ownerId], (first) => ({
       subject: `Changes requested on ${item.name}`,
       heading: `${item.name} needs changes`,
       body: `Hi ${first}, ${me.name} sent this back with a note:`,
@@ -1039,7 +1047,7 @@ export async function postComment(kind: "offer" | "asset", itemId: string, text:
     const keepMentions = [...new Set(mentions)].filter((m) => t.includes("@" + (all.users.find((u) => u.id === m)?.name ?? "\u0000")));
     await db.insert(s.comments).values({ id: newId("cm"), kind, itemId, userId: me.id, text: t, refs: keepRefs, mentions: keepMentions });
     const where = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === itemId)?.name ?? "";
-    notify(all, keepMentions, (first) => ({
+    notify(all, "mention", keepMentions, (first) => ({
       subject: `${me.name.split(" ")[0]} mentioned you on ${where}`,
       heading: `${me.name} mentioned you`,
       body: `Hi ${first}, you were mentioned in the discussion on ${where}:`,
@@ -1128,6 +1136,8 @@ export async function createShareLink(brandId: string, label: string) {
     const b = all.brands.find((x) => x.id === brandId)!;
     await db.insert(s.shareLinks).values({ token, brandId, label: label.trim().slice(0, 80), createdBy: me.id });
     await log(db, me.id, "created a client link for", "brand", brandId, b.name, label.trim());
+    // The link itself is a secret, so the channel gets the brand page, not the share URL.
+    slackLater(`:link: *${slackEsc(me.name)}* created a client share link${label.trim() ? ` "${slackEsc(label.trim().slice(0, 80))}"` : ""} for ${slackLink(appUrl() + href.brand(brandId), b.name)}`);
     return ok(token);
   });
 }
@@ -1154,6 +1164,49 @@ export async function updateProfile(input: { name: string; role: string }) {
     const initials = ((parts[0]?.[0] ?? "?") + (parts[1]?.[0] ?? "")).toUpperCase();
     const db = await getDb();
     await db.update(s.users).set({ name, initials, role: input.role.trim().slice(0, 80) || me.role, updatedAt: new Date() }).where(eq(s.users.id, me.id));
+  });
+}
+
+/* ================================================================ notifications and integrations */
+
+const modeSchema = z.enum(["instant", "digest", "off"]);
+const prefsSchema = z.object(Object.fromEntries(NOTIFY_EVENTS.map(({ event }) => [event, modeSchema.optional()]))).strict();
+
+/** My own email choices. Anyone signed in can change their own. */
+export async function saveNotifyPrefs(input: s.NotifyPrefs) {
+  return run(async () => {
+    const me = await getViewer();
+    if (!me) throw new Denied("You are signed out.");
+    const prefs = prefsSchema.parse(input) as s.NotifyPrefs;
+    const db = await getDb();
+    await db.update(s.users).set({ notifyPrefs: { ...me.notifyPrefs, ...prefs }, updatedAt: new Date() }).where(eq(s.users.id, me.id));
+  });
+}
+
+/** Admins check that the Slack channel is wired up. */
+export async function sendSlackTest() {
+  return run(async () => {
+    const { me } = await context("access");
+    if (!slackEnabled()) throw new Denied("Slack is not set up. Add SLACK_WEBHOOK_URL to the server's environment and restart.");
+    const r = await postSlack(`:wave: Test from BrandOS, sent by *${slackEsc(me.name)}*. Review requests, approvals, change requests and new client links will appear here. ${slackLink(appUrl(), "Open BrandOS")}`);
+    if (!r.ok) throw new Denied(r.error);
+  });
+}
+
+/** A new private calendar link for me, replacing any earlier one. The URL comes back once, in `id`. */
+export async function createCalendarFeed() {
+  return run(async () => {
+    const me = await getViewer();
+    if (!me) throw new Denied("You are signed out.");
+    return ok(await issueFeed(me.id));
+  });
+}
+
+export async function revokeCalendarFeed() {
+  return run(async () => {
+    const me = await getViewer();
+    if (!me) throw new Denied("You are signed out.");
+    await revokeFeed(me.id);
   });
 }
 

@@ -45,6 +45,39 @@ app starts.
 7. **Email (optional)** — add `RESEND_API_KEY` and `MAIL_FROM` to
    `~/.config/brandos/prod.env` and re-run the setup script, or set them in Coolify.
 
+## Daily digest, Slack and calendar feeds
+
+All three are optional; without them the app works and Settings says what is off.
+
+**Daily digest.** Needs email (above) and a `CRON_SECRET`:
+
+1. Make a secret: `openssl rand -hex 32`. Add `CRON_SECRET` to
+   `~/.config/brandos/prod.env` and re-run the setup script, or set it in
+   Coolify → brandos → Environment Variables, then redeploy.
+2. Coolify → brandos → **Scheduled Tasks** → Add:
+   - Name: `digest`
+   - Command: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/digest`
+   - Frequency: `0 7 * * *` (07:00 every day, server time)
+   - Container: `brandos`
+
+The task runs inside the app container, so `$CRON_SECRET` is already set there.
+Each person gets at most one digest per day (the server's time zone; set `TZ`,
+e.g. `Europe/London`, to move the day boundary), so running it twice is harmless.
+The endpoint returns a JSON summary (`sent`, `alreadySent`, `failed`); a
+non-2xx status makes the task show as failed in Coolify. Test by hand with the
+same command in Coolify → brandos → Terminal.
+
+Without `CRON_SECRET`, anything set to "Daily digest" is emailed straight
+away and due-date reminders are not sent.
+
+**Slack.** Create an incoming webhook for the channel (api.slack.com/apps →
+Create app → Incoming Webhooks), set `SLACK_WEBHOOK_URL`, redeploy, then use
+**Settings → Slack → Send test message**.
+
+**Calendar feeds** need nothing extra. Each person makes their own private link
+in Settings or on the Calendar page. Links use `APP_URL`, so keep it set to the
+public address.
+
 ## First sign-in
 
 The admin account is created on first start from `BRANDOS_ADMIN_EMAIL` /

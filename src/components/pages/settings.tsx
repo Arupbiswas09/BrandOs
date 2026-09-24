@@ -2,13 +2,16 @@
 
 import { useActionState, useState, useSyncExternalStore } from "react";
 import { ROLE_OPTIONS } from "@/lib/constants";
-import { signOut, updateProfile } from "@/app/actions";
+import { saveNotifyPrefs, sendSlackTest, signOut, updateProfile } from "@/app/actions";
+import type { NotifyEvent, NotifyMode } from "@/db/schema";
+import { NOTIFY_EVENTS, NOTIFY_MODES, fullPrefs } from "@/lib/notify";
+import { CalendarFeedCard } from "@/components/calendar-feed";
 import { changePassword } from "@/app/auth-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { useInstall } from "@/components/app/pwa";
 import { usePalette, useTakeover } from "@/components/app/shell";
 import { PALETTES, PALETTE_KEYS } from "@/components/app/theme";
-import { Btn, Card, Field, H2, Page, PageHead, Select, cx } from "@/components/ui";
+import { Btn, Card, Field, H2, Hint, Page, PageHead, Select, Warn, cx } from "@/components/ui";
 
 export function Settings() {
   const { ws, open } = useApp();
@@ -95,7 +98,12 @@ export function Settings() {
       </Card>
 
       <H2>Notifications</H2>
-      <NotificationsCard />
+      <EmailPrefsCard />
+      <NotificationsCard last={!ws.can("access")} />
+      {ws.can("access") && <SlackCard />}
+
+      <H2>Calendar</H2>
+      <CalendarFeedCard />
 
       <H2>App</H2>
       <Card className="mb-8 p-6">
@@ -128,21 +136,109 @@ export function Settings() {
 const noop = () => () => {};
 type Perm = NotificationPermission | "unsupported";
 
+/** Per-person email choices: instant, in the morning digest, or not at all. */
+function EmailPrefsCard() {
+  const { ws } = useApp();
+  const [run, pending] = useAction();
+  const { mail, digest } = ws.d.notify;
+  // Local copy so a click shows at once; the server copy arrives with the refresh.
+  const [prefs, setPrefs] = useState(() => fullPrefs(ws.d.notify.prefs));
+  const choose = (event: NotifyEvent, mode: NotifyMode) => {
+    if (prefs[event] === mode) return;
+    const before = prefs;
+    setPrefs({ ...prefs, [event]: mode });
+    void run(saveNotifyPrefs, { [event]: mode }).then((r) => { if (!r.ok) setPrefs(before); });
+  };
+
+  return (
+    <Card className="mb-5 p-4 sm:p-6">
+      <div className="mb-1 text-[15px] font-semibold">Email</div>
+      <p className="m-0 mb-4 text-[15px] text-mute-1">
+        Choose what BrandOS emails you about. <strong className="font-semibold text-ink-3">Instant</strong> sends it straight away;{" "}
+        <strong className="font-semibold text-ink-3">Daily digest</strong> gathers it into one email each morning.
+      </p>
+      {!mail && (
+        <Warn className="mb-4">Email is not set up for this workspace yet, so nothing is sent. An admin adds RESEND_API_KEY on the server. Your choices are kept for when it is.</Warn>
+      )}
+      {mail && !digest && (
+        <Hint className="mb-4">The morning digest is not scheduled on this install (CRON_SECRET), so anything set to Daily digest is emailed straight away, and due-date reminders are not sent.</Hint>
+      )}
+      <div className="overflow-hidden rounded-[10px] border border-line">
+        <table className="w-full border-collapse text-left">
+          <caption className="sr-only">Email notifications</caption>
+          <thead className="bg-wash-2">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-[13px] font-semibold text-mute-2 sm:px-4">When</th>
+              {NOTIFY_MODES.map((m) => (
+                <th key={m.mode} scope="col" className="w-[56px] px-1 py-2 text-center text-[13px] font-semibold text-mute-2 sm:w-[104px]">{m.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {NOTIFY_EVENTS.map((e) => (
+              <tr key={e.event} className="border-t border-divider">
+                <th scope="row" className="px-3 py-3 align-top font-normal sm:px-4">
+                  <span className="block text-[15px] font-medium text-ink-3">{e.label}</span>
+                  <span className="block text-[13.5px] text-mute-2">{e.note}</span>
+                </th>
+                {NOTIFY_MODES.map((m) => {
+                  const on = prefs[e.event] === m.mode;
+                  return (
+                    <td key={m.mode} className="px-1 py-3 text-center align-middle">
+                      <input type="radio" name={`notify-${e.event}`} checked={on} disabled={pending && !on}
+                        onChange={() => choose(e.event, m.mode)} aria-label={`${e.label}: ${m.label}`}
+                        className="h-[18px] w-[18px] cursor-pointer accent-[var(--bos-accent)]" />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="m-0 mt-3 text-[14px] text-mute-3">
+        Due-date reminders cover work you own or have to act on. Instant sends them as their own email each morning; Daily digest puts them in the digest.
+      </p>
+    </Card>
+  );
+}
+
+/** Admins: the team Slack channel. */
+function SlackCard() {
+  const { ws, toast } = useApp();
+  const [run, pending] = useAction();
+  const on = ws.d.notify.slack;
+  const test = async () => { const r = await run(sendSlackTest); if (r.ok) toast("Test message sent to Slack"); };
+  return (
+    <Card className="mb-8 flex flex-wrap items-center gap-4 p-6">
+      <div className="min-w-[240px] flex-1">
+        <div className="mb-1 text-[15px] font-semibold">Slack</div>
+        <p className="m-0 text-[15px] text-mute-1">
+          {on ? "Review requests, approvals, change requests and new client links are posted to your team's Slack channel, each with a link to the work."
+            : "Slack is off. To post review requests, approvals, change requests and new client links to a channel, create a Slack incoming webhook and set SLACK_WEBHOOK_URL on the server."}
+        </p>
+      </div>
+      {on ? <Btn disabled={pending} onClick={test}>Send test message</Btn>
+        : <span className="rounded-full bg-chip px-3 py-1 text-[13.5px] font-semibold text-mute-2">Off</span>}
+    </Card>
+  );
+}
+
 /** Desktop notifications: opt in once per browser. */
-function NotificationsCard() {
+function NotificationsCard({ last }: { last: boolean }) {
   const [, bump] = useState(0);
   const perm = useSyncExternalStore<Perm>(noop, () => (typeof Notification === "undefined" ? "unsupported" : Notification.permission), () => "default");
   const ask = async () => { await Notification.requestPermission().catch(() => {}); bump((n) => n + 1); };
   return (
-    <Card className="mb-8 flex flex-wrap items-center gap-4 p-6">
+    <Card className={cx(last ? "mb-8" : "mb-5", "flex flex-wrap items-center gap-4 p-6")}>
       <div className="min-w-[240px] flex-1">
+        <div className="mb-1 text-[15px] font-semibold">In the app</div>
         <p className="m-0 text-[15px] text-mute-1">The bell, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you. New ones pop up as they arrive.</p>
         <p className="m-0 mt-2 text-[14px] text-mute-3">
           {perm === "granted" ? "Desktop notifications are on for this browser. You will get one when BrandOS is in the background."
             : perm === "denied" ? "Desktop notifications are blocked. Allow them for this site in your browser settings."
             : perm === "unsupported" ? "This browser does not support desktop notifications."
             : "Turn on desktop notifications to hear about new work when BrandOS is in the background."}
-          {" "}Email notifications go out when the admin has set up email.
         </p>
       </div>
       {perm === "default" && <Btn variant="primary" onClick={ask}>Turn on desktop notifications</Btn>}

@@ -2,7 +2,9 @@ import "server-only";
 import { cache } from "react";
 import { desc } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
-import { scopeOf, seesBrand, seesClient, type Scope } from "@/lib/access";
+import { can, scopeOf, seesBrand, seesClient, type Scope } from "@/lib/access";
+import { mailEnabled } from "@/server/mail";
+import { slackEnabled } from "@/server/slack";
 import type { PublicUser, Workspace } from "@/lib/types";
 import { waitOn } from "@/lib/types";
 
@@ -89,7 +91,10 @@ function queueCounts(all: All): Record<string, number> {
 
 export async function buildWorkspace(
   meId: string,
-  extra: { recents: Workspace["recents"]; readIds: Set<string>; authMode: Workspace["authMode"]; shareLinks: Workspace["shareLinks"] },
+  extra: {
+    recents: Workspace["recents"]; readIds: Set<string>; authMode: Workspace["authMode"]; shareLinks: Workspace["shareLinks"];
+    calendarFeed: Workspace["calendarFeed"];
+  },
 ): Promise<Workspace> {
   const all = await loadAll();
   const scope = scopeFor(all, meId);
@@ -99,7 +104,7 @@ export async function buildWorkspace(
   // Guests get names and roles for the people they work with, never emails or access.
   const users: PublicUser[] = all.users
     .filter((u) => !guest || u.id === meId || u.access !== "Client")
-    .map(({ passwordHash, ...u }) => (guest && u.id !== meId
+    .map(({ passwordHash, notifyPrefs: _n, lastDigestAt: _l, ...u }) => (guest && u.id !== meId
       ? { ...u, email: null, clientIds: [], brandIds: [], groupIds: [], allClients: false, hasPassword: !!passwordHash }
       : { ...u, hasPassword: !!passwordHash }));
   const offers = all.offers.filter((o) => vis.offer(o.id));
@@ -145,5 +150,12 @@ export async function buildWorkspace(
     shareLinks: guest ? [] : extra.shareLinks.filter((l) => vis.brand(l.brandId)),
     queueCounts: guest ? { [meId]: queueCounts(all)[meId] ?? 0 } : queueCounts(all),
     unreadMentions,
+    notify: {
+      prefs: all.users.find((u) => u.id === meId)?.notifyPrefs ?? {},
+      mail: mailEnabled(),
+      digest: !!process.env.CRON_SECRET?.trim(),
+      slack: slackEnabled() && can(all.users.find((u) => u.id === meId), "access"),
+    },
+    calendarFeed: extra.calendarFeed,
   };
 }
