@@ -11,8 +11,16 @@ export function mailEnabled() {
 }
 
 /** The public address of this install, for links inside emails. */
+/**
+ * The public address, for links in emails, Slack and calendar feeds.
+ * APP_URL wins; otherwise the first domain Coolify gives the container
+ * (COOLIFY_URL / COOLIFY_FQDN, comma-separated), then Vercel's, then localhost.
+ */
 export function appUrl() {
-  const u = process.env.APP_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+  const coolify = (process.env.COOLIFY_URL || process.env.COOLIFY_FQDN || "").split(",").map((x) => x.trim()).find(Boolean);
+  const u = process.env.APP_URL?.trim()
+    || (coolify ? (coolify.startsWith("http") ? coolify : `https://${coolify}`) : "")
+    || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
   return u.replace(/\/$/, "");
 }
 
