@@ -50,6 +50,10 @@ setenv BRANDOS_ADMIN_NAME "Arup"
 [ -n "${ANTHROPIC_API_KEY:-}" ] && setenv ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
 [ -n "${CRON_SECRET:-}" ] && setenv CRON_SECRET "$CRON_SECRET"
 [ -n "${SLACK_WEBHOOK_URL:-}" ] && setenv SLACK_WEBHOOK_URL "$SLACK_WEBHOOK_URL"
+[ -n "${AUTH_SECRET:-}" ] && setenv AUTH_SECRET "$AUTH_SECRET"
+[ -n "${GOOGLE_CLIENT_ID:-}" ] && setenv GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID"
+[ -n "${GOOGLE_CLIENT_SECRET:-}" ] && setenv GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET"
+[ -n "${GOOGLE_ALLOWED_DOMAIN:-}" ] && setenv GOOGLE_ALLOWED_DOMAIN "$GOOGLE_ALLOWED_DOMAIN"
 
 echo "Deploying…"
 api -X POST "$CO/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=true" | jq -r '.deployments[0].deployment_uuid // .message'
