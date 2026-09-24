@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { Archive, ArchiveRestore, CalendarDays, Clock, Layers, Link2, Megaphone, Pencil, Plus, Split, Trash2, Workflow } from "lucide-react";
 import { hexA, readable } from "@/lib/color";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -12,7 +13,9 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, GoalChips } from "@/components/cards";
 import { CommentText, Thread } from "@/components/discussion";
 import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
-import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, DueBadge, Empty, Eyebrow, Page } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, DueBadge, Eyebrow, Page } from "@/components/ui";
+import { ActionRule, EmptyArt, EntityHeader, IconTile, MetaItem } from "@/components/polish";
+import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 
 export function OfferPage({ id }: { id: string }) {
@@ -39,55 +42,86 @@ export function OfferPage({ id }: { id: string }) {
 
   return (
     <Page>
-      <div className="head-band -mt-8 mb-8 pb-7 pt-8 sm:-mt-10 sm:pt-10 flex flex-wrap items-start gap-5">
-        <div className="min-w-0 flex-1">
-          <div className="mb-3 flex flex-wrap items-center gap-[7px]">
-            <Chip color={ws.segColor(o.segment, o.brandId)}>{o.segment}</Chip>
-            <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
-            {sv && <Link href={href.service(sv.id)} className="rounded-[5px] border border-line bg-white px-2 py-0.5 text-[13px] font-semibold text-mute-1 hover:border-accent hover:text-accent">{sv.name} ↗</Link>}
-            {!sv && <span className="rounded-[5px] border border-dashed border-line px-2 py-0.5 text-[13px] font-semibold text-mute-3">Standalone</span>}
-            <span className="text-[14px] text-[#526077]">Updated {ws.ago(o.updatedAt)}</span>
-          </div>
-          <h1 className="m-0 mb-1.5 text-[26px] font-semibold leading-[1.1] tracking-[-0.022em] sm:text-[28px]">{o.name}</h1>
-          <p className="m-0 text-[15px] text-[#475569]">{o.short}</p>
-        </div>
-        <div className="flex flex-wrap gap-2 sm:pt-[34px]">
-          {canEdit && <Btn onClick={() => open({ kind: "offer", draft: o })}>Edit</Btn>}
-          {canEdit && <Btn onClick={() => {
-            const taken = new Set(ws.offersOf(o.brandId).filter((x) => x.serviceId === o.serviceId && !x.archived).map((x) => x.segment));
-            const next = b?.segments.find((sg) => sg.name !== "All segments" && !taken.has(sg.name))?.name ?? o.segment;
-            open({ kind: "offer", draft: { ...o, id: undefined, name: `${o.name} — ${next}`, segment: next, status: "Ideation", review: "None" } });
-          }}>Adapt for another segment</Btn>}
-          {ws.can("archive") && <Btn onClick={() => run(setArchived, "offer", o.id, !o.archived)}>{o.archived ? "Restore" : "Archive"}</Btn>}
-          {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "offer", id: o.id, label: o.name, back: href.brand(o.brandId, "offers") })}>Delete</Btn>}
-        </div>
-      </div>
-
-      <div className="mb-[26px] flex flex-wrap items-center gap-1.5">
-        <span className="eyebrow mr-1">Status</span>
-        {!canEdit && <Chip color={OFFER_STATUS[o.status]} size="md" className="rounded-[7px] px-[11px] py-1">{o.status}</Chip>}
-        {canEdit && (Object.keys(OFFER_STATUS) as Offer["status"][]).map((k) => {
-          const on = o.status === k; const c = OFFER_STATUS[k];
-          return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="rounded-[7px] border px-[11px] py-1 text-[14px] font-medium transition"
-              style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>{k}</button>
-          );
-        })}
-      </div>
-
-      <div className="-mt-3 mb-6 flex flex-wrap items-center gap-2.5">
-        <span className="eyebrow mr-1">Launch</span>
-        {canEdit ? (
-          <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
-            onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[14px]" />
-        ) : (
-          <span className="text-[15px]">{o.dueAt ? new Date(o.dueAt).toDateString() : "Not scheduled"}</span>
+      <EntityHeader
+        eyebrow={<>Offer{b ? <> · <Link href={href.brand(b.id, "offers")} className="hover:text-ink hover:underline">{b.name}</Link></> : null}</>}
+        lead={<IconTile icon={Megaphone} color={b?.primary} size={48} className="rounded-[13px]" />}
+        title={o.name}
+        sub={o.short}
+        meta={
+          <>
+            <Chip color={OFFER_STATUS[o.status]} size="sm">{o.status}</Chip>
+            <Chip color={ws.segColor(o.segment, o.brandId)} size="sm">{o.segment}</Chip>
+            {sv ? (
+              <Link href={href.service(sv.id)} className="inline-flex items-center gap-1 rounded-[5px] border border-line bg-white px-2 py-[2px] text-[13px] font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
+                <Layers aria-hidden size={13} />{sv.name}
+              </Link>
+            ) : (
+              <span className="rounded-[5px] border border-dashed border-line-strong px-2 py-[2px] text-[13px] font-semibold text-mute-3">Standalone</span>
+            )}
+            <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
+            <MetaItem icon={Clock}><span>Updated {ws.ago(o.updatedAt)}</span></MetaItem>
+            <MetaItem><Avatar initials={ws.user(o.ownerId).initials} size={20} />{ws.user(o.ownerId).name}</MetaItem>
+          </>
+        }
+        actions={(canEdit || ws.can("archive") || ws.can("del")) && (
+          <>
+            {canEdit && <Btn onClick={() => {
+              const taken = new Set(ws.offersOf(o.brandId).filter((x) => x.serviceId === o.serviceId && !x.archived).map((x) => x.segment));
+              const next = b?.segments.find((sg) => sg.name !== "All segments" && !taken.has(sg.name))?.name ?? o.segment;
+              open({ kind: "offer", draft: { ...o, id: undefined, name: `${o.name} — ${next}`, segment: next, status: "Ideation", review: "None" } });
+            }}><Split aria-hidden size={16} />Adapt for another segment</Btn>}
+            {ws.can("archive") && <Btn onClick={() => run(setArchived, "offer", o.id, !o.archived)}>{o.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{o.archived ? "Restore" : "Archive"}</Btn>}
+            {canEdit && <Btn variant="primary" onClick={() => open({ kind: "offer", draft: o })}><Pencil aria-hidden size={16} />Edit</Btn>}
+            {ws.can("del") && (
+              <>
+                {(canEdit || ws.can("archive")) && <ActionRule />}
+                <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "offer", id: o.id, label: o.name, back: href.brand(o.brandId, "offers") })}><Trash2 aria-hidden size={15} />Delete</Btn>
+              </>
+            )}
+          </>
         )}
-        <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />
-      </div>
+      />
 
-      {o.archived && <ArchivedNote className="mb-3.5">Archived. Its assets are still in the library — only this offer is closed.</ArchivedNote>}
-      <ReviewBar kind="offer" item={o} />
+      {o.archived && <ArchivedNote className="mb-4">Archived. Its assets are still in the library — only this offer is closed.</ArchivedNote>}
+
+      <Card className="mb-5 overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-divider px-5 py-3">
+          <Workflow aria-hidden size={16} className="text-mute-4" />
+          <h2 className="m-0 text-[15px] font-semibold">Workflow</h2>
+        </div>
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-4 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <div className="eyebrow mb-2">Status</div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {!canEdit && <Chip color={OFFER_STATUS[o.status]} size="md" className="rounded-[7px] px-[11px] py-1">{o.status}</Chip>}
+              {canEdit && (Object.keys(OFFER_STATUS) as Offer["status"][]).map((k) => {
+                const on = o.status === k; const c = OFFER_STATUS[k];
+                return (
+                  <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-[5px] text-[14px] font-medium transition hover:border-line-strong"
+                    style={{ borderColor: on ? hexA(c, 0.45) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>
+                    <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c }} />{k}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex-none">
+            <div className="eyebrow mb-2">Launch</div>
+            <div className="flex flex-wrap items-center gap-2.5">
+              {canEdit ? (
+                <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
+                  onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-[8px] border border-line bg-white px-2.5 py-[5px] text-[14px]" />
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[15px] text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? new Date(o.dueAt).toDateString() : "Not scheduled"}</span>
+              )}
+              <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />
+            </div>
+          </div>
+        </div>
+        <div className="border-t border-divider [&>div]:mb-0 [&>div]:rounded-none [&>div]:border-0 [&>div]:px-5">
+          <ReviewBar kind="offer" item={o} />
+        </div>
+      </Card>
       {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mb-5">{o.changeNote}</ChangeNote>}
 
       {missing.length > 0 && o.status !== "Archived" && (
@@ -125,8 +159,6 @@ export function OfferPage({ id }: { id: string }) {
           {o.primaryCtaId && <CtaButton id={o.primaryCtaId} />}
           {o.secondaryCtaId && <CtaButton id={o.secondaryCtaId} />}
           {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-[15px] text-warn-text">None set — readers do not know what to do next.</span>}
-          <span className="flex-1" />
-          <span className="flex items-center gap-[7px] text-[15px] text-mute-2"><Avatar initials={ws.user(o.ownerId).initials} size={20} />{ws.user(o.ownerId).name}</span>
         </div>
       </div>
 
@@ -147,18 +179,18 @@ export function OfferPage({ id }: { id: string }) {
         </div>
         {canEdit && (
           <div className="flex gap-2">
-            <Btn variant="outline-accent" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link existing asset</Btn>
-            <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}>+ New asset</Btn>
+            <Btn size="lg" onClick={() => open({ kind: "link", offerId: o.id })}><Link2 aria-hidden size={16} />Link existing asset</Btn>
+            <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}><Plus aria-hidden size={16} />New asset</Btn>
           </div>
         )}
       </div>
       {assets.length > 0 ? (
         <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">{assets.map((a) => <AssetCard key={a.id} a={a} />)}</div>
       ) : (
-        <Empty title="No assets in this offer yet" body="Something in the library probably already fits. Look before you build.">
+        <EmptyArt art={<SpotArt kind="folder" />} title="No assets in this offer yet" body="Something in the library probably already fits. Look before you build.">
           {canEdit && <Btn variant="outline-accent" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link an existing asset</Btn>}
           {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}>Make something new</Btn>}
-        </Empty>
+        </EmptyArt>
       )}
 
       <div id="discussion" className="mt-11 max-w-[720px] scroll-mt-24">
@@ -195,7 +227,6 @@ export function OfferPage({ id }: { id: string }) {
         )}
         <Thread kind="offer" id={o.id} />
       </div>
-      {b && <div className="mt-10 text-[14.5px] text-mute-4">In <Link href={href.brand(b.id)} className="hover:text-ink">{b.name}</Link>{sv ? <> · <Link href={href.service(sv.id)} className="hover:text-ink">{sv.name}</Link></> : null}</div>}
     </Page>
   );
 }

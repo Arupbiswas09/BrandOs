@@ -6,7 +6,10 @@ import type { Brand } from "@/db/schema";
 import { href } from "@/lib/routes";
 import { live } from "@/lib/ws";
 import { useApp } from "./app/provider";
+import { ChevronDown, ChevronRight, CircleAlert, CircleCheck, ShieldCheck } from "lucide-react";
+import { hexA, readable } from "@/lib/color";
 import { Card, cx } from "./ui";
+import { IconTile } from "./polish";
 
 type Item = { id: string; name: string; kind: "offer" | "asset" | "service" };
 type Check = { key: string; ok: string; bad: (n: number) => string; items: Item[] };
@@ -61,25 +64,28 @@ export function BrandHealth({ b }: { b: Brand }) {
   const go = (it: Item) => (it.kind === "asset" ? openAsset(it.id) : it.kind === "offer" ? router.push(href.offer(it.id)) : router.push(href.service(it.id)));
 
   return (
-    <div className="mt-11">
-      <div className="mb-1 flex items-baseline justify-between gap-4">
-        <h2 className="m-0 text-[17px] font-semibold">Building inspection</h2>
-        <span className="text-[15px] font-semibold" style={{ color: tone }}>{passing} of {checks.length} checks pass</span>
+    <div className="mt-10">
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <IconTile icon={ShieldCheck} size={36} />
+        <div className="min-w-0 flex-1">
+          <h2 className="m-0 text-[17px] font-semibold tracking-[-0.01em]">Building inspection</h2>
+          <p className="m-0 mt-0.5 text-[14.5px] text-mute-3">What would trip up a reader or a reviewer, found for you. Fix these and the brand is ready to ship.</p>
+        </div>
+        <span className="flex-none rounded-full px-3 py-1 text-[14px] font-semibold tabular-nums" style={{ background: hexA(tone, 0.1), color: readable(tone, 0.1) }}>{passing} of {checks.length} checks pass</span>
       </div>
-      <p className="mb-4 mt-0 text-[14.5px] text-mute-3">What would trip up a reader or a reviewer, found for you. Fix these and the brand is ready to ship.</p>
       <Card className="overflow-hidden">
         <div className="h-1.5 bg-avatar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Checks passing">
           <div className="h-full transition-[width] duration-500" style={{ width: `${pct}%`, background: tone }} />
         </div>
         {failing.map((c) => (
           <div key={c.key} className="border-t border-divider first:border-t-0">
-            <button type="button" aria-expanded={open === c.key} onClick={() => setOpen(open === c.key ? null : c.key)} className="flex w-full items-center gap-3 px-5 py-3.5 text-left hover:bg-wash">
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[rgba(201,154,46,.16)] text-[12px] font-bold text-[#8A6A12]">!</span>
+            <button type="button" aria-expanded={open === c.key} onClick={() => setOpen(open === c.key ? null : c.key)} className="flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors hover:bg-wash focus-visible:outline-offset-[-2px]">
+              <CircleAlert aria-hidden size={20} className="flex-none text-[#8A6A12]" />
               <span className="flex-1 text-[15px] font-medium">{c.bad(c.items.length)}</span>
-              <span className="text-[13px] text-mute-3">{open === c.key ? "Hide" : "Show"}</span>
+              <span className="inline-flex items-center gap-1 text-[13px] font-medium text-mute-3">{open === c.key ? "Hide" : "Show"}{open === c.key ? <ChevronDown aria-hidden size={15} /> : <ChevronRight aria-hidden size={15} />}</span>
             </button>
             {open === c.key && (
-              <div className="flex flex-col gap-1 px-5 pb-4 pl-[52px]">
+              <div className="flex flex-col items-start gap-1.5 px-5 pb-4 pl-[52px]">
                 {c.items.slice(0, 12).map((it) => (
                   <button key={it.kind + it.id + it.name} type="button" onClick={() => go(it)} className="text-left text-[14.5px] text-accent hover:underline">{it.name} →</button>
                 ))}
@@ -88,10 +94,10 @@ export function BrandHealth({ b }: { b: Brand }) {
             )}
           </div>
         ))}
-        <div className={cx("px-5 py-3.5", failing.length > 0 && "border-t border-divider")}>
+        <div className={cx("grid gap-x-6 px-5 py-3.5 sm:grid-cols-2", failing.length > 0 && "border-t border-divider bg-wash-2")}>
           {checks.filter((c) => !c.items.length).map((c) => (
             <div key={c.key} className="flex items-center gap-3 py-1 text-[14.5px] text-mute-2">
-              <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[rgba(39,122,83,.12)] text-[12px] font-bold text-[#277A53]">✓</span>{c.ok}
+              <CircleCheck aria-hidden size={20} className="flex-none text-[#277A53]" />{c.ok}
             </div>
           ))}
         </div>

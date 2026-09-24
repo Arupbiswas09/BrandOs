@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useStored } from "@/lib/stored";
 import type { Brand } from "@/db/schema";
+import {
+  Archive, ArchiveRestore, Building2, ChevronRight, FilePlus2, FolderOpen, House, LayoutTemplate, Layers, Library, Megaphone, MousePointerClick, Palette, Pencil, Plus, Share2, Target, Trash2,
+  type LucideIcon,
+} from "lucide-react";
 import { hexA, readable, onColor } from "@/lib/color";
+import { kitScore } from "@/lib/kit";
 import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, OFFER_TYPES } from "@/lib/constants";
 import { BRAND_TABS, href, type BrandTab } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
@@ -14,7 +19,9 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, OfferCard, blocksFor } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { CtaButton } from "@/components/drawer/asset-drawer";
-import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, Pills, SectionHead, Tabs, Warn } from "@/components/ui";
+import { ArchExpander, ArchivedNote, Avatar, Blocks, Btn, Card, H2, Mark, Page, Pills, SectionHead, Warn, cx } from "@/components/ui";
+import { EmptyArt, FOCUS, IconTabs, IconTile, LIFT } from "@/components/polish";
+import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 import { BrandHealth } from "@/components/health";
 import { BrandKit } from "./kit";
@@ -43,25 +50,79 @@ export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?:
   );
 }
 
-/** The brand's header band: mark, name, where it sits, and the section tabs. */
+const TAB_ICON: Record<BrandTab, LucideIcon> = {
+  home: House, services: Layers, offers: Megaphone, assets: FolderOpen, kit: Palette, strategy: Target, ctas: MousePointerClick,
+};
+
+/**
+ * The brand's header band. It always shows the brand's own colours, even
+ * with the theme takeover off: the mark, a soft tint and a thin colour strip.
+ */
 function BrandBar({ b, tab }: { b: Brand; tab: BrandTab }) {
-  const { ws } = useApp();
+  const { ws, open } = useApp();
   const parent = ws.brand(b.parentId);
   const client = ws.client(b.clientId);
+  const owner = b.ownerId ? ws.user(b.ownerId) : null;
+  const kit = kitScore(b, ws.d.assets);
+  const kitTone = kit.pct >= 80 ? "#277A53" : kit.pct >= 50 ? "#8A6A12" : "#B42318";
+  const assets = ws.assetsOf(b.id);
+  const counts: Partial<Record<BrandTab, number>> = {
+    offers: live(ws.offersOf(b.id)).length,
+    assets: live(assets.filter((a) => ws.catOf(a) === "campaign")).length,
+    services: live(ws.servicesOf(b.id)).length,
+    ctas: ws.ctasOf(b.id).length,
+  };
+  const canEdit = ws.can("edit");
+  const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: "All segments", status: "Ideation" } });
+  const newAsset = () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 });
+
   return (
     <div className="head-band -mt-8 mb-8 pt-7 sm:-mt-10 sm:pt-8">
-      <div className="flex items-center gap-4">
-        <Mark mark={b.mark} color="var(--bos-accent)" fg="var(--bos-on)" size={48} radius={12} className="text-[17px]" />
-        <div className="min-w-0 flex-1">
-          <h1 className="m-0 truncate text-[26px] font-semibold leading-[1.2] tracking-[-0.02em]">{b.name}</h1>
-          <p className="m-0 mt-0.5 truncate text-[15px] text-mute-2">
-            {parent ? <>Sub-brand of <Link href={href.brand(parent.id)} className="hover:text-ink hover:underline">{parent.name}</Link></> : client?.name}
-            {b.tagline ? ` · ${b.tagline}` : ""}
-          </p>
+      {/* Full-bleed brand tint and colour strip, painted over the band's white. */}
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(100deg, ${hexA(b.primary, 0.1)} 0%, ${hexA(b.primary, 0.1)} 27%, ${hexA(b.secondary, 0.07)} 45%, rgba(255,255,255,0) 66%)` }} />
+      <span aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-[1] h-[3px] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(90deg, ${b.primary}, ${b.secondary})` }} />
+
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+        <div className="flex min-w-0 flex-1 basis-[320px] items-center gap-4">
+          <Mark mark={b.mark} color={b.primary} size={56} radius={14} className="text-[19px] shadow-[0_6px_16px_-8px_rgba(15,23,42,.45)]" />
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <h1 className="m-0 truncate text-[26px] font-semibold leading-[1.2] tracking-[-0.02em]">{b.name}</h1>
+              {b.archived && <span className="flex-none rounded-md bg-chip px-2.5 py-1 text-[13px] font-semibold text-mute-2">Archived</span>}
+            </div>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[14.5px] text-mute-2">
+              {client && (
+                <Link href={href.client(client.id)} className="inline-flex items-center gap-1.5 font-medium hover:text-ink hover:underline">
+                  <Building2 aria-hidden size={15} className="text-mute-4" />{client.name}
+                </Link>
+              )}
+              {parent && (
+                <>
+                  <span aria-hidden className="text-mute-4">/</span>
+                  <span>Sub-brand of <Link href={href.brand(parent.id)} className="font-medium hover:text-ink hover:underline">{parent.name}</Link></span>
+                </>
+              )}
+              {b.tagline && <><span aria-hidden className="text-mute-4">·</span><span className="min-w-0 truncate">{b.tagline}</span></>}
+            </div>
+          </div>
         </div>
-        {b.archived && <span className="flex-none rounded-md bg-chip px-2.5 py-1 text-[13px] font-semibold text-mute-2">Archived</span>}
+
+        <div className="flex flex-none flex-wrap items-center gap-2">
+          <Link href={href.brand(b.id, "kit")} title={`${kit.done} of ${kit.total} Brand Kit sections filled in`} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-semibold transition hover:brightness-95"
+            style={{ background: "#FFFFFF", borderColor: hexA(kitTone, 0.35), color: readable(kitTone, 0) }}>
+            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: kitTone }} />Kit {kit.pct}%
+          </Link>
+          {owner && <span title={`Owner: ${owner.name}`} className="flex items-center"><Avatar initials={owner.initials} size={30} className="ring-2 ring-white" /><span className="sr-only">Owner: {owner.name}</span></span>}
+          {canEdit && tab !== "offers" && <Btn onClick={newOffer}><Plus aria-hidden size={16} />New offer</Btn>}
+          {canEdit && tab !== "assets" && <Btn variant="primary" onClick={newAsset}><Plus aria-hidden size={16} />Add asset</Btn>}
+        </div>
       </div>
-      <Tabs items={BRAND_TABS.map(([k, label]) => ({ key: k, label, href: href.brand(b.id, k), active: tab === k }))} className="mt-6" />
+
+      <IconTabs
+        label="Brand sections"
+        className="mt-6"
+        items={BRAND_TABS.map(([k, label]) => ({ key: k, label, icon: TAB_ICON[k], count: counts[k], href: href.brand(b.id, k), active: tab === k }))}
+      />
     </div>
   );
 }
@@ -82,11 +143,11 @@ function Home({ b }: { b: Brand }) {
   const canEdit = ws.can("edit");
 
   const stats = [
-    { label: "Offers", value: offers.length, tab: "offers" as BrandTab },
-    { label: "Services", value: services.length, tab: "services" as BrandTab },
-    { label: "Assets", value: camp.length, tab: "assets" as BrandTab },
-    { label: "CTAs", value: ctas.length, tab: "ctas" as BrandTab },
-    { label: "Templates", value: templates.length, tab: "kit" as BrandTab },
+    { label: "Offers", value: offers.length, tab: "offers" as BrandTab, icon: Megaphone },
+    { label: "Services", value: services.length, tab: "services" as BrandTab, icon: Layers },
+    { label: "Assets", value: camp.length, tab: "assets" as BrandTab, icon: FolderOpen },
+    { label: "CTAs", value: ctas.length, tab: "ctas" as BrandTab, icon: MousePointerClick },
+    { label: "Templates", value: templates.length, tab: "kit" as BrandTab, icon: LayoutTemplate },
   ];
 
   const typeMap = new Map<string, typeof camp>();
@@ -97,29 +158,35 @@ function Home({ b }: { b: Brand }) {
   const recent = [...camp].sort((x, y) => +new Date(y.updatedAt) - +new Date(x.updatedAt)).slice(0, 4);
 
   const actions = [
-    canEdit && { label: "Create an offer", sub: "Positioning first, assets after", go: () => open({ kind: "offer", draft: { brandId: b.id, segment: "All segments", status: "Ideation" } }) },
-    canEdit && { label: "Add an asset", sub: "Landing page, email, ad, document", go: () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 }) },
-    { label: "View the Brand Kit", sub: "Logos, colours, fonts, guidelines", go: () => router.push(href.brand(b.id, "kit")) },
-    { label: "Browse the library", sub: "Everything reusable in this brand", go: () => router.push(href.brand(b.id, "assets")) },
-  ].filter(Boolean) as { label: string; sub: string; go: () => void }[];
+    canEdit && { label: "Create an offer", sub: "Positioning first, assets after", icon: Megaphone, go: () => open({ kind: "offer", draft: { brandId: b.id, segment: "All segments", status: "Ideation" } }) },
+    canEdit && { label: "Add an asset", sub: "Landing page, email, ad, document", icon: FilePlus2, go: () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 }) },
+    { label: "View the Brand Kit", sub: "Logos, colours, fonts, guidelines", icon: Palette, go: () => router.push(href.brand(b.id, "kit")) },
+    { label: "Browse the library", sub: "Everything reusable in this brand", icon: Library, go: () => router.push(href.brand(b.id, "assets")) },
+  ].filter(Boolean) as { label: string; sub: string; icon: LucideIcon; go: () => void }[];
 
   return (
     <div className="animate-fade">
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {stats.map((st) => (
-          <Link key={st.label} href={href.brand(b.id, st.tab)} className="rounded-xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,.04)] transition hover:border-line-strong">
-            <span className="block text-[13.5px] font-medium text-mute-3">{st.label}</span>
-            <span className="mt-1 block text-[28px] font-semibold tabular-nums tracking-[-0.02em]">{st.value}</span>
+          <Link key={st.label} href={href.brand(b.id, st.tab)} className={cx("group flex items-center gap-3.5 rounded-xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,.04)]", LIFT, FOCUS)}>
+            <IconTile icon={st.icon} size={40} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[26px] font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
+              <span className="mt-0.5 flex items-center gap-1 text-[13.5px] font-medium text-mute-3 group-hover:text-ink">{st.label}<ChevronRight aria-hidden size={14} className="opacity-0 transition group-hover:opacity-100" /></span>
+            </span>
           </Link>
         ))}
       </div>
 
       <div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {actions.map((q) => (
-            <button key={q.label} type="button" onClick={q.go} className="flex flex-col rounded-xl border border-line bg-white p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(16,22,20,.07)]">
-              <span className="mb-1 block text-[16px] font-semibold text-accent">{q.label}</span>
-              <span className="block text-[15px] leading-[1.45] text-mute-2">{q.sub}</span>
+            <button key={q.label} type="button" onClick={q.go} className={cx("flex items-start gap-3 rounded-xl border border-line bg-white p-4 text-left", LIFT, FOCUS)}>
+              <IconTile icon={q.icon} size={36} />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15.5px] font-semibold text-ink">{q.label}</span>
+                <span className="mt-0.5 block text-[14.5px] leading-[1.45] text-mute-2">{q.sub}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -132,7 +199,7 @@ function Home({ b }: { b: Brand }) {
             {subs.length > 0 ? (
               <div className="grid gap-3.5 md:grid-cols-2">
                 {subs.map((sb) => (
-                  <Link key={sb.id} href={href.brand(sb.id)} className="flex items-center gap-3.5 rounded-[13px] border border-line p-[18px] text-left hover:brightness-[.985]" style={{ background: hexA(sb.primary, 0.1) }}>
+                  <Link key={sb.id} href={href.brand(sb.id)} className={cx("flex items-center gap-3.5 rounded-[13px] border border-line p-[18px] text-left", LIFT, FOCUS)} style={{ background: `linear-gradient(100deg, ${hexA(sb.primary, 0.1)}, ${hexA(sb.secondary, 0.05)} 60%, #FFFFFF)` }}>
                     <Mark mark={sb.mark} color={sb.primary} size={38} radius={9} />
                     <span className="min-w-0 flex-1"><span className="block text-[16px] font-semibold">{sb.name}</span><span className="mt-0.5 block text-[14px] text-mute-1">{sb.tagline}</span></span>
                     <span className="flex-none text-[14.5px] text-mute-2">{plural(live(ws.assetsOf(sb.id)).length, "asset")}</span>
@@ -140,35 +207,38 @@ function Home({ b }: { b: Brand }) {
                 ))}
               </div>
             ) : (
-              <div className="text-[15px] text-mute-3">No sub-brands. Add one when part of this brand needs its own identity.</div>
+              <div className="rounded-[12px] border border-dashed border-line-strong px-5 py-4 text-[15px] text-mute-3">No sub-brands. Add one when part of this brand needs its own identity.</div>
             )}
           </div>
         )}
 
         {camp.length > 0 && (
-          <div className="mt-11">
-            <div className="mb-1 flex items-baseline justify-between gap-4">
-              <h2 className="m-0 text-[17px] font-semibold">Everything in this brand</h2>
-              <span className="text-[15px] text-mute-3">{plural(camp.length, "asset")} in this brand</span>
+          <div className="mt-10">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+              <div>
+                <h2 className="m-0 text-[17px] font-semibold tracking-[-0.01em]">Everything in this brand</h2>
+                <p className="m-0 mt-1 text-[14.5px] text-mute-3">One square per asset, coloured by where it stands. Hover any square to name it.</p>
+              </div>
+              <span className="text-[14.5px] font-medium text-mute-2">{plural(camp.length, "asset")} in this brand</span>
             </div>
-            <p className="mb-4 mt-0 text-[15px] text-mute-3">One square per asset, coloured by where it stands. Hover any square to name it.</p>
             <Card className="overflow-hidden">
               {byType.map(([type, list]) => (
-                <Link key={type} href={`${href.brand(b.id, "assets")}?type=${encodeURIComponent(type)}`} className="flex w-full items-start gap-4 border-t border-divider px-5 py-[13px] text-left first:border-t-0 hover:bg-wash">
-                  <span className="w-[110px] flex-none pt-px text-[15px] font-semibold sm:w-[136px]">{type}</span>
-                  <span className="w-[26px] flex-none pt-0.5 font-mono text-[14.5px] text-mute-3">{list.length}</span>
-                  <span className="flex-1"><Blocks blocks={blocksFor(list, 60)} size={15} gap={4} /></span>
+                <Link key={type} href={`${href.brand(b.id, "assets")}?type=${encodeURIComponent(type)}`} className="group flex w-full items-center gap-4 border-t border-divider px-5 py-3 text-left transition-colors first:border-t-0 hover:bg-wash focus-visible:bg-wash">
+                  <span className="w-[110px] flex-none text-[15px] font-semibold sm:w-[140px]">{type}</span>
+                  <span className="w-8 flex-none rounded-full bg-chip py-px text-center text-[13px] font-semibold tabular-nums text-mute-2">{list.length}</span>
+                  <span className="min-w-0 flex-1"><Blocks blocks={blocksFor(list, 60)} size={14} gap={4} /></span>
+                  <ChevronRight aria-hidden size={16} className="flex-none text-mute-4 transition group-hover:translate-x-0.5 group-hover:text-ink" />
                 </Link>
               ))}
+              <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-line bg-wash-2 px-5 py-3">
+                {[["Approved", rc.Approved, "#2F8F62"], ["In review", rc["In review"], "#C99A2E"], ["Changes requested", rc["Changes requested"], "#C2410C"], ["Not reviewed", rc.None, "#CBD5E1"]].map(([l, n, c]) => (
+                  <span key={l as string} className="flex items-center gap-[7px] text-[14px] text-mute-2">
+                    <span aria-hidden className="h-[11px] w-[11px] rounded-[3px]" style={{ background: c as string }} />{l}
+                    <span className="font-semibold tabular-nums text-ink">{n}</span>
+                  </span>
+                ))}
+              </div>
             </Card>
-            <div className="mt-3 flex flex-wrap gap-4">
-              {[["Approved", rc.Approved, "#2F8F62"], ["In review", rc["In review"], "#8A6A12"], ["Changes requested", rc["Changes requested"], "#C2410C"], ["Not reviewed", rc.None, "#CBD5E1"]].map(([l, n, c]) => (
-                <span key={l as string} className="flex items-center gap-[7px] text-[14.5px] text-mute-2">
-                  <span className="h-[11px] w-[11px] rounded-[3px]" style={{ background: c as string }} />{l}
-                  <span className="font-mono font-medium text-ink">{n}</span>
-                </span>
-              ))}
-            </div>
           </div>
         )}
 
@@ -181,19 +251,19 @@ function Home({ b }: { b: Brand }) {
               {recent.map((a) => <AssetCard key={a.id} a={a} variant="recent" />)}
             </div>
           ) : (
-            <Empty title="This brand is empty" body="Start with the thing you actually need, not with a database record.">
+            <EmptyArt art={<SpotArt kind="rocket" />} title="This brand is empty" body="Start with the thing you actually need, not with a database record.">
               {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 })}>Add the first asset</Btn>}
-            </Empty>
+            </EmptyArt>
           )}
         </div>
 
         <div className="mt-11 flex flex-wrap items-center gap-2.5 border-t border-line pt-5">
-          {ws.can("structure") && <Btn onClick={() => open({ kind: "brand", draft: b })}>Edit brand identity</Btn>}
-          {ws.can("share") && <Btn onClick={() => open({ kind: "share", brandId: b.id })}>Share with the client{ws.d.shareLinks.some((l) => l.brandId === b.id) ? ` · ${ws.d.shareLinks.filter((l) => l.brandId === b.id).length} live` : ""}</Btn>}
-          {ws.can("archive") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
-          {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "brand", id: b.id, label: b.name, back: href.client(b.clientId) })}>Delete brand</Btn>}
+          {ws.can("structure") && <Btn onClick={() => open({ kind: "brand", draft: b })}><Pencil aria-hidden size={16} />Edit brand identity</Btn>}
+          {ws.can("share") && <Btn onClick={() => open({ kind: "share", brandId: b.id })}><Share2 aria-hidden size={16} />Share with the client{ws.d.shareLinks.some((l) => l.brandId === b.id) ? ` · ${ws.d.shareLinks.filter((l) => l.brandId === b.id).length} live` : ""}</Btn>}
+          {ws.can("archive") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
+          {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "brand", id: b.id, label: b.name, back: href.client(b.clientId) })}><Trash2 aria-hidden size={16} />Delete brand</Btn>}
           <span className="flex-1" />
-          <span className="text-[14.5px] text-mute-3 md:max-w-[52ch]">Archiving hides a brand and everything in it. Nothing inside changes, and restoring brings it all back as it was.</span>
+          <span className="text-[14px] text-mute-3 md:max-w-[52ch]">Archiving hides a brand and everything in it. Nothing inside changes, and restoring brings it all back as it was.</span>
         </div>
       </div>
     </div>
@@ -283,22 +353,28 @@ function Services({ b }: { b: Brand }) {
           const hasGap = !segs.has("All segments") && missing.length > 0 && so.length > 0;
           const assets = live(ws.assetsOfService(v.id));
           return (
-            <Link key={v.id} href={href.service(v.id)} className="flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(16,22,20,.07)]">
-              <span className="block"><span className="block text-[19px] font-semibold tracking-[-0.015em]">{v.name}</span><span className="mt-[3px] block text-[15px] text-mute-2">{v.short}</span></span>
+            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]", LIFT, FOCUS)}>
+              <span className="flex items-start gap-3.5">
+                <IconTile icon={Layers} color={b.primary} size={40} />
+                <span className="min-w-0 flex-1"><span className="block text-[19px] font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{v.name}</span>{v.short && <span className="mt-[3px] block text-[15px] text-mute-2">{v.short}</span>}</span>
+              </span>
               <span className="block text-[15px] leading-[1.55] text-ink-3 text-pretty">{v.description}</span>
               <span className="flex flex-wrap gap-[5px]">{[...segs].map((n) => <span key={n} className="rounded-[5px] px-2 py-0.5 text-[13px] font-semibold" style={{ background: hexA(ws.segColor(n, b.id), 0.13), color: readable(ws.segColor(n, b.id)) }}>{n}</span>)}</span>
               {hasGap && <span className="block text-[14px] text-warn-text">Nothing written for {missing.join(", ")}</span>}
               <Blocks blocks={blocksFor(assets)} />
-              <span className="flex gap-3.5 border-t border-divider pt-3 text-[15px] text-[#475569]"><span>{plural(so.length, "offer")}</span><span>{plural(assets.length, "asset")}</span></span>
+              <span className="mt-auto flex gap-4 border-t border-divider pt-3 text-[14.5px] text-mute-2">
+                <span className="inline-flex items-center gap-1.5"><Megaphone aria-hidden size={15} className="text-mute-4" />{plural(so.length, "offer")}</span>
+                <span className="inline-flex items-center gap-1.5"><FolderOpen aria-hidden size={15} className="text-mute-4" />{plural(assets.length, "asset")}</span>
+              </span>
             </Link>
           );
         })}
       </div>
       <ArchExpander items={archivedOnly(all)} noun="service" onOpen={(v) => router.push(href.service(v.id))} />
       {!all.length && (
-        <Empty title="No services yet" body="A service is a capability you sell. Offers hang off it, one per segment.">
+        <EmptyArt art={<SpotArt kind="kit" />} title="No services yet" body="A service is a capability you sell. Offers hang off it, one per segment.">
           {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>Create the first service</Btn>}
-        </Empty>
+        </EmptyArt>
       )}
       {stand.length > 0 && (
         <div className="mt-[38px]">
@@ -336,9 +412,9 @@ function Offers({ b }: { b: Brand }) {
       <div className="grid gap-4 md:grid-cols-2">{shown.map((o) => <OfferCard key={o.id} o={o} />)}</div>
       <ArchExpander items={archivedOnly(filtered)} noun="offer" onOpen={(o) => router.push(href.offer(o.id))} />
       {!shown.length && (
-        <Empty title="No offers here" body={all.length === 0 ? "No offers yet. An offer is a campaign or package — it holds the positioning and every asset that supports it." : "Nothing matches those filters."}>
+        <EmptyArt art={<SpotArt kind={all.length === 0 ? "offer" : "search"} />} title="No offers here" body={all.length === 0 ? "No offers yet. An offer is a campaign or package — it holds the positioning and every asset that supports it." : "Nothing matches those filters."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>{all.length ? "Create an offer" : "Create the first offer"}</Btn>}
-        </Empty>
+        </EmptyArt>
       )}
     </>
   );
@@ -394,9 +470,9 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
       {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="asset" onOpen={(a) => openAsset(a.id)} />}
       {sel.on && <BulkBar s={sel} shown={grid} />}
       {!grid.length && (
-        <Empty title="Nothing to show" body={camp.length === 0 ? "No assets yet. Start with the thing you actually need — a landing page, an email, an ad." : "Nothing matches that search."}>
+        <EmptyArt art={<SpotArt kind={camp.length === 0 ? "folder" : "search"} />} title="Nothing to show" body={camp.length === 0 ? "No assets yet. Start with the thing you actually need — a landing page, an email, an ad." : "Nothing matches that search."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>Add an asset</Btn>}
-        </Empty>
+        </EmptyArt>
       )}
     </>
   );
@@ -500,9 +576,9 @@ function Ctas({ b }: { b: Brand }) {
         })}
       </div>
       {!ctas.length && (
-        <Empty title="No CTAs yet" body="Write the button once and reuse it across every offer and asset.">
+        <EmptyArt art={<SpotArt kind="inbox" />} title="No CTAs yet" body="Write the button once and reuse it across every offer and asset.">
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>Create a CTA</Btn>}
-        </Empty>
+        </EmptyArt>
       )}
     </>
   );

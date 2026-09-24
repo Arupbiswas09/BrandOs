@@ -3,6 +3,10 @@
 import { FILE_KINDS, checkBatch, sizeLabel, type MyUploadLimits } from "@/lib/upload-policy";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import {
+  ArrowLeft, Copy, Eye, History as HistoryIcon, LayoutGrid, Library as LibraryIcon, Link2, ListChecks, MessageSquare, Paperclip, Pencil, ScanEye, Terminal, Type, type LucideIcon,
+} from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, CHANNEL_COLOR, REVIEW_COLOR } from "@/lib/constants";
@@ -70,16 +74,16 @@ function Drawer({ a }: { a: Asset }) {
   const canProof = proof.images.length > 0 || proof.pdfs.length > 0;
   const openPins = ws.commentsOf("asset", a.id).filter((c) => isPinned(c) && !c.resolved).length;
 
-  const tabs: [Tab, string][] = [
-    ["overview", "Overview"],
-    ...(a.type === "Checklist" ? [["list", `Checklist · ${done}/${items.length}`] as [Tab, string]] : []),
-    ...(a.type === "Prompt" ? [["prompt", "Prompt"] as [Tab, string]] : []),
-    ["copy", "Copy"],
-    ["files", `Files · ${files.length}`],
-    ...(canProof ? [["proof", `Proof · ${openPins}`] as [Tab, string]] : []),
-    ["discussion", `Discussion · ${ws.openCount("asset", a.id)}`],
-    ["history", "History"],
-    ["sharing", "Client"],
+  const tabs: { key: Tab; label: string; icon: LucideIcon; count?: string | number }[] = [
+    { key: "overview", label: "Overview", icon: LayoutGrid },
+    ...(a.type === "Checklist" ? [{ key: "list" as Tab, label: "Checklist", icon: ListChecks, count: `${done}/${items.length}` }] : []),
+    ...(a.type === "Prompt" ? [{ key: "prompt" as Tab, label: "Prompt", icon: Terminal }] : []),
+    { key: "copy", label: "Copy", icon: Type },
+    { key: "files", label: "Files", icon: Paperclip, count: files.length },
+    ...(canProof ? [{ key: "proof" as Tab, label: "Proof", icon: ScanEye, count: openPins }] : []),
+    { key: "discussion", label: "Discussion", icon: MessageSquare, count: ws.openCount("asset", a.id) },
+    { key: "history", label: "History", icon: HistoryIcon },
+    { key: "sharing", label: "Client", icon: Eye },
   ];
 
   const editDraft = () => open({ kind: "asset", draft: { ...a, offerIds: offers.map((o) => o.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 });
@@ -90,11 +94,11 @@ function Drawer({ a }: { a: Asset }) {
       <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.28)]" onClick={closeAsset} />
       <div data-scroll className="absolute inset-y-0 right-0 w-[560px] max-w-full animate-slide overflow-y-auto border-l border-line bg-white shadow-[-16px_0_44px_rgba(16,22,20,.10)]">
         <div className="sticky top-0 z-[2] flex flex-wrap items-center gap-2 border-b border-line bg-white/95 px-4 py-3.5 backdrop-blur-[8px] sm:px-6">
-          <button type="button" aria-label="Close" onClick={closeAsset} className="px-1.5 py-0.5 text-[16px] text-mute-2 hover:text-ink">←</button>
+          <button type="button" aria-label="Close" onClick={closeAsset} className="flex h-8 w-8 items-center justify-center rounded-[8px] text-mute-2 transition hover:bg-wash hover:text-ink"><ArrowLeft aria-hidden size={18} /></button>
           <span className="flex-1" />
-          {canEdit && a.brandId && <Btn size="sm" onClick={() => open({ kind: "linkAsset", assetId: a.id })}>Link to offers</Btn>}
-          {canEdit && <Btn size="sm" onClick={() => open({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] })}>Clone</Btn>}
-          {canEdit && <Btn size="sm" variant="primary" onClick={editDraft}>Edit</Btn>}
+          {canEdit && a.brandId && <Btn size="sm" onClick={() => open({ kind: "linkAsset", assetId: a.id })}><Link2 aria-hidden size={14} />Link to offers</Btn>}
+          {canEdit && <Btn size="sm" onClick={() => open({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] })}><Copy aria-hidden size={14} />Clone</Btn>}
+          {canEdit && <Btn size="sm" variant="primary" onClick={editDraft}><Pencil aria-hidden size={14} />Edit</Btn>}
           {ws.can("archive") && (
             <button type="button" onClick={() => run(setArchived, "asset", a.id, !a.archived)} className="px-1 py-[5px] text-[14px] text-mute-1 hover:text-ink">{a.archived ? "Restore" : "Archive"}</button>
           )}
@@ -107,28 +111,43 @@ function Drawer({ a }: { a: Asset }) {
           <div className="mb-5 flex items-start gap-4">
             {ws.previewOf(a) ? (
               // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file
-              <img src={ws.previewOf(a)!} alt="" className="h-14 w-14 flex-none rounded-[13px] border border-line object-cover" />
+              <img src={ws.previewOf(a)!} alt="" className="h-16 w-16 flex-none rounded-[14px] border border-line object-cover" />
             ) : (
-              <span className="flex h-14 w-14 flex-none items-center justify-center rounded-[13px] text-[15px] font-bold tracking-[0.03em]" style={{ background: hexA(color, 0.12), color: readable(color) }}>{ws.codeOf(a)}</span>
+              <span className="flex h-16 w-16 flex-none items-center justify-center rounded-[14px] font-mono text-[15px] font-bold tracking-[0.05em]" style={{ background: hexA(color, 0.12), color: readable(color, 0.12), boxShadow: `inset 0 0 0 1px ${hexA(color, 0.18)}` }}>{ws.codeOf(a)}</span>
             )}
             <span className="min-w-0 flex-1">
-              <Eyebrow className="mb-1.5">{cat === "campaign" ? "Campaign asset" : cat === "master" ? "Master file" : "Global asset"}</Eyebrow>
-              <span className="block text-[22px] font-semibold leading-[1.25] tracking-[-0.018em]">{a.name}</span>
+              <Eyebrow className="mb-1">{cat === "campaign" ? "Campaign asset" : cat === "master" ? "Master file" : "Global asset"} · {a.type}</Eyebrow>
+              <span className="block text-[22px] font-semibold leading-[1.25] tracking-[-0.018em] text-ink">{a.name}</span>
               {a.short && <span className="mt-1 block text-[15px] text-mute-2">{a.short}</span>}
+              <span className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                {!canEdit && <Chip color={ASSET_STATUS[a.status] ?? "#94A3B8"}>{a.status}</Chip>}
+                {a.review !== "None" && <Chip color={REVIEW_COLOR[a.review]}>{a.review}</Chip>}
+                {b ? (
+                  <Link href={href.brand(b.id)} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line bg-white py-[2px] px-2 text-[13px] font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
+                    <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: b.primary }} />{b.name}
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-line bg-white px-2 py-[2px] text-[13px] font-semibold text-mute-1"><LibraryIcon aria-hidden size={13} />Global Library</span>
+                )}
+                <span className="font-mono text-[12.5px] text-mute-4">v{a.version}</span>
+              </span>
             </span>
           </div>
 
-          <div className="mb-5 flex flex-wrap items-center gap-1.5">
-            <span className="eyebrow mr-[3px]">Status</span>
-            {!canEdit && <Chip color={ASSET_STATUS[a.status]} size="md" className="rounded-[7px] px-2.5 py-1">{a.status}</Chip>}
-            {canEdit && (Object.keys(ASSET_STATUS) as Asset["status"][]).map((k) => {
-              const on = a.status === k; const c = ASSET_STATUS[k];
-              return (
-                <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "asset", a.id, k)} className="rounded-[7px] border px-2.5 py-1 text-[14px] font-medium transition"
-                  style={{ borderColor: on ? hexA(c, 0.4) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>{k}</button>
-              );
-            })}
-          </div>
+          {canEdit && (
+            <div className="mb-5 flex flex-wrap items-center gap-1.5">
+              <span className="eyebrow mr-[3px]">Status</span>
+              {(Object.keys(ASSET_STATUS) as Asset["status"][]).map((k) => {
+                const on = a.status === k; const c = ASSET_STATUS[k];
+                return (
+                  <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "asset", a.id, k)} className="inline-flex items-center gap-1.5 rounded-[8px] border px-2.5 py-1 text-[14px] font-medium transition hover:border-line-strong"
+                    style={{ borderColor: on ? hexA(c, 0.45) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>
+                    <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c }} />{k}
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {a.archived && <ArchivedNote className="mb-4">Archived. Offers that link to it still show it, greyed out.</ArchivedNote>}
 
@@ -158,11 +177,14 @@ function Drawer({ a }: { a: Asset }) {
             </div>
           </div>
 
-          <div className="mb-[22px] flex gap-0.5 overflow-x-auto border-b border-line" role="tablist">
-            {tabs.map(([k, label]) => (
+          <div className="mb-[22px] flex gap-0.5 overflow-x-auto border-b border-line" role="tablist" aria-label="Asset sections">
+            {tabs.map(({ key: k, label, icon: Icon, count }) => (
               <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}
-                className={cx("-mb-px flex-none border-b-2 px-[13px] py-2 text-[15px] transition", tab === k ? "border-accent font-semibold text-ink" : "border-transparent font-medium text-mute-2 hover:text-ink")}>
+                className={cx("-mb-px inline-flex flex-none items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 text-[14.5px] transition", tab === k ? "border-accent font-semibold text-ink" : "border-transparent font-medium text-mute-2 hover:text-ink")}>
+                <Icon aria-hidden size={15} className={tab === k ? "text-accent" : "text-mute-4"} />
                 {label}
+                {count !== undefined && " "}
+                {count !== undefined && <span className={cx("rounded-full px-1.5 py-px text-[12px] font-semibold tabular-nums leading-[1.5]", tab === k ? "bg-accent text-on-accent" : "bg-chip text-mute-3")}>{count}</span>}
               </button>
             ))}
           </div>
