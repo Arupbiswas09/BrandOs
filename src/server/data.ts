@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { desc } from "drizzle-orm";
+import { desc, isNotNull } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
 import { scopeOf, seesBrand, seesClient, type Scope } from "@/lib/access";
 import type { PublicUser, Workspace } from "@/lib/types";
@@ -96,12 +96,14 @@ export async function buildWorkspace(
   const vis = makeVisibility(all, scope);
 
   const guest = scope.guest;
+  const db = await getDb();
+  const withTwoFactor = new Set((await db.select({ id: s.twoFactor.userId }).from(s.twoFactor).where(isNotNull(s.twoFactor.enabledAt))).map((r) => r.id));
   // Guests get names and roles for the people they work with, never emails or access.
   const users: PublicUser[] = all.users
     .filter((u) => !guest || u.id === meId || u.access !== "Client")
     .map(({ passwordHash, ...u }) => (guest && u.id !== meId
-      ? { ...u, email: null, clientIds: [], brandIds: [], groupIds: [], allClients: false, hasPassword: !!passwordHash }
-      : { ...u, hasPassword: !!passwordHash }));
+      ? { ...u, email: null, clientIds: [], brandIds: [], groupIds: [], allClients: false, hasPassword: !!passwordHash, twoFactor: false }
+      : { ...u, hasPassword: !!passwordHash, twoFactor: withTwoFactor.has(u.id) }));
   const offers = all.offers.filter((o) => vis.offer(o.id));
   const assets = all.assets.filter((a) => vis.asset(a.id));
   const offerIds = new Set(offers.map((o) => o.id));

@@ -925,6 +925,7 @@ export async function deleteItem(kind: Kind, id: string) {
           if (id === me.id) throw new Denied("You cannot remove yourself.");
           if (u!.access === "Admin" && all.users.filter((x) => x.access === "Admin").length === 1) throw new Denied("Someone has to stay an admin.");
           await tx.delete(s.sessions).where(eq(s.sessions.userId, id));
+          await tx.delete(s.twoFactor).where(eq(s.twoFactor.userId, id));
           await tx.delete(s.users).where(eq(s.users.id, id));
           await log(tx, me.id, "removed", "person", id, u!.name);
           break;

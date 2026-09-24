@@ -2,7 +2,11 @@ import type {
   Activity, Asset, Brand, Client, Comment, Cta, Group, Link, Offer, Service, ShareLink, User,
 } from "@/db/schema";
 
-export type PublicUser = Omit<User, "passwordHash"> & { hasPassword: boolean };
+export type PublicUser = Omit<User, "passwordHash"> & {
+  hasPassword: boolean;
+  /** Two-step verification is on. Shown to teammates, never to client guests. */
+  twoFactor: boolean;
+};
 
 export type Recent = { kind: string; itemId: string };
 

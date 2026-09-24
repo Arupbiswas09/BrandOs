@@ -4,6 +4,7 @@ import { ACCESS_COLOR } from "@/lib/constants";
 import { hexA, readable } from "@/lib/color";
 import { switchUser } from "@/app/actions";
 import { createInvite } from "@/app/auth-actions";
+import { resetTeammateTwoFactor, signOutTeammateEverywhere } from "@/app/security-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Avatar, Btn, Card, H2, Page, PageHead, Tabs } from "@/components/ui";
 import { useStored } from "@/lib/stored";
@@ -26,6 +27,14 @@ export function Team() {
     if (r.emailed) { toast("Emailed. The link works once, for a week."); return; }
     try { await navigator.clipboard.writeText(url); toast("Link copied — send it to them. It works once, for a week."); }
     catch { window.prompt("Copy this invite link", url); }
+  };
+  const security = async (kind: "2fa" | "sessions", id: string, name: string) => {
+    const ask = kind === "2fa"
+      ? `Reset two-step verification for ${name}? They can sign in with just their password until they set it up again.`
+      : `Sign ${name} out on every device? They will need to sign in again.`;
+    if (!window.confirm(ask)) return;
+    const r = await run(kind === "2fa" ? resetTeammateTwoFactor : signOutTeammateEverywhere, id);
+    if (r.ok) toast(kind === "2fa" ? `Two-step verification reset for ${name}.` : `${name} is signed out everywhere.`);
   };
   return (
     <Page>
@@ -59,6 +68,13 @@ export function Team() {
                 <button type="button" onClick={() => invite(u.id)} className="flex-none p-[5px] text-[14px] text-accent hover:underline">{u.hasPassword ? "Reset link" : "Invite link"}</button>
               )}
               {!demo && !u.hasPassword && <span className="flex-none rounded bg-chip px-1.5 py-0.5 text-[13px] text-mute-3">Not joined</span>}
+              {!demo && u.twoFactor && <span className="flex-none rounded bg-[#DCFCE7] px-1.5 py-0.5 text-[13px] font-medium text-[#166534]" title="Two-step verification is on">2-step on</span>}
+              {!demo && canAccess && !isMe && u.twoFactor && (
+                <button type="button" onClick={() => security("2fa", u.id, u.name)} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink">Reset 2-step</button>
+              )}
+              {!demo && canAccess && !isMe && (
+                <button type="button" onClick={() => security("sessions", u.id, u.name)} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink" title="End every session they have">Sign out everywhere</button>
+              )}
               {canAccess && <button type="button" onClick={() => open({ kind: "person", draft: u })} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink">Access</button>}
               {canAccess && !isMe && <button type="button" onClick={() => open({ kind: "confirm", item: "person", id: u.id, label: u.name })} className="flex-none p-[5px] text-[14px] text-mute-5 hover:text-danger">Remove</button>}
             </div>
