@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useSyncExternalStore } from "react";
+import { Bell, CalendarDays, Database, Download, KeyRound, LogOut, Palette as PaletteIcon, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { ROLE_OPTIONS } from "@/lib/constants";
 import { saveNotifyPrefs, sendSlackTest, signOut, updateProfile } from "@/app/actions";
 import type { NotifyEvent, NotifyMode } from "@/db/schema";
@@ -35,8 +36,8 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
 
       {security && !security.twoFactor && (me.access === "Admin" || me.access === "Manager") && <TwoFactorNudge />}
 
-      <H2>Profile</H2>
-      <Card className="mb-8 p-6">
+      <H2 icon={<UserRound />}>Profile</H2>
+      <Card className="mb-7 p-5 sm:p-6">
         <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void run(updateProfile, { name, role }); }}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Name" required><input required className="field" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
@@ -48,8 +49,8 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
 
       {security && (
         <>
-          <H2>Password</H2>
-          <Card className="mb-8 p-6">
+          <H2 icon={<KeyRound />}>Password</H2>
+          <Card className="mb-7 p-5 sm:p-6">
             <form action={pwAction} className="flex flex-col gap-4">
               {!security.hasPassword && <p className="m-0 text-[14.5px] text-mute-2">You sign in with Google. Add a password too if you want another way in.</p>}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -62,15 +63,15 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
             </form>
           </Card>
 
-          <H2>Two-step verification</H2>
+          <H2 icon={<ShieldCheck />}>Two-step verification</H2>
           <TwoFactorCard info={security} />
 
           <SessionsCard info={security} />
         </>
       )}
 
-      <H2>Display</H2>
-      <Card className="mb-8 p-6">
+      <H2 icon={<PaletteIcon />}>Display</H2>
+      <Card className="mb-7 p-5 sm:p-6">
         <div className="mb-1 text-[15px] font-semibold">Colour set</div>
         <p className="mb-3 mt-0 text-[14.5px] text-mute-2">The house colours for buttons, links and the highlight on where you are.</p>
         <div className="mb-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Colour set">
@@ -79,7 +80,7 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
             const on = palette === k;
             return (
               <button key={k} type="button" role="radio" aria-checked={on} onClick={() => setPalette(k)}
-                className={cx("flex items-center gap-3 rounded-lg border p-3 text-left transition", on ? "border-accent ring-2 ring-[color:var(--bos-hl)]" : "border-line hover:border-line-strong")}>
+                className={cx("flex items-center gap-3 rounded-lg border p-3 text-left transition-colors duration-150", on ? "border-accent bg-soft/40 ring-2 ring-[color:var(--bos-hl)]" : "border-line hover:border-line-strong hover:bg-wash")}>
                 <span className="flex h-11 w-16 flex-none overflow-hidden rounded-md">
                   <span className="flex-[3]" style={{ background: pal.accent }} /><span className="flex-[2]" style={{ background: pal.hl }} />
                 </span>
@@ -107,16 +108,16 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
         </div>
       </Card>
 
-      <H2>Notifications</H2>
+      <H2 icon={<Bell />}>Notifications</H2>
       <EmailPrefsCard />
       <NotificationsCard last={!ws.can("access")} />
       {ws.can("access") && <SlackCard />}
 
-      <H2>Calendar</H2>
+      <H2 icon={<CalendarDays />}>Calendar</H2>
       <CalendarFeedCard />
 
-      <H2>App</H2>
-      <Card className="mb-8 p-6">
+      <H2 icon={<Smartphone />}>App</H2>
+      <Card className="mb-7 p-5 sm:p-6">
         {standalone ? (
           <p className="m-0 text-[15px] text-mute-1">You are using the installed app. It updates itself whenever the team ships a change.</p>
         ) : (
@@ -130,15 +131,15 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
 
       {ws.can("export") && (
         <>
-          <H2>Workspace data</H2>
-          <Card className="mb-8 flex flex-wrap items-center gap-4 p-6">
+          <H2 icon={<Database />}>Workspace data</H2>
+          <Card className="mb-7 flex flex-wrap items-center gap-4 p-5 sm:p-6">
             <p className="m-0 min-w-[240px] flex-1 text-[15px] text-mute-1">Download everything — clients, brands, offers, assets, discussion and activity — as one JSON file. Uploaded files are not included.</p>
-            <a href="/api/export" className="rounded-[9px] border border-line bg-white px-4 py-2 text-[15px] font-semibold text-ink-3 hover:border-mute-2">Export JSON</a>
+            <a href="/api/export" className="inline-flex items-center gap-1.5 rounded-[9px] border border-line bg-white px-4 py-2 text-[15px] font-semibold text-ink-3 transition-colors hover:border-line-strong hover:bg-wash"><Download aria-hidden className="h-4 w-4" />Export JSON</a>
           </Card>
         </>
       )}
 
-      <form action={signOut}><Btn type="submit" variant="danger">Sign out</Btn></form>
+      <form action={signOut} className="border-t border-line pt-6"><Btn type="submit" variant="danger"><LogOut aria-hidden className="h-4 w-4" />Sign out</Btn></form>
     </Page>
   );
 }
@@ -161,7 +162,7 @@ function EmailPrefsCard() {
   };
 
   return (
-    <Card className="mb-5 p-4 sm:p-6">
+    <Card className="mb-4 p-4 sm:p-6">
       <div className="mb-1 text-[15px] font-semibold">Email</div>
       <p className="m-0 mb-4 text-[15px] text-mute-1">
         Choose what BrandOS emails you about. <strong className="font-semibold text-ink-3">Instant</strong> sends it straight away;{" "}
@@ -220,7 +221,7 @@ function SlackCard() {
   const on = ws.d.notify.slack;
   const test = async () => { const r = await run(sendSlackTest); if (r.ok) toast("Test message sent to Slack"); };
   return (
-    <Card className="mb-8 flex flex-wrap items-center gap-4 p-6">
+    <Card className="mb-7 flex flex-wrap items-center gap-4 p-5 sm:p-6">
       <div className="min-w-[240px] flex-1">
         <div className="mb-1 text-[15px] font-semibold">Slack</div>
         <p className="m-0 text-[15px] text-mute-1">
@@ -240,7 +241,7 @@ function NotificationsCard({ last }: { last: boolean }) {
   const perm = useSyncExternalStore<Perm>(noop, () => (typeof Notification === "undefined" ? "unsupported" : Notification.permission), () => "default");
   const ask = async () => { await Notification.requestPermission().catch(() => {}); bump((n) => n + 1); };
   return (
-    <Card className={cx(last ? "mb-8" : "mb-5", "flex flex-wrap items-center gap-4 p-6")}>
+    <Card className={cx(last ? "mb-7" : "mb-4", "flex flex-wrap items-center gap-4 p-5 sm:p-6")}>
       <div className="min-w-[240px] flex-1">
         <div className="mb-1 text-[15px] font-semibold">In the app</div>
         <p className="m-0 text-[15px] text-mute-1">The bell, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you. New ones pop up as they arrive.</p>

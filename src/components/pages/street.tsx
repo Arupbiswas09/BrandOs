@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, type ReactNode } from "react";
-import { AlarmClock, ArrowRight, CheckCircle2, Circle, ClipboardCheck, Inbox, Rocket, Sparkles, X } from "lucide-react";
+import { AlarmClock, ArrowRight, Building2, CheckCircle2, Circle, ClipboardCheck, History, Inbox, Rocket, Sparkles, X } from "lucide-react";
 import { useDayPart, useStored } from "@/lib/stored";
 import { hexA, onColor, readable } from "@/lib/color";
 import { NEUTRAL } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { live, plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
-import { Avatar, Card, DueBadge, Eyebrow, Page, Tabs, cx } from "@/components/ui";
+import { Avatar, Card, DueBadge, Eyebrow, IconTile, Page, Tabs, cx } from "@/components/ui";
 import { SpotArt, WaveArt } from "@/components/art";
 
 type Row = { key: string; label: string; sub: string; dueAt: Date | null; dot: string; badge?: string; go: () => void };
@@ -144,7 +144,7 @@ export function Street() {
           <Tabs className="mt-1 border-b border-divider" items={tabItems} />
           <div className="pt-1">
             {tab !== "activity" && list.slice(0, LIMIT).map((a) => (
-              <button key={a.key} type="button" onClick={a.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[7px] border-t border-divider px-2 py-2.5 text-left first:border-t-0 hover:bg-wash">
+              <button key={a.key} type="button" onClick={a.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[7px] border-t border-divider px-2 py-2.5 text-left transition-colors first:border-t-0 hover:bg-wash">
                 <span className="h-2 w-2 flex-none rounded-full" style={{ background: a.dot }} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{a.label}</span>
@@ -175,9 +175,9 @@ export function Street() {
 
         <div className="flex flex-col gap-5">
           <Card className="px-5 pb-3 pt-4">
-            <h2 className="m-0 mb-1 text-[16px] font-semibold">Jump back in</h2>
+            <h2 className="m-0 mb-2 flex items-center gap-2.5 text-[16px] font-semibold"><IconTile><History /></IconTile>Jump back in</h2>
             {continueItems.map((r) => (
-              <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[7px] px-2 py-2 text-left hover:bg-wash">
+              <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[7px] px-2 py-2 text-left transition-colors hover:bg-wash">
                 <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-[11px] font-bold tracking-[0.06em]" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[15px] font-medium">{r.title}</span>
@@ -189,14 +189,14 @@ export function Street() {
           </Card>
 
           <Card className="px-5 pb-3 pt-4">
-            <div className="mb-1 flex items-baseline justify-between">
-              <h2 className="m-0 text-[16px] font-semibold">Clients <span className="ml-1 text-[14px] font-normal text-mute-3">{clients.length}</span></h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="m-0 flex items-center gap-2.5 text-[16px] font-semibold"><IconTile><Building2 /></IconTile>Clients <span className="text-[14px] font-normal text-mute-3">{clients.length}</span></h2>
               {ws.can("structure") && <button type="button" onClick={() => open({ kind: "client" })} className="text-[14px] font-medium text-accent hover:underline">+ Add client</button>}
             </div>
             {clients.slice(0, LIMIT).map((c) => {
               const bs = brands.filter((b) => b.clientId === c.id);
               return (
-                <Link key={c.id} href={href.client(c.id)} className="-mx-2 flex items-center gap-[11px] rounded-[7px] px-2 py-2 hover:bg-wash">
+                <Link key={c.id} href={href.client(c.id)} className="group -mx-2 flex items-center gap-[11px] rounded-[7px] px-2 py-2 transition-colors hover:bg-wash">
                   <span className="flex flex-none -space-x-1.5">
                     {bs.slice(0, 3).map((b) => <span key={b.id} className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11px] font-bold ring-2 ring-white" style={{ background: b.primary, color: onColor(b.primary) }}>{b.mark}</span>)}
                     {!bs.length && <span className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-dashed border-line-strong text-[13px] text-mute-4">+</span>}
@@ -205,7 +205,7 @@ export function Street() {
                     <span className="block truncate text-[15px] font-medium">{c.name}</span>
                     <span className="block truncate text-[13.5px] text-mute-2">{c.kind} · {plural(bs.length, "brand")}</span>
                   </span>
-                  <ArrowRight className="h-4 w-4 flex-none text-mute-4" />
+                  <ArrowRight className="h-4 w-4 flex-none text-mute-4 transition-transform group-hover:translate-x-0.5" />
                 </Link>
               );
             })}
@@ -243,6 +243,6 @@ function Kpi({ icon, label, value, note, bad, href: to, onClick }: { icon: React
       <span className={cx("mt-2 block text-[13px]", bad ? "font-semibold text-[#B42318]" : "text-mute-3")}>{note}</span>
     </>
   );
-  const cls = "block rounded-xl border border-line bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)] transition hover:-translate-y-px hover:border-line-strong hover:shadow-[0_6px_16px_rgba(15,23,42,.06)]";
+  const cls = "lift block rounded-xl border border-line bg-white p-4 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]";
   return to ? <Link href={to} className={cls}>{body}</Link> : <button type="button" onClick={onClick} className={cls}>{body}</button>;
 }

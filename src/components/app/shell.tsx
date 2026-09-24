@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from "react";
 import {
-  Bell, BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Keyboard, LayoutDashboard, LogOut, Menu, Plus,
-  PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Settings, ShieldCheck, Trash2, Users,
+  Bell, BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Inbox as InboxIcon, Keyboard, LayoutDashboard, LogOut, Menu, Plus,
+  PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Settings, ShieldCheck, Trash2, Users, X,
 } from "lucide-react";
 import { useStored } from "@/lib/stored";
 import { BRAND_TABS, href, parsePath } from "@/lib/routes";
@@ -49,6 +49,12 @@ export function usePalette(): [Palette, (p: Palette) => void] {
   return useStored<Palette>("bos.palette", "azure", PALETTE_KEYS);
 }
 
+/** What the bell counts: work assigned to me, plus mentions I have not read (the inbox's own sources). */
+function useWaiting() {
+  const { ws } = useApp();
+  return ws.queue().filter((q) => q.who === ws.me.id).length + ws.d.unreadMentions.length;
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const brand = useActiveBrand();
   const [mode] = useTakeover();
@@ -60,10 +66,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div style={{ ...vars, background: "var(--bos-tint)" }} className="theme-fade min-h-screen" data-nav={navMode}>
       <Sidebar mini={mini} />
       <Header mini={mini} />
-      <main className={cx("pt-header [overflow-x:clip] transition-[margin] duration-200", mini ? "lg:ml-[72px]" : "lg:ml-[264px]")}>
+      <main className={cx("pt-header pb-mobile-nav [overflow-x:clip] transition-[margin] duration-200", mini ? "lg:ml-[72px]" : "lg:ml-[264px]")}>
         <Crumbs />
         {children}
       </main>
+      <MobileNav />
       <AssetDrawer />
       <CommandPalette />
       <Inbox />
@@ -80,7 +87,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 const itemCls = (active: boolean) =>
   cx(
-    "flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14.5px] font-medium transition-colors",
+    "group/nav flex w-full items-center gap-3 rounded-md px-3 py-2 text-[14.5px] font-medium transition-colors duration-150",
     active ? "bg-hl text-hl-ink" : "text-mute-1 hover:bg-hover hover:text-ink",
   );
 
@@ -92,34 +99,66 @@ function Sidebar({ mini }: { mini: boolean }) {
       {nav && (
         <div className="fixed inset-0 z-[65] lg:hidden">
           <div className="absolute inset-0 animate-fade bg-[rgba(15,23,42,.35)]" onClick={() => setNav(false)} />
-          <div className="absolute inset-y-0 left-0 animate-slide-left shadow-[16px_0_44px_rgba(15,23,42,.16)]"><SidebarBody mini={false} drawer /></div>
+          <div className="absolute inset-y-0 left-0 max-w-[88vw] animate-slide-left shadow-[16px_0_44px_rgba(15,23,42,.16)]"><SidebarBody mini={false} drawer /></div>
         </div>
       )}
     </>
   );
 }
 
+type TipProps = {
+  onMouseEnter: (e: MouseEvent<HTMLElement>) => void; onMouseLeave: () => void;
+  onFocus: (e: FocusEvent<HTMLElement>) => void; onBlur: () => void;
+};
+type TipBind = (label: string) => Partial<TipProps>;
+
+/**
+ * Labels for the folded sidebar. The nav scrolls, which would clip a CSS
+ * tooltip, so this one is placed with fixed coordinates beside the row.
+ * The row keeps its own (screen-reader) name; the tip is only visual.
+ */
+function useMiniTip(on: boolean): [ReactNode, TipBind, () => void] {
+  const [tip, setTip] = useState<{ label: string; top: number; left: number } | null>(null);
+  const hide = useCallback(() => setTip(null), []);
+  const bind = useCallback<TipBind>((label) => {
+    if (!on) return {};
+    const show = (el: HTMLElement) => {
+      const r = el.getBoundingClientRect();
+      setTip({ label, top: r.top + r.height / 2, left: r.right + 10 });
+    };
+    return { onMouseEnter: (e) => show(e.currentTarget), onMouseLeave: hide, onFocus: (e) => show(e.currentTarget), onBlur: hide };
+  }, [on, hide]);
+  const node = on && tip ? (
+    <span aria-hidden className="pointer-events-none fixed z-[70] -translate-y-1/2 animate-fade whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-[13px] font-medium text-white shadow-[0_8px_20px_rgba(15,23,42,.2)]" style={{ top: tip.top, left: tip.left }}>
+      {tip.label}
+    </span>
+  ) : null;
+  return [node, bind, hide];
+}
+
 /** One nav row. When the sidebar is folded the label becomes a tooltip. */
-function NavItem({ href: to, icon, label, active, mini, badge, onClick }: { href?: string; icon: ReactNode; label: string; active?: boolean; mini: boolean; badge?: ReactNode; onClick?: () => void }) {
-  const cls = cx(itemCls(!!active), "text-left", mini && "justify-center px-0");
+function NavItem({ href: to, icon, label, active, mini, badge, onClick, tip }: { href?: string; icon: ReactNode; label: string; active?: boolean; mini: boolean; badge?: ReactNode; onClick?: () => void; tip: TipBind }) {
+  const cls = cx(itemCls(!!active), "text-left", mini && "h-10 justify-center px-0");
   const body = (
     <>
-      <span className="relative flex flex-none">{icon}{mini && badge && <span className="absolute -right-1.5 -top-1.5">{badge}</span>}</span>
+      <span className={cx("relative flex flex-none", !active && "text-mute-3 group-hover/nav:text-ink")}>{icon}{mini && badge && <span className="absolute -right-2 -top-2">{badge}</span>}</span>
       {mini ? <span className="sr-only">{label}</span> : <span className="min-w-0 flex-1 truncate">{label}</span>}
       {!mini && badge}
     </>
   );
+  const tipProps = mini ? tip(label) : {};
   return to
-    ? <Link href={to} className={cls} title={mini ? label : undefined} aria-current={active ? "page" : undefined}>{body}</Link>
-    : <button type="button" onClick={onClick} className={cls} title={mini ? label : undefined}>{body}</button>;
+    ? <Link href={to} className={cls} aria-current={active ? "page" : undefined} {...tipProps}>{body}</Link>
+    : <button type="button" onClick={onClick} className={cls} {...tipProps}>{body}</button>;
 }
 
 function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
-  const { ws, open } = useApp();
+  const { ws, open, setNav } = useApp();
   const pathname = usePathname();
   const p = parsePath(pathname);
   const [run] = useAction();
   const [, setNavMode] = useNavMode();
+  const [tipNode, tip, hideTip] = useMiniTip(mini);
   const overdueCount = useMemo(() => {
     const t = new Date(ws.d.now); const start = new Date(t.getFullYear(), t.getMonth(), t.getDate());
     return ws.dated().filter((x) => !x.done && x.dueAt < start).length;
@@ -129,10 +168,12 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
   const brands = live(ws.d.brands);
   const clients = live(ws.d.clients).map((c) => ({ c, tops: brands.filter((b) => b.clientId === c.id && !b.parentId) }));
   const ic = "h-[18px] w-[18px] flex-none";
+  const demo = ws.d.authMode === "demo";
+  const reset = () => { if (window.confirm("Reset the demo to its starting data?")) void run(resetDemo); };
 
   const brandRow = (b: (typeof brands)[number], depth: number) => mini ? (
-    <Link key={b.id} href={href.brand(b.id)} title={b.name} aria-current={activeBrandId === b.id ? "page" : undefined}
-      className={cx("mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-[11.5px] font-bold transition", activeBrandId === b.id ? "ring-2 ring-accent ring-offset-2" : "hover:scale-105")}
+    <Link key={b.id} href={href.brand(b.id)} aria-current={activeBrandId === b.id ? "page" : undefined} {...tip(b.name)}
+      className={cx("mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-[11.5px] font-bold transition-transform duration-150", activeBrandId === b.id ? "ring-2 ring-accent ring-offset-2" : "hover:scale-105")}
       style={{ background: b.primary, color: onColor(b.primary) }}>
       {b.mark}<span className="sr-only"> {b.name}</span>
     </Link>
@@ -148,25 +189,30 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
   return (
     <aside className={cx("safe-top flex h-full flex-col border-r border-line bg-white transition-[width] duration-200", mini ? "w-[72px]" : "w-[264px]")}>
       <div className={cx("flex h-16 flex-none items-center border-b border-line", mini ? "justify-center px-2" : "justify-between px-4")}>
-        <Link href="/" className="flex items-center gap-2.5" title="BrandOS — Dashboard">
-          <span className="flex h-8 w-8 items-center justify-center rounded-md bg-accent text-[15px] font-bold text-on-accent theme-fade">B</span>
+        <Link href="/" className="flex items-center gap-2.5 rounded-md" title="BrandOS — Dashboard">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-[15px] font-bold text-on-accent shadow-[inset_0_-2px_0_rgba(0,0,0,.18)] theme-fade">B</span>
           {!mini && <span className="text-[16px] font-semibold tracking-[-0.01em] text-ink">BrandOS</span>}
         </Link>
         {!mini && !drawer && (
-          <button type="button" onClick={() => setNavMode("mini")} aria-label="Collapse the sidebar" title="Collapse the sidebar ( [ )" className="flex h-8 w-8 items-center justify-center rounded-md text-mute-3 hover:bg-hover hover:text-ink">
+          <button type="button" onClick={() => setNavMode("mini")} aria-label="Collapse the sidebar" title="Collapse the sidebar ( [ )" className="flex h-8 w-8 items-center justify-center rounded-md text-mute-3 transition-colors hover:bg-hover hover:text-ink">
             <PanelLeftClose className="h-[18px] w-[18px]" />
           </button>
         )}
+        {drawer && (
+          <button type="button" onClick={() => setNav(false)} aria-label="Close navigation" className="flex h-9 w-9 items-center justify-center rounded-md text-mute-3 transition-colors hover:bg-hover hover:text-ink">
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
-      <nav data-scroll className={cx("flex-1 overflow-y-auto py-3", mini ? "px-3" : "px-2")} aria-label="Main">
+      <nav data-scroll onScroll={hideTip} className={cx("flex-1 overflow-y-auto py-3", mini ? "px-3" : "px-2")} aria-label="Main">
         <div className="flex flex-col gap-0.5">
-          <NavItem mini={mini} href="/" icon={<LayoutDashboard className={ic} />} label="Dashboard" active={p.view === "street"} />
-          <NavItem mini={mini} href="/calendar" icon={<CalendarDays className={ic} />} label="Calendar" active={p.view === "calendar"} badge={overdue || undefined} />
-          {!ws.isGuest && <NavItem mini={mini} href="/library" icon={<BookOpen className={ic} />} label="Global Library" active={p.view === "library"} />}
-          {!ws.isGuest && <NavItem mini={mini} href="/team" icon={<Users className={ic} />} label="Team and access" active={p.view === "team"} badge={mini ? undefined : <span className="text-[12.5px] text-mute-4">{ws.d.users.length}</span>} />}
+          <NavItem mini={mini} tip={tip} href="/" icon={<LayoutDashboard className={ic} />} label="Dashboard" active={p.view === "street"} />
+          <NavItem mini={mini} tip={tip} href="/calendar" icon={<CalendarDays className={ic} />} label="Calendar" active={p.view === "calendar"} badge={overdue || undefined} />
+          {!ws.isGuest && <NavItem mini={mini} tip={tip} href="/library" icon={<BookOpen className={ic} />} label="Global Library" active={p.view === "library"} />}
+          {!ws.isGuest && <NavItem mini={mini} tip={tip} href="/team" icon={<Users className={ic} />} label="Team and access" active={p.view === "team"} badge={mini ? undefined : <span className="text-[12.5px] text-mute-4">{ws.d.users.length}</span>} />}
         </div>
 
-        {mini ? <div className="mx-2 my-4 border-t border-line" /> : <div className="eyebrow mb-1.5 mt-6 px-3">Clients</div>}
+        {mini ? <div aria-hidden className="mx-2 my-3 border-t border-line" /> : <div className="eyebrow mb-1 mt-5 px-3">Clients</div>}
         <div className={cx("flex flex-col", mini ? "gap-2" : "gap-0.5")}>
           {clients.map(({ c, tops }) => (
             <div key={c.id} className={mini ? "flex flex-col gap-2" : "mb-1"}>
@@ -183,23 +229,69 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
               ))}
             </div>
           ))}
-          {ws.can("structure") && <NavItem mini={mini} icon={<Plus className={ic} />} label="Add client" onClick={() => open({ kind: "client" })} />}
+          {ws.can("structure") && <NavItem mini={mini} tip={tip} icon={<Plus className={ic} />} label="Add client" onClick={() => open({ kind: "client" })} />}
         </div>
       </nav>
-      <div className={cx("safe-bottom flex flex-none flex-col gap-0.5 border-t border-line py-2", mini ? "px-3" : "px-2")}>
-        {ws.can("del") && <NavItem mini={mini} href="/trash" icon={<Trash2 className={ic} />} label="Recycle bin" active={p.view === "trash"} />}
-        <NavItem mini={mini} href="/settings" icon={<Settings className={ic} />} label="Settings" active={p.view === "settings"} />
-        {ws.can("access") && <NavItem mini={mini} href="/audit" icon={<ShieldCheck className={ic} />} label="Audit log" active={p.view === "audit"} />}
-        {/* Demo mode only. Production runs with passwords, where this never shows (and the server refuses it). */}
-        {ws.d.authMode === "demo" && (
-          <NavItem mini={mini} icon={<RotateCcw className={ic} />} label="Reset demo data" onClick={() => { if (window.confirm("Reset the demo to its starting data?")) void run(resetDemo); }} />
+      <div className={cx("safe-bottom flex flex-none flex-col border-t border-line", mini ? "px-3 py-2" : "px-2 pb-1 pt-2.5")}>
+        {!mini && <div className="eyebrow mb-1 px-3">Workspace</div>}
+        <div className="flex flex-col gap-0.5">
+          {ws.can("del") && <NavItem mini={mini} tip={tip} href="/trash" icon={<Trash2 className={ic} />} label="Recycle bin" active={p.view === "trash"} />}
+          {ws.can("access") && <NavItem mini={mini} tip={tip} href="/audit" icon={<ShieldCheck className={ic} />} label="Audit log" active={p.view === "audit"} />}
+          <NavItem mini={mini} tip={tip} href="/settings" icon={<Settings className={ic} />} label="Settings" active={p.view === "settings"} />
+          {/* Demo mode only. Production runs with passwords, where this never shows (and the server refuses it). */}
+          {mini && demo && <NavItem mini tip={tip} icon={<RotateCcw className={ic} />} label="Reset demo data" onClick={reset} />}
+          {mini && !drawer && <NavItem mini tip={tip} icon={<PanelLeftOpen className={ic} />} label="Expand the sidebar" onClick={() => setNavMode("full")} />}
+        </div>
+        {!mini && (
+          <div className="mt-2 flex min-h-9 items-center gap-2 border-t border-divider pl-3 pr-1 pt-1.5">
+            <p className="m-0 flex-1 text-[12px] text-mute-4">Developed by <span className="font-semibold text-mute-2">Arup</span></p>
+            {demo && (
+              <button type="button" onClick={reset} title="Reset the demo to its starting data" className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium text-mute-3 transition-colors hover:bg-hover hover:text-ink">
+                <RotateCcw className="h-3.5 w-3.5" />Reset demo<span className="sr-only"> data</span>
+              </button>
+            )}
+          </div>
         )}
-        {mini && !drawer && (
-          <NavItem mini icon={<PanelLeftOpen className={ic} />} label="Expand the sidebar" onClick={() => setNavMode("full")} />
-        )}
-        {!mini && <p className="m-0 px-3 pb-1 pt-2 text-[12px] text-mute-4">Developed by <span className="font-semibold text-mute-2">Arup</span></p>}
       </div>
+      {tipNode}
     </aside>
+  );
+}
+
+/* ================================================================ mobile bottom bar */
+
+/** Phones and tablets: the everyday destinations under the thumb. The sidebar drawer holds the rest. */
+function MobileNav() {
+  const { cmdk, setCmdk, inbox, setInbox, nav, setNav } = useApp();
+  const p = parsePath(usePathname());
+  const waiting = useWaiting();
+  const item = (active: boolean) => cx("flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-[12px] font-medium transition-colors duration-150", active ? "text-ink" : "text-mute-3 hover:text-ink");
+  const pill = (active: boolean) => cx("relative flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150", active && "bg-hl text-hl-ink");
+  const ic = "h-5 w-5";
+  return (
+    <nav aria-label="Quick navigation" className="h-mobile-nav safe-bottom fixed inset-x-0 bottom-0 z-[34] border-t border-line bg-white/95 shadow-[0_-4px_16px_rgba(15,23,42,.05)] backdrop-blur-[10px] lg:hidden">
+      <div className="mx-auto flex h-16 max-w-[560px] items-stretch gap-1 px-2 py-1.5">
+        <Link href="/" className={item(p.view === "street")} aria-current={p.view === "street" ? "page" : undefined}>
+          <span className={pill(p.view === "street")}><LayoutDashboard className={ic} /></span>Dashboard
+        </Link>
+        <Link href="/calendar" className={item(p.view === "calendar")} aria-current={p.view === "calendar" ? "page" : undefined}>
+          <span className={pill(p.view === "calendar")}><CalendarDays className={ic} /></span>Calendar
+        </Link>
+        <button type="button" onClick={() => setCmdk(true)} aria-haspopup="dialog" className={item(cmdk)}>
+          <span className={pill(cmdk)}><Search className={ic} /></span>Search
+        </button>
+        <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog" className={item(inbox)}>
+          <span className={pill(inbox)}>
+            <InboxIcon className={ic} />
+            {waiting > 0 && <span aria-hidden className="absolute -top-1 right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white">{waiting}</span>}
+          </span>
+          Inbox{waiting > 0 && <span className="sr-only">, {waiting} waiting</span>}
+        </button>
+        <button type="button" onClick={() => setNav(true)} aria-expanded={nav} className={item(nav)}>
+          <span className={pill(nav)}><Menu className={ic} /></span>Menu
+        </button>
+      </div>
+    </nav>
   );
 }
 
@@ -215,8 +307,7 @@ function Header({ mini }: { mini: boolean }) {
     Client: "Client — shared work only",
   };
   const readOnly = roleNote[me.access];
-  // Same sources as the inbox: work assigned to me, plus mentions I have not read.
-  const waiting = ws.queue().filter((q) => q.who === me.id).length + ws.d.unreadMentions.length;
+  const waiting = useWaiting();
   const [menu, setMenu] = useState(false);
   const pathname = usePathname();
   const [lastPath, setLastPath] = useState(pathname);
@@ -227,10 +318,10 @@ function Header({ mini }: { mini: boolean }) {
       <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-mute-1 hover:bg-hover lg:hidden">
         <Menu className="h-5 w-5" />
       </button>
-      <button type="button" onClick={() => setCmdk(true)} className="flex h-10 min-w-0 max-w-2xl flex-1 items-center gap-2.5 rounded-md border border-line bg-wash px-3 text-left text-[14.5px] text-mute-4 transition hover:border-line-strong hover:bg-white">
+      <button type="button" onClick={() => setCmdk(true)} aria-haspopup="dialog" className="flex h-10 min-w-0 max-w-2xl flex-1 items-center gap-2.5 rounded-lg border border-line bg-wash px-3 text-left text-[14.5px] text-mute-4 transition-colors duration-150 hover:border-line-strong hover:bg-white">
         <Search className="h-[18px] w-[18px] flex-none text-mute-5" />
         <span className="min-w-0 flex-1 truncate">Search clients, brands, offers, assets…</span>
-        <kbd className="hidden flex-none rounded border border-line bg-white px-1.5 text-[12px] font-medium text-mute-3 sm:inline">⌘K</kbd>
+        <kbd className="kbd hidden flex-none sm:inline-flex">⌘K</kbd>
       </button>
       <span className="flex-1" />
       {readOnly && (
@@ -240,12 +331,12 @@ function Header({ mini }: { mini: boolean }) {
       )}
       {ws.can("edit") && (
         <button type="button" onClick={() => open({ kind: "new" })} className="flex h-10 flex-none items-center gap-2 rounded-md bg-accent px-4 text-[14.5px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">
-          <Plus className="h-4 w-4" /><span className="hidden sm:inline">New</span>
+          <Plus className="h-4 w-4" /><span className="sr-only sm:not-sr-only">New</span>
         </button>
       )}
-      <button type="button" onClick={() => setInbox(true)} aria-label={waiting ? `Inbox, ${waiting} waiting` : "Inbox"} className="relative flex h-10 w-10 flex-none items-center justify-center rounded-md text-mute-1 hover:bg-hover">
+      <button type="button" onClick={() => setInbox(true)} aria-label={waiting ? `Inbox, ${waiting} waiting` : "Inbox"} title="Inbox ( I )" className="relative hidden h-10 w-10 flex-none items-center justify-center rounded-md text-mute-1 transition-colors hover:bg-hover hover:text-ink lg:flex">
         <Bell className="h-5 w-5" />
-        {waiting > 0 && <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-[11px] font-bold text-white">{waiting}</span>}
+        {waiting > 0 && <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-[11px] font-bold text-white ring-2 ring-white">{waiting}</span>}
       </button>
       <div className="relative flex-none">
         <button type="button" onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-haspopup="menu" className="flex items-center gap-2 rounded-md p-1.5 hover:bg-hover">

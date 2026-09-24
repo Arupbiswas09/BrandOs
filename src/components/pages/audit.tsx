@@ -28,7 +28,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
     return (
       <Page className="max-w-[860px]">
         <PageHead eyebrow="Security" title="Audit log" />
-        <Empty title="This page is not for your role" body="The audit log shows who signed in and who changed access, shares and deletions. Only admins can see it. Ask an admin if you need to check something." />
+        <Empty art="people" title="This page is not for your role" body="The audit log shows who signed in and who changed access, shares and deletions. Only admins can see it. Ask an admin if you need to check something." />
       </Page>
     );
   }
@@ -45,12 +45,11 @@ export function AuditLog({ allowed, rows, people, total, query }: {
         eyebrow="Security"
         title="Audit log"
         sub="Every sign-in, access change, share, export and deletion, newest first. Only admins can see this page."
-        actions={<a href={`/api/audit${auditSearch({ ...query, page: 1 })}`} className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 hover:border-line-strong hover:bg-wash"><Download className="h-4 w-4" />Export CSV</a>}
-      >
-        <Tabs items={AUDIT_KINDS.map((k) => ({ key: k.value, label: k.label, active: query.kind === k.value, href: `/audit${auditSearch({ ...query, kind: k.value, page: 1 })}` }))} />
-      </PageHead>
+        actions={<a href={`/api/audit${auditSearch({ ...query, page: 1 })}`} className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 transition-colors hover:border-line-strong hover:bg-wash"><Download className="h-4 w-4" />Export CSV</a>}
+        tabs={<Tabs items={AUDIT_KINDS.map((k) => ({ key: k.value, label: k.label, active: query.kind === k.value, href: `/audit${auditSearch({ ...query, kind: k.value, page: 1 })}` }))} />}
+      />
 
-      <Form key={auditSearch(query)} action="/audit" className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_0.8fr_0.8fr_auto] lg:items-end">
+      <Form key={auditSearch(query)} action="/audit" className="mb-5 grid rounded-xl border border-line bg-white p-4 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_0.8fr_0.8fr_auto] lg:items-end">
         {query.kind !== "all" && <input type="hidden" name="kind" value={query.kind} />}
         <Field label="Search">
           <input name="q" type="search" defaultValue={query.q} placeholder="Email, name, detail…" className="field" />
@@ -74,7 +73,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
       </Form>
 
       {!rows.length ? (
-        <Empty title={filtered ? "Nothing matches those filters" : "Nothing logged yet"} body={filtered ? "Try a wider date range, another person or a different search." : "Sign-ins, access changes, shares and deletions will show up here as they happen."} />
+        <Empty art={filtered ? "search" : "calendar"} title={filtered ? "Nothing matches those filters" : "Nothing logged yet"} body={filtered ? "Try a wider date range, another person or a different search." : "Sign-ins, access changes, shares and deletions will show up here as they happen."} />
       ) : (
         <>
           <p className="mb-2 mt-0 text-[13.5px] text-mute-3">Showing {first}–{last} of {total.toLocaleString("en")} · dates are in UTC</p>
@@ -82,7 +81,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
             {rows.map((r) => {
               const failed = r.action.startsWith("failed");
               return (
-                <div key={r.id} className="flex flex-wrap items-start gap-x-4 gap-y-1.5 border-t border-divider px-5 py-3.5 first:border-t-0">
+                <div key={r.id} className="flex flex-wrap items-start gap-x-4 gap-y-1.5 border-t border-divider px-5 py-3 transition-colors first:border-t-0 hover:bg-wash">
                   <span className="w-[150px] flex-none pt-0.5 text-[13px] text-mute-3" title={utc(r.at)}>
                     <span className="block text-ink-3">{ws.ago(r.at)}</span>
                     <span className="block font-mono text-[12px]">{utc(r.at)}</span>

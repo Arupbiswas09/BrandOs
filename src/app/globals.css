@@ -60,6 +60,8 @@
   --animate-slide: bos-slide 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-slide-left: bos-slide-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   --animate-pop: bos-pop 0.2s ease both;
+  --animate-toast: bos-toast 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-shimmer: bos-shimmer 1.4s ease-in-out infinite;
 }
 
 @keyframes bos-fade { from { opacity: 0 } to { opacity: 1 } }
@@ -67,9 +69,18 @@
 @keyframes bos-slide { from { opacity: 0; transform: translateX(28px) } to { opacity: 1; transform: none } }
 @keyframes bos-slide-left { from { opacity: 0; transform: translateX(-28px) } to { opacity: 1; transform: none } }
 @keyframes bos-pop { from { opacity: 0; transform: translateY(-6px) scale(0.985) } to { opacity: 1; transform: none } }
+@keyframes bos-toast { from { opacity: 0; transform: translateY(10px) scale(0.98) } to { opacity: 1; transform: none } }
+@keyframes bos-shimmer { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
 
+/* Motion is decoration here: with reduced motion everything snaps, and nothing loops or lifts. */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  html { scroll-behavior: auto !important; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .lift:hover, .lift:focus-visible { transform: none !important; }
 }
 
 @layer base {
@@ -88,7 +99,10 @@ input, textarea, select { font: inherit; color: #0F172A; }
 textarea { resize: vertical; }
 ::placeholder { color: #526077; }
 ::selection { background: var(--bos-soft); }
-:focus-visible { outline: 2px solid color-mix(in srgb, var(--bos-accent) 70%, #38BDF8); outline-offset: 2px; border-radius: 5px; }
+/* One focus ring everywhere: the action colour leaning toward sky (resolved per element, so brands keep theirs). */
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--bos-accent) 72%, #0284c7); outline-offset: 2px; }
+/* Inside scrolling lists and tab strips the ring sits inside the control, so the edge never clips it. */
+.focus-inset:focus-visible, [role="tab"]:focus-visible, [data-scroll] :focus-visible { outline-offset: -2px; }
 input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !important; outline: none; }
 /* Grid columns may shrink below their content, so long truncated text never widens the page. */
 .grid > * { min-width: 0; }
@@ -101,6 +115,14 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
 .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
 .h-header { height: calc(60px + env(safe-area-inset-top)); }
 .pt-header { padding-top: calc(60px + env(safe-area-inset-top)); }
+/* Phones get a bottom bar (64px); content and toasts stay clear of it. */
+.h-mobile-nav { height: calc(64px + env(safe-area-inset-bottom)); }
+.pb-mobile-nav { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+.bottom-mobile-nav { bottom: calc(76px + env(safe-area-inset-bottom)); }
+@media (min-width: 64rem) {
+  .pb-mobile-nav { padding-bottom: 0; }
+  .bottom-mobile-nav { bottom: 24px; }
+}
 
 /* A white header band that runs the full width of the content area, like the kit's page headers. */
 .head-band { position: relative; isolation: isolate; }
@@ -134,6 +156,16 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
   .field:focus { border-color: var(--bos-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--bos-accent) 16%, transparent); }
   [data-invalid] .field, .field[aria-invalid="true"] { border-color: #DC2626; }
   [data-invalid] .field:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, .15); }
+  /* The kit's hover lift for clickable cards: one pixel up and a soft shadow. */
+  .lift { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease; }
+  .lift:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15, 23, 42, .07); border-color: #cbd5e1; }
+  /* Skeleton blocks for loading screens. */
+  .skel { background: #e8edf3; border-radius: 8px; animation: var(--animate-shimmer); }
+  .kbd {
+    display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px;
+    border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 5px; background: #fff;
+    font-family: var(--font-sans); font-size: 12px; font-weight: 600; line-height: 1; color: #334155;
+  }
   .label {
     display: block;
     font-size: 14px;
