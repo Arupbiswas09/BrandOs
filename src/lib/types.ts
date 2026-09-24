@@ -1,6 +1,7 @@
 import type {
   Activity, Asset, Brand, Client, Comment, Cta, Group, Link, NotifyPrefs, Offer, Service, ShareLink, User,
 } from "@/db/schema";
+import type { MyUploadLimits, UploadPolicy } from "@/lib/upload-policy";
 
 /** A person as the browser sees them. Email choices stay on the server, except my own (Workspace.notify). */
 export type PublicUser = Omit<User, "passwordHash" | "notifyPrefs" | "lastDigestAt"> & {
@@ -22,6 +23,11 @@ export type Workspace = {
   authMode: "demo" | "password";
   aiEnabled: boolean;
   uploadsEnabled: boolean;
+  /** What I may upload; admins also get the rules they can change and current usage. */
+  uploads: {
+    mine: MyUploadLimits;
+    admin?: { policy: UploadPolicy; workspaceBytes: number; byPerson: Record<string, number>; hardCapBytes: number };
+  };
   users: PublicUser[];
   groups: Group[];
   clients: Client[];

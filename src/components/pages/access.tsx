@@ -70,7 +70,7 @@ export function RoleMatrix() {
         </div>
       </Card>
       <Hint className="mt-4">
-        Roles decide what someone can <b className="font-semibold">do</b>. Scope decides what they can <b className="font-semibold">see</b>: every client, or only the clients, brands and groups you pick. Buttons a person cannot use are hidden, and the server refuses the change anyway if someone tries.
+        Roles decide what someone can <b className="font-semibold">do</b>. Scope decides what they can <b className="font-semibold">see</b>: every client, or only the clients, brands and groups you pick. Admins can also block or allow single permissions for one person (their <b className="font-semibold">Access</b> button → Exceptions and limits), and set upload limits on the Upload limits tab. Buttons a person cannot use are hidden, and the server refuses the change anyway if someone tries.
       </Hint>
     </>
   );

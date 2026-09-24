@@ -1,7 +1,7 @@
 # Deploying BrandOS
 
 Production runs on the **coolify-contabo** server (173.249.4.108), in the Coolify
-project **Contabo_software → production**, at **https://pm.thatha.net**
+project **Contabo_software → production**, at **https://pm.work.thatha.net**
 (also reachable at https://pm.software.thatha.net through the existing wildcard).
 
 ```
@@ -38,8 +38,10 @@ app starts.
    read-only token.
 4. **Uploads** — Coolify → brandos → Persistent Storage → add a volume with
    destination `/app/.data`. Without it, uploaded files are lost on redeploy.
-5. **DNS** — Cloudflare → thatha.net → DNS → add `A  pm  173.249.4.108`,
+5. **DNS** — Cloudflare → thatha.net → DNS → add `A  pm.work  173.249.4.108`,
    **DNS only** (grey cloud) so Coolify can issue the Let's Encrypt certificate.
+   `*.work.thatha.net` is a wildcard to the Azure server (74.249.36.39); this one
+   specific record overrides it for BrandOS only.
 6. **Auto-deploy** — GitHub → thathaorg/BrandOs → Settings → Secrets → Actions:
    `COOLIFY_TOKEN` and `COOLIFY_APP_UUID` (printed by the setup script).
 7. **Email (optional)** — add `RESEND_API_KEY` and `MAIL_FROM` to

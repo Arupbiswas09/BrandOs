@@ -4,7 +4,9 @@ import { can, canChange } from "@/lib/access";
 import { readAll, makeVisibility, scopeFor } from "@/server/data";
 import { getViewer } from "@/server/session";
 import { humanSize, saveFile, storageProblem } from "@/server/storage";
-import { checkUpload, maxUploadBytes, maxUploadLabel } from "@/server/uploads";
+import { checkUpload } from "@/server/uploads";
+import { getUploadPolicy, myLimits } from "@/server/limits";
+import { checkBatch } from "@/lib/upload-policy";
 
 export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/files">) {
   const { id } = await ctx.params;
@@ -12,7 +14,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
   if (!me) return Response.json({ error: "You are signed out." }, { status: 401 });
   const problem = storageProblem();
   if (problem) return Response.json({ error: problem }, { status: 503 });
-  if (!can(me, "edit")) return Response.json({ error: "Your access level does not allow uploads." }, { status: 403 });
+  if (!can(me, "upload")) return Response.json({ error: "Uploading is switched off for you. Ask an admin if you need it." }, { status: 403 });
   const all = await readAll();
   const vis = makeVisibility(all, scopeFor(all, me.id));
   const asset = all.assets.find((a) => a.id === id);
@@ -23,20 +25,20 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
   const form = await req.formData().catch(() => null);
   const files = (form?.getAll("file") ?? []).filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) return Response.json({ error: "No file came through." }, { status: 400 });
-  // Set MAX_UPLOAD_MB to change the limit (25 MB by default).
-  const tooBig = files.find((f) => f.size > maxUploadBytes());
-  if (tooBig) return Response.json({ error: `${tooBig.name} is over ${maxUploadLabel()}.` }, { status: 413 });
   // Check every file before storing any, so a refused file does not leave half an upload behind.
   const checked = files.map((f) => ({ f, c: checkUpload(f.name, f.type) }));
   const refused = checked.find((x) => !x.c.ok);
   if (refused && !refused.c.ok) return Response.json({ error: refused.c.error }, { status: 415 });
+  // Sizes, kinds, files per upload and storage allowances, as set in Team and access → Limits.
+  const limit = checkBatch(files.map((f) => ({ name: f.name, size: f.size })), myLimits(all, await getUploadPolicy(), me));
+  if (limit) return Response.json({ error: limit }, { status: 413 });
 
   const added = [];
   for (const { f, c } of checked) {
     const clean = f.name.replace(/[^\w.\- ()]+/g, "_").slice(-120) || "file";
     const key = `assets/${id}/${crypto.randomUUID().slice(0, 8)}-${clean}`;
     await saveFile(key, f);
-    added.push({ name: f.name.slice(0, 300), size: humanSize(f.size), key, type: c.ok ? c.type : "application/octet-stream", url: `/api/files/${key}` });
+    added.push({ name: f.name.slice(0, 300), size: humanSize(f.size), bytes: f.size, uploadedBy: me.id, key, type: c.ok ? c.type : "application/octet-stream", url: `/api/files/${key}` });
   }
   // Same file name again replaces the older entry rather than listing it twice.
   const names = new Set(added.map((x) => x.name));

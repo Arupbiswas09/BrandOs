@@ -1,5 +1,6 @@
 "use client";
 
+import { FILE_KINDS, checkBatch, sizeLabel, type MyUploadLimits } from "@/lib/upload-policy";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { Asset } from "@/db/schema";
@@ -434,9 +435,14 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
   const [drag, setDrag] = useState(false);
   const files = a.files ?? [];
   const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
+  const canUpload = canEdit && ws.can("upload");
+  const limits = ws.d.uploads.mine;
 
   const upload = async (list: FileList | null) => {
     if (!list?.length) return;
+    // Same rules the server applies, checked first so nobody waits for a big file to be refused.
+    const problem = checkBatch(Array.from(list).map((f) => ({ name: f.name, size: f.size })), limits);
+    if (problem) { toast(problem, "error"); if (input.current) input.current.value = ""; return; }
     setBusy(true);
     try {
       const fd = new FormData();
@@ -453,9 +459,9 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
 
   return (
     <div
-      onDragOver={(e) => { if (canEdit) { e.preventDefault(); setDrag(true); } }}
+      onDragOver={(e) => { if (canUpload) { e.preventDefault(); setDrag(true); } }}
       onDragLeave={() => setDrag(false)}
-      onDrop={(e) => { if (!canEdit) return; e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}
+      onDrop={(e) => { if (!canUpload) return; e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}
       className={cx("rounded-xl transition", drag && "outline-2 outline-dashed outline-accent outline-offset-4")}
     >
       {onProof && (
@@ -491,12 +497,13 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
         </div>
       )}
       {!files.length && <div className="rounded-xl border border-dashed border-line-strong p-9 text-center text-[15px] text-mute-2">No files attached yet.</div>}
-      {canEdit && (
+      {canUpload && (
         <>
           <input ref={input} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
           <button type="button" disabled={busy} onClick={() => input.current?.click()} className="mt-2.5 w-full rounded-[10px] border border-line bg-white p-2.5 text-[15px] font-semibold text-ink-3 hover:border-mute-2 disabled:opacity-60">
             {busy ? "Uploading…" : "Upload files — or drop them here"}
           </button>
+          <UploadLimitsHint limits={limits} />
         </>
       )}
     </div>
@@ -580,5 +587,18 @@ function Sharing({ a }: { a: Asset }) {
       <Hint className="mt-3.5">Assets cleared to send appear for people with the Client role and on the brand&apos;s client share page. Every other asset stays internal.</Hint>
       {a.brandId && ws.can("share") && <Btn className="mt-3" onClick={() => open({ kind: "share", brandId: a.brandId! })}>Manage client links</Btn>}
     </div>
+  );
+}
+
+/** "Video up to 250 MB · Images 25 MB … · 1.2 GB of storage left" under the upload button. */
+function UploadLimitsHint({ limits }: { limits: MyUploadLimits }) {
+  const on = FILE_KINDS.filter((k) => limits.kinds[k.kind].allowed);
+  const off = FILE_KINDS.filter((k) => !limits.kinds[k.kind].allowed);
+  return (
+    <p className="m-0 mt-2 text-[13px] leading-[1.5] text-mute-3">
+      Up to {limits.maxFiles} files at a time. {on.map((k) => `${k.label} ${sizeLabel(limits.kinds[k.kind].maxBytes)}`).join(" · ")}.
+      {off.length > 0 && <> Not allowed: {off.map((k) => k.label.toLowerCase()).join(", ")}.</>}
+      {limits.remainingBytes != null && <> <b className="font-semibold text-mute-1">{sizeLabel(limits.remainingBytes)}</b> of storage left.</>}
+    </p>
   );
 }

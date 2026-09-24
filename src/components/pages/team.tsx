@@ -1,6 +1,7 @@
 "use client";
 
 import { ACCESS_COLOR } from "@/lib/constants";
+import { PERM_INFO } from "@/lib/access";
 import { hexA, readable } from "@/lib/color";
 import { switchUser } from "@/app/actions";
 import { createInvite } from "@/app/auth-actions";
@@ -9,8 +10,9 @@ import { useAction, useApp } from "@/components/app/provider";
 import { Avatar, Btn, Card, H2, Page, PageHead, Tabs } from "@/components/ui";
 import { useStored } from "@/lib/stored";
 import { AccessMap, RoleMatrix } from "./access";
+import { UploadLimits } from "./limits";
 
-const TEAM_TABS = [["people", "People"], ["roles", "Roles and permissions"], ["map", "Who sees what"], ["groups", "Groups"]] as const;
+const TEAM_TABS = [["people", "People"], ["roles", "Roles and permissions"], ["map", "Who sees what"], ["groups", "Groups"], ["limits", "Upload limits"]] as const;
 type TeamTab = (typeof TEAM_TABS)[number][0];
 const TEAM_KEYS = TEAM_TABS.map((t) => t[0]);
 
@@ -45,10 +47,11 @@ export function Team() {
         sub={<>Two things decide what a person gets: their <b className="font-semibold text-ink">role</b> says what they can do, and their <b className="font-semibold text-ink">scope</b> says which clients they can see. The server checks both on every change.</>}
       />
 
-      <Tabs className="-mt-3 mb-6 border-b border-line" items={TEAM_TABS.map(([k, l]) => ({ key: k, label: l, active: tab === k, onClick: () => setTab(k) }))} />
+      <Tabs className="-mt-3 mb-6 border-b border-line" items={TEAM_TABS.filter(([k]) => k !== "limits" || canAccess).map(([k, l]) => ({ key: k, label: l, active: tab === k, onClick: () => setTab(k) }))} />
 
       {tab === "roles" && <RoleMatrix />}
       {tab === "map" && <AccessMap />}
+      {tab === "limits" && <UploadLimits />}
       {tab === "people" && <>
       <Card className="mb-9 overflow-hidden">
         {ws.d.users.map((u) => {
@@ -61,6 +64,11 @@ export function Team() {
                 <span className="mt-px block truncate text-[14.5px] text-mute-3">{u.role}</span>
               </span>
               <AccessChip access={u.access} />
+              {Object.keys(u.permOverrides ?? {}).length > 0 && (
+                <span className="flex-none rounded-[5px] bg-[#FEF3C7] px-2 py-[3px] text-[12.5px] font-semibold text-[#92400E]" title={Object.entries(u.permOverrides).map(([p, v]) => `${v ? "Allowed" : "Blocked"}: ${PERM_INFO.find((x) => x.perm === p)?.label ?? p}`).join("\n")}>
+                  Custom · {Object.keys(u.permOverrides).length}
+                </span>
+              )}
               <span className="min-w-[96px] flex-1 text-[15px] leading-[1.35] text-mute-1">{ws.scopeLabel(u)}</span>
               <span className="flex-none font-mono text-[14.5px] text-mute-3" title="Items waiting on them">{ws.d.queueCounts[u.id] ?? 0}</span>
               {demo && !isMe && <Btn size="sm" onClick={() => run(switchUser, u.id)}>View as</Btn>}
@@ -75,7 +83,7 @@ export function Team() {
               {!demo && canAccess && !isMe && (
                 <button type="button" onClick={() => security("sessions", u.id, u.name)} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink" title="End every session they have">Sign out everywhere</button>
               )}
-              {canAccess && <button type="button" onClick={() => open({ kind: "person", draft: u })} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink">Access</button>}
+              {canAccess && <button type="button" aria-label={`Access for ${u.name}`} onClick={() => open({ kind: "person", draft: u })} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink">Access</button>}
               {canAccess && !isMe && <button type="button" onClick={() => open({ kind: "confirm", item: "person", id: u.id, label: u.name })} className="flex-none p-[5px] text-[14px] text-mute-5 hover:text-danger">Remove</button>}
             </div>
           );

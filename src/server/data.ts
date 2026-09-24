@@ -1,4 +1,6 @@
 import "server-only";
+import { getUploadPolicy, myLimits, storageUsage } from "@/server/limits";
+import { maxUploadBytes } from "@/server/uploads";
 import { cache } from "react";
 import { desc, isNotNull, ne } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
@@ -109,7 +111,7 @@ export async function buildWorkspace(
   const users: PublicUser[] = all.users
     .filter((u) => !guest || u.id === meId || u.access !== "Client")
     .map(({ passwordHash, notifyPrefs: _n, lastDigestAt: _l, ...u }) => (guest && u.id !== meId
-      ? { ...u, email: null, clientIds: [], brandIds: [], groupIds: [], allClients: false, hasPassword: !!passwordHash, twoFactor: false }
+      ? { ...u, email: null, clientIds: [], brandIds: [], groupIds: [], allClients: false, permOverrides: {}, uploadLimitMb: null, storageQuotaMb: null, hasPassword: !!passwordHash, twoFactor: false }
       : { ...u, hasPassword: !!passwordHash, twoFactor: withTwoFactor.has(u.id) }));
   const offers = all.offers.filter((o) => vis.offer(o.id));
   const assets = all.assets.filter((a) => vis.asset(a.id));
@@ -139,6 +141,7 @@ export async function buildWorkspace(
     authMode: extra.authMode,
     aiEnabled: !!process.env.ANTHROPIC_API_KEY,
     uploadsEnabled: true,
+    uploads: await uploadInfo(all, meId, users),
     users,
     groups: guest ? [] : all.groups,
     clients: all.clients.filter((c) => vis.client(c.id)),
@@ -162,4 +165,15 @@ export async function buildWorkspace(
     },
     calendarFeed: extra.calendarFeed,
   };
+}
+
+/** My upload limits, and for admins the workspace rules and who is using the space. */
+async function uploadInfo(all: All, meId: string, users: PublicUser[]): Promise<Workspace["uploads"]> {
+  const me = all.users.find((u) => u.id === meId);
+  const policy = await getUploadPolicy();
+  const mine = myLimits(all, policy, me ?? { id: meId, uploadLimitMb: null, storageQuotaMb: null });
+  if (!me || !can(me, "access")) return { mine };
+  const { workspaceBytes } = storageUsage(all);
+  const byPerson = Object.fromEntries(users.map((u) => [u.id, storageUsage(all, u.id).personBytes]));
+  return { mine, admin: { policy, workspaceBytes, byPerson, hardCapBytes: maxUploadBytes() } };
 }

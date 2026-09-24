@@ -14,7 +14,7 @@ set -a; . ~/.config/brandos/prod.env; set +a
 SERVER=q4tk1gx27opcbt32hm0edtn6     # coolify-contabo (173.249.4.108)
 PROJECT=yn3q9che48fcxgdkxgqtncjp    # Contabo_software
 ENVNAME=production
-DOMAINS="https://pm.thatha.net,https://pm.software.thatha.net"
+DOMAINS="https://pm.work.thatha.net,https://pm.software.thatha.net"
 
 api() { curl --fail-with-body -sS -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' "$@"; }
 
@@ -39,7 +39,7 @@ setenv() {
 
 echo "Environment:"
 setenv DATABASE_URL "postgres://brandos:${DB_PASSWORD}@${BRANDOS_DB_UUID}:5432/brandos"
-setenv APP_URL "https://pm.thatha.net"
+setenv APP_URL "https://pm.work.thatha.net"
 setenv BRANDOS_AUTH "password"
 setenv BRANDOS_SEED "off"
 setenv BRANDOS_ADMIN_EMAIL "$ADMIN_EMAIL"
@@ -59,6 +59,8 @@ echo "Deploying…"
 api -X POST "$CO/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=true" | jq -r '.deployments[0].deployment_uuid // .message'
 echo
 echo "Done. Still to do by hand (see docs/DEPLOY.md):"
+echo "  0. github.com/orgs/thathaorg/packages/container/brandos/settings → Change visibility → Public"
+echo "     (Coolify pulls the image anonymously; while it is private every deploy fails)"
 echo "  1. Coolify → brandos → Persistent Storage → add volume, destination /app/.data (keeps uploads)"
-echo "  2. Cloudflare → thatha.net → DNS → A record  pm → 173.249.4.108  (DNS only, grey cloud)"
+echo "  2. Cloudflare → thatha.net → DNS → A record  pm.work → 173.249.4.108  (DNS only, grey cloud)"
 echo "  3. GitHub repo secrets COOLIFY_TOKEN and COOLIFY_APP_UUID=$COOLIFY_APP_UUID for auto-deploy on push"

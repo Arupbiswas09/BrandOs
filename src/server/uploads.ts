@@ -67,9 +67,14 @@ const DANGEROUS = new Set([
   "html", "htm", "xhtml", "shtml", "svgz", "xml", "lnk", "reg", "iso", "docm", "xlsm", "pptm", "dotm", "xltm", "potm",
 ]);
 
+/**
+ * The server's hard ceiling for one file, whatever admins set in the app
+ * (Team and access → Limits sets the limit per kind of file below this).
+ * MAX_UPLOAD_MB changes it; 1 GB by default.
+ */
 export function maxUploadBytes(): number {
   const mb = Number(process.env.MAX_UPLOAD_MB);
-  return (Number.isFinite(mb) && mb > 0 ? Math.min(mb, 2048) : 25) * 1024 * 1024;
+  return (Number.isFinite(mb) && mb > 0 ? Math.min(mb, 4096) : 1024) * 1024 * 1024;
 }
 
 export function maxUploadLabel(): string {

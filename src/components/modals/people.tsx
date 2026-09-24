@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Access, Group } from "@/db/schema";
-import { PERM_INFO, can } from "@/lib/access";
+import { OVERRIDABLE, PERM_INFO, can, cleanOverrides, roleCan, type Perm } from "@/lib/access";
 import { cellFor } from "@/components/pages/access";
 import { ACCESS_COLOR, ACCESS_LEVELS, ACCESS_NOTE, ROLE_OPTIONS } from "@/lib/constants";
 import type { PublicUser } from "@/lib/types";
@@ -24,10 +24,14 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
     clientIds: draft?.clientIds ?? [],
     brandIds: draft?.brandIds ?? [],
     groupIds: draft?.groupIds ?? [],
+    permOverrides: (draft?.permOverrides ?? {}) as Partial<Record<Perm, boolean>>,
+    uploadLimitMb: draft?.uploadLimitMb ?? null,
+    storageQuotaMb: draft?.storageQuotaMb ?? null,
   });
   const toggle = (k: "clientIds" | "groupIds" | "brandIds", v: string) =>
     setD((x) => ({ ...x, allClients: false, [k]: x[k].includes(v) ? x[k].filter((y) => y !== v) : [...x[k], v] }));
-  const save = async () => { const r = await run(savePerson, { id: draft?.id, ...d }); if (r.ok) close(); };
+  const save = async () => { const r = await run(savePerson, { id: draft?.id, ...d, permOverrides: cleanOverrides(d.access, d.permOverrides) }); if (r.ok) close(); };
+  const effective = { access: d.access, permOverrides: cleanOverrides(d.access, d.permOverrides) };
   const roles = ROLE_OPTIONS.includes(d.role) ? ROLE_OPTIONS : [...ROLE_OPTIONS, d.role];
 
   return (
@@ -55,16 +59,73 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
           ))}
         </div>
         <div className="mt-3 rounded-[11px] bg-wash px-3.5 py-3">
-          <div className="mb-1.5 text-[13px] font-semibold text-mute-1">As {/^[AEIOU]/.test(d.access) ? "an" : "a"} {d.access}, {d.name.split(" ")[0] || "they"} can:</div>
+          <div className="mb-1.5 text-[13px] font-semibold text-mute-1">As {/^[AEIOU]/.test(d.access) ? "an" : "a"} {d.access}{Object.keys(effective.permOverrides).length ? " with the exceptions below" : ""}, {d.name.split(" ")[0] || "they"} can:</div>
           <div className="flex flex-wrap gap-1.5">
             {PERM_INFO.map((p) => {
-              const c = cellFor(d.access, p.perm);
+              let c = cellFor(d.access, p.perm);
+              // Exceptions decide the plain yes/no permissions.
+              if ((OVERRIDABLE as string[]).includes(p.perm)) {
+                const yes = can(effective, p.perm as Perm);
+                c = !yes ? "no" : c === "no" ? "yes" : c;
+              }
               if (c === "no") return null;
               return <span key={p.perm} className="rounded-full bg-white px-2.5 py-1 text-[12.5px] font-medium text-ink-3 ring-1 ring-line">{p.label}{c === "own" ? " (own work)" : c === "shared" ? " (shared items)" : ""}</span>;
             })}
           </div>
         </div>
       </div>
+      <details className="group rounded-[11px] border border-line" open={Object.keys(d.permOverrides).length > 0 || d.uploadLimitMb != null || d.storageQuotaMb != null}>
+        <summary className="flex cursor-pointer list-none items-center gap-2 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
+          <span className="flex-1">
+            <span className="block text-[15px] font-semibold">Exceptions and limits for {d.name.split(" ")[0] || "this person"}</span>
+            <span className="block text-[13px] text-mute-2">Block or allow single permissions on top of the role, and cap their uploads.</span>
+          </span>
+          <span className="text-mute-3 group-open:rotate-180">▾</span>
+        </summary>
+        <div className="border-t border-divider px-3.5 pb-3.5 pt-2">
+          {OVERRIDABLE.map((perm) => {
+            const info = PERM_INFO.find((x) => x.perm === perm)!;
+            const role = roleCan(d.access, perm);
+            const v = d.permOverrides[perm];
+            const guestLocked = d.access === "Client" && !role && !["comment", "review", "upload"].includes(perm);
+            const set = (x: boolean | undefined) => setD((y) => {
+              const o = { ...y.permOverrides };
+              if (x === undefined || x === role) delete o[perm]; else o[perm] = x;
+              return { ...y, permOverrides: o };
+            });
+            return (
+              <div key={perm} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-divider py-2 last:border-b-0">
+                <span className="min-w-[170px] flex-1">
+                  <span className="block text-[14px] font-medium">{info.label}</span>
+                  <span className="block text-[12.5px] text-mute-3">Role says: {role ? "yes" : "no"}</span>
+                </span>
+                <span className="flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label={info.label}>
+                  {([["Role", undefined], ["Allow", true], ["Block", false]] as const).map(([label, val]) => {
+                    const on = val === undefined ? v === undefined : v === val;
+                    const disabled = (val === true && (role || guestLocked)) || (val === false && !role);
+                    return (
+                      <button key={label} type="button" role="radio" aria-checked={on} disabled={disabled} onClick={() => set(val)}
+                        className={cx("rounded-md px-2.5 py-1 text-[13px] font-medium transition disabled:cursor-not-allowed disabled:opacity-30",
+                          on ? (val === false ? "bg-[#FEE4E2] text-[#B42318]" : val === true ? "bg-[#DCFCE7] text-[#166534]" : "bg-wash text-ink") : "text-mute-2 hover:text-ink")}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </span>
+              </div>
+            );
+          })}
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <Field label="Largest file they may upload" hint={<span className="font-normal text-mute-4">MB</span>}>
+              <input type="number" min={1} className="field" placeholder="Workspace limit" value={d.uploadLimitMb ?? ""} onChange={(e) => setD({ ...d, uploadLimitMb: e.target.value ? Math.max(1, Number(e.target.value)) : null })} />
+            </Field>
+            <Field label="Their storage allowance" hint={<span className="font-normal text-mute-4">MB</span>}>
+              <input type="number" min={0} className="field" placeholder="Workspace default" value={d.storageQuotaMb ?? ""} onChange={(e) => setD({ ...d, storageQuotaMb: e.target.value === "" ? null : Math.max(0, Number(e.target.value)) })} />
+            </Field>
+          </div>
+          <p className="m-0 mt-2 text-[12.5px] text-mute-3">A person&apos;s own file limit can only be lower than the limit for that kind of file. Managing the team always stays with the Admin role.</p>
+        </div>
+      </details>
       <div>
         <div className="label">Scope — what they can see</div>
         {d.access === "Client" && <p className="mb-2.5 mt-0 text-[13.5px] text-mute-2">Clients only ever see work marked <b className="font-semibold text-ink">cleared to send</b> in the clients or brands you pick here.</p>}

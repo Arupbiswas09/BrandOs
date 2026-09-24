@@ -72,7 +72,7 @@ jobs:
       COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
       APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
       COOLIFY_URL: https://app.coolify.io
-      APP_URL: https://pm.thatha.net
+      APP_URL: https://pm.work.thatha.net
       TAG: ${{ needs.build.outputs.tag }}
     steps:
       - name: Check deploy secrets

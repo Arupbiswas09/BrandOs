@@ -19,7 +19,7 @@ export type QueueItem = {
 };
 
 const UNKNOWN_USER: PublicUser = {
-  id: "", name: "Unassigned", initials: "—", role: "", email: null, access: "Viewer", allClients: false,
+  id: "", name: "Unassigned", initials: "—", role: "", email: null, access: "Viewer", allClients: false, permOverrides: {}, uploadLimitMb: null, storageQuotaMb: null,
   clientIds: [], brandIds: [], groupIds: [], createdAt: new Date(0), updatedAt: new Date(0), hasPassword: false, twoFactor: false,
 };
 

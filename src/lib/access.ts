@@ -19,6 +19,7 @@ export type Perm =
   | "comment"   // write and resolve notes
   | "review"    // approve or send back
   | "edit"      // create and change offers, assets, services, CTAs
+  | "upload"    // add files to assets
   | "publish"   // mark work Live
   | "archive"   // archive and restore
   | "structure" // add and change clients, brands and sub-brands
@@ -33,7 +34,8 @@ export const ROLES: Access[] = ["Admin", "Manager", "Editor", "Contributor", "Re
 
 const T = true, F = false;
 const row = (comment: boolean, review: boolean, edit: boolean, publish: boolean, archive: boolean, structure: boolean, kit: boolean, library: boolean, share: boolean, del: boolean, exp: boolean, access: boolean): Record<Perm, boolean> =>
-  ({ comment, review, edit, publish, archive, structure, kit, library, share, del, export: exp, access });
+  // Uploading follows editing unless an admin says otherwise for one person.
+  ({ comment, review, edit, upload: edit, publish, archive, structure, kit, library, share, del, export: exp, access });
 
 export const PERMISSIONS: Record<Access, Record<Perm, boolean>> = {
   //                 comment review edit publish archive structure kit library share del export access
@@ -53,6 +55,7 @@ export const PERM_INFO: { perm: Perm | "view" | "own"; label: string; note: stri
   { perm: "review", label: "Approve or send back", note: "Approve work or ask for changes when it is in review." },
   { perm: "edit", label: "Create and edit work", note: "Offers, assets, services and CTAs." },
   { perm: "own", label: "Edit other people's work", note: "Contributors can edit only what they own." },
+  { perm: "upload", label: "Upload files", note: "Add images, video, documents and other files, within the upload limits." },
   { perm: "publish", label: "Mark work Live", note: "Say an asset is out in the world." },
   { perm: "archive", label: "Archive", note: "Put things away without deleting them." },
   { perm: "structure", label: "Set up clients and brands", note: "Add and change clients, brands and sub-brands." },
@@ -77,13 +80,43 @@ export const ROLE_INFO: Record<Access, { summary: string; color: string; guest?:
 type ScopeUser = Pick<User, "access" | "allClients" | "clientIds" | "brandIds" | "groupIds">;
 type ScopeBrand = Pick<Brand, "id" | "clientId" | "parentId">;
 
-export function can(user: Pick<User, "access"> | null | undefined, perm: Perm): boolean {
+/** Permissions an admin may switch on or off for one person, on top of their role. */
+export const OVERRIDABLE: Perm[] = ["comment", "review", "edit", "upload", "publish", "archive", "structure", "kit", "library", "share", "del", "export"];
+/** The most a client guest can ever be given: they stay outside the agency. */
+const GUEST_GRANTABLE = new Set<Perm>(["comment", "review", "upload"]);
+
+type PermUser = Pick<User, "access"> & { permOverrides?: Partial<Record<string, boolean>> | null };
+
+/** What the role alone allows, ignoring any per-person exception. */
+export function roleCan(access: Access, perm: Perm): boolean {
+  return !!(PERMISSIONS[access] ?? PERMISSIONS.Viewer)[perm];
+}
+
+export function can(user: PermUser | null | undefined, perm: Perm): boolean {
   if (!user) return false;
-  return !!(PERMISSIONS[user.access] ?? PERMISSIONS.Viewer)[perm];
+  const base = roleCan(user.access, perm);
+  // Managing the team stays tied to the Admin role, so nobody is locked out or quietly promoted.
+  if (perm === "access" || !OVERRIDABLE.includes(perm)) return base;
+  const o = user.permOverrides?.[perm];
+  if (o === false) return false;
+  if (o === true) return user.access === "Client" ? GUEST_GRANTABLE.has(perm) : true;
+  return base;
+}
+
+/** Only the exceptions that actually change something, for storing and showing. */
+export function cleanOverrides(access: Access, o: Partial<Record<string, boolean>> | null | undefined): Partial<Record<Perm, boolean>> {
+  const out: Partial<Record<Perm, boolean>> = {};
+  for (const p of OVERRIDABLE) {
+    const v = o?.[p];
+    if (typeof v !== "boolean" || v === roleCan(access, p)) continue;
+    if (v && access === "Client" && !GUEST_GRANTABLE.has(p)) continue;
+    out[p] = v;
+  }
+  return out;
 }
 
 /** Contributors change only what they own; everyone with `edit` changes the rest. */
-export function canChange(user: Pick<User, "id" | "access"> | null | undefined, item?: { ownerId?: string | null } | null): boolean {
+export function canChange(user: (PermUser & Pick<User, "id">) | null | undefined, item?: { ownerId?: string | null } | null): boolean {
   if (!user || !can(user, "edit")) return false;
   if (user.access !== "Contributor") return true;
   return !item || item.ownerId === user.id;

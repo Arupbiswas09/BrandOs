@@ -68,7 +68,15 @@ export type BrandKit = {
   donts?: string[];
   version?: string;
 };
-export type FileRef = { name: string; size: string; url?: string; key?: string; type?: string };
+export type FileRef = {
+  name: string; size: string; url?: string; key?: string; type?: string;
+  /** Exact size, for storage allowances. Older files only have the label. */
+  bytes?: number;
+  /** Who uploaded it, so each person's allowance can be counted. */
+  uploadedBy?: string;
+};
+/** Per-person exceptions to their role: true grants, false blocks. Missing means "as the role says". */
+export type PermOverrides = Partial<Record<string, boolean>>;
 export type AssetCopy = { headline: string; body: string; cta: string };
 export type CheckItem = { text: string; done: boolean };
 /** Things BrandOS can email someone about. */
@@ -92,6 +100,11 @@ export const users = pgTable("users", {
   groupIds: text("group_ids").array().notNull().default([]),
   /** Email choices per kind of event. */
   notifyPrefs: jsonb("notify_prefs").$type<NotifyPrefs>().notNull().default({}),
+  permOverrides: jsonb("perm_overrides").$type<PermOverrides>().notNull().default({}),
+  /** Largest single file this person may upload, in MB. Only ever lowers the workspace limit. */
+  uploadLimitMb: integer("upload_limit_mb"),
+  /** Total this person may have uploaded, in MB. Overrides the workspace per-person allowance. */
+  storageQuotaMb: integer("storage_quota_mb"),
   /** When this person's daily digest last went out, so a second run the same day sends nothing. */
   lastDigestAt: timestamp("last_digest_at", { withTimezone: true }),
   ...stamps,
@@ -404,3 +417,11 @@ export type Cta = typeof ctas.$inferSelect;
 export type Link = typeof links.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Activity = typeof activity.$inferSelect;
+
+/** Workspace-wide settings admins change in the app (one row per key). */
+export const settings = pgTable("settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<unknown>().notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

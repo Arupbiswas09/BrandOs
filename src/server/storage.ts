@@ -1,6 +1,6 @@
 import "server-only";
 import path from "node:path";
-import { mkdir, readFile, rm, writeFile, stat } from "node:fs/promises";
+import { mkdir, readFile, rm, stat } from "node:fs/promises";
 
 /*
  * Where uploaded files live. Vercel Blob (private) when BLOB_READ_WRITE_TOKEN
@@ -33,7 +33,11 @@ export async function saveFile(key: string, file: File): Promise<void> {
   }
   const p = safeLocal(key);
   await mkdir(path.dirname(p), { recursive: true });
-  await writeFile(p, Buffer.from(await file.arrayBuffer()));
+  // Streamed to disk, so a large video never has to fit in memory at once.
+  const { createWriteStream } = await import("node:fs");
+  const { Readable } = await import("node:stream");
+  const { pipeline } = await import("node:stream/promises");
+  await pipeline(Readable.fromWeb(file.stream() as import("node:stream/web").ReadableStream), createWriteStream(p));
 }
 
 export async function readStoredFile(key: string): Promise<{ body: ReadableStream | Buffer; size?: number } | null> {

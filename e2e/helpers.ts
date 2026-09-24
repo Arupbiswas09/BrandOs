@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 
 export async function signIn(page: Page, name = "Priya Raman") {
+  // Start signed out, so switching people mid-test works.
+  await page.context().clearCookies();
   await page.goto("/sign-in");
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: new RegExp(name) }).click();

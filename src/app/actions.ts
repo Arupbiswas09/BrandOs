@@ -7,12 +7,13 @@ import { z } from "zod";
 import { getDb, schema as s } from "@/db";
 import type { DB } from "@/db";
 import { seed } from "@/db/seed";
-import { can, canChange, type Perm } from "@/lib/access";
+import { can, canChange, cleanOverrides, type Perm } from "@/lib/access";
 import { DEFAULT_GOALS, ASSET_TYPES } from "@/lib/constants";
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
 import { removeStoredFile } from "@/server/storage";
+import { putUploadPolicy } from "@/server/limits";
 import { fileKeys, restoreSnapshot, snapshot } from "@/server/trash";
 import { appUrl } from "@/server/mail";
 import { itemUrl, notifyPeople } from "@/server/notify";
@@ -131,7 +132,7 @@ export async function resetDemo() {
     if (authMode() !== "demo") throw new Denied("Reset is only available in demo mode.");
     const db = await getDb();
     await db.transaction(async (tx) => {
-      for (const t of [s.notificationQueue, s.calendarFeeds, s.twoFactor, s.loginAttempts, s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
+      for (const t of [s.notificationQueue, s.calendarFeeds, s.twoFactor, s.loginAttempts, s.settings, s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
         await tx.delete(t);
       }
       await tx.delete(s.sessions);
@@ -475,6 +476,21 @@ const assetDraft = z.object({
   dueAt: z.string().nullable().optional(),
 });
 
+/**
+ * Uploaded files only ever come from the upload route. What the browser sends
+ * back when an asset is saved can reorder or drop them, and add plain named
+ * entries (no stored file), but never invent a stored file or change its size
+ * or owner, which storage allowances rely on.
+ */
+function trustedFiles(sent: s.FileRef[], had: s.FileRef[]): s.FileRef[] {
+  const byKey = new Map(had.filter((f) => f.key).map((f) => [f.key!, f]));
+  return sent.flatMap((f) => {
+    if (!f.key) return [{ name: f.name, size: f.size, ...(f.url && !f.url.startsWith("/api/") ? { url: f.url } : {}) }];
+    const known = byKey.get(f.key);
+    return known ? [known] : [];
+  });
+}
+
 function assetSnapshot(a: s.Asset) {
   const { id: _id, createdAt: _c, ...rest } = a;
   return rest as Record<string, unknown>;
@@ -499,7 +515,7 @@ export async function saveAsset(input: z.input<typeof assetDraft>) {
       copy: hasCopy ? d.copy! : null,
       ...(d.isTemplate !== undefined && { isTemplate: d.isTemplate }),
       ...(d.tags && { tags: d.tags }),
-      ...(d.files && { files: d.files }),
+      ...(d.files && { files: trustedFiles(d.files, all.assets.find((a) => a.id === d.id)?.files ?? []) }),
       ...(d.items !== undefined && { items: d.items }),
       ...(d.promptFor !== undefined && { promptFor: d.promptFor }),
       ...(d.prompt !== undefined && { prompt: d.prompt }),
@@ -740,6 +756,9 @@ const personDraft = z.object({
   email: z.string().trim().toLowerCase().email("That email address does not look right.").or(z.literal("")).optional(),
   role: str(80).default("Team member"),
   access: z.enum(["Admin", "Manager", "Editor", "Contributor", "Reviewer", "Viewer", "Client"]),
+  permOverrides: z.record(z.string(), z.boolean()).optional(),
+  uploadLimitMb: z.number().int().min(1).max(4096).nullable().optional(),
+  storageQuotaMb: z.number().int().min(0).max(10_000_000).nullable().optional(),
   allClients: z.boolean().default(false),
   clientIds: z.array(z.string()).default([]),
   brandIds: z.array(z.string()).default([]),
@@ -757,6 +776,9 @@ export async function savePerson(input: z.input<typeof personDraft>) {
     if (d.access === "Client") d.allClients = false;
     const values = {
       name: d.name, role: d.role, access: d.access, allClients: d.allClients, email,
+      ...(d.permOverrides !== undefined && { permOverrides: cleanOverrides(d.access, d.permOverrides) }),
+      ...(d.uploadLimitMb !== undefined && { uploadLimitMb: d.uploadLimitMb }),
+      ...(d.storageQuotaMb !== undefined && { storageQuotaMb: d.storageQuotaMb }),
       clientIds: d.allClients ? [] : d.clientIds, brandIds: d.allClients ? [] : d.brandIds, groupIds: d.allClients ? [] : d.groupIds,
     };
     if (d.id) {
@@ -774,6 +796,9 @@ export async function savePerson(input: z.input<typeof personDraft>) {
       const changes = [
         was.access !== d.access ? `${was.access} → ${d.access}` : d.access,
         scope(was) !== scope(values) && "what they can see changed",
+        values.permOverrides && JSON.stringify(values.permOverrides) !== JSON.stringify(was.permOverrides ?? {}) && `custom permissions: ${Object.entries(values.permOverrides).map(([p, v]) => `${v ? "+" : "−"}${p}`).join(" ") || "none"}`,
+        (values.uploadLimitMb !== undefined && values.uploadLimitMb !== was.uploadLimitMb) && `largest upload ${values.uploadLimitMb ? values.uploadLimitMb + " MB" : "workspace default"}`,
+        (values.storageQuotaMb !== undefined && values.storageQuotaMb !== was.storageQuotaMb) && `storage ${values.storageQuotaMb != null ? values.storageQuotaMb + " MB" : "workspace default"}`,
         (was.email ?? null) !== email && "email changed",
       ].filter(Boolean).join(" · ");
       await log(db, me.id, "changed access for", "person", d.id, d.name, changes);
@@ -1447,4 +1472,26 @@ export async function bulkAssets(ids: string[], op: BulkOp, payload: BulkPayload
     out = { ok: true, done, skipped };
   });
   return r.ok ? out : r;
+}
+
+/* ================================================================ upload limits */
+
+const kindLimit = z.object({ allowed: z.boolean(), maxMb: z.number().int().min(1).max(4096) });
+const policyDraft = z.object({
+  kinds: z.object({ image: kindLimit, video: kindLimit, audio: kindLimit, document: kindLimit, design: kindLimit, font: kindLimit, archive: kindLimit }),
+  maxFiles: z.number().int().min(1).max(200),
+  workspaceQuotaGb: z.number().min(0.1).max(100_000).nullable(),
+  personQuotaMb: z.number().int().min(1).max(10_000_000).nullable(),
+});
+
+/** Admins set how big and what kind of files people may upload. */
+export async function saveUploadPolicy(input: z.input<typeof policyDraft>) {
+  return run(async () => {
+    const { me, db } = await context("access");
+    const p = policyDraft.parse(input);
+    await putUploadPolicy(p, me.id);
+    const off = Object.entries(p.kinds).filter(([, k]) => !k.allowed).map(([k]) => k);
+    await log(db, me.id, "changed upload limits", "person", me.id, "Upload limits",
+      [off.length ? `off: ${off.join(", ")}` : "all kinds on", p.workspaceQuotaGb ? `${p.workspaceQuotaGb} GB total` : "", p.personQuotaMb ? `${p.personQuotaMb} MB each` : ""].filter(Boolean).join(" · "));
+  });
 }
