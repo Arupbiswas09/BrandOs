@@ -23,7 +23,7 @@ if [ -z "${COOLIFY_APP_UUID:-}" ]; then
   COOLIFY_APP_UUID=$(api -X POST "$CO/api/v1/applications/dockerimage" -d "{
     \"project_uuid\":\"$PROJECT\",\"server_uuid\":\"$SERVER\",\"environment_name\":\"$ENVNAME\",
     \"name\":\"brandos\",\"description\":\"BrandOS — agency brand workspace\",
-    \"docker_registry_image_name\":\"ghcr.io/thathaorg/brandos\",\"docker_registry_image_tag\":\"latest\",
+    \"docker_registry_image_name\":\"ghcr.io/arupbiswas09/brandos\",\"docker_registry_image_tag\":\"latest\",
     \"ports_exposes\":\"3000\",\"domains\":\"$DOMAINS\",
     \"health_check_enabled\":true,\"health_check_path\":\"/api/health\",\"health_check_port\":\"3000\",
     \"instant_deploy\":false}" | jq -r .uuid)
@@ -59,7 +59,7 @@ echo "Deploying…"
 api -X POST "$CO/api/v1/deploy?uuid=$COOLIFY_APP_UUID&force=true" | jq -r '.deployments[0].deployment_uuid // .message'
 echo
 echo "Done. Still to do by hand (see docs/DEPLOY.md):"
-echo "  0. github.com/orgs/thathaorg/packages/container/brandos/settings → Change visibility → Public"
+echo "  0. github.com/users/Arupbiswas09/packages/container/brandos/settings → Change visibility → Public"
 echo "     (Coolify pulls the image anonymously; while it is private every deploy fails)"
 echo "  1. Coolify → brandos → Persistent Storage → add volume, destination /app/.data (keeps uploads)"
 echo "  2. Cloudflare → thatha.net → DNS → A record  pm.work → 173.249.4.108  (DNS only, grey cloud)"

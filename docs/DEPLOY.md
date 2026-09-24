@@ -21,7 +21,7 @@ Secrets live outside the repository:
 ## How a deploy happens
 
 Push to `main`. `.github/workflows/deploy.yml` builds the Dockerfile, pushes
-`ghcr.io/thathaorg/brandos:<sha>` and `:latest`, pins the Coolify app to that
+`ghcr.io/arupbiswas09/brandos:<sha>` and `:latest`, pins the Coolify app to that
 tag and deploys it, then checks `/api/health`. The server never clones the
 private repository; it only pulls the finished image. Migrations run when the
 app starts.
@@ -33,7 +33,7 @@ app starts.
    application from the image, sets every environment variable, and deploys.
 3. **Registry** — Coolify has to be able to pull the image. Either make the
    package public (it holds compiled code only; secrets are env vars):
-   github.com/orgs/thathaorg/packages/container/brandos/settings → Change visibility → Public,
+   github.com/users/Arupbiswas09/packages/container/brandos/settings → Change visibility → Public,
    or keep it private and on the server run `docker login ghcr.io` with a
    read-only token.
 4. **Uploads** — Coolify → brandos → Persistent Storage → add a volume with
@@ -42,7 +42,7 @@ app starts.
    **DNS only** (grey cloud) so Coolify can issue the Let's Encrypt certificate.
    `*.work.thatha.net` is a wildcard to the Azure server (74.249.36.39); this one
    specific record overrides it for BrandOS only.
-6. **Auto-deploy** — GitHub → thathaorg/BrandOs → Settings → Secrets → Actions:
+6. **Auto-deploy** — GitHub → Arupbiswas09/BrandOs → Settings → Secrets → Actions:
    `COOLIFY_TOKEN` and `COOLIFY_APP_UUID` (printed by the setup script).
 7. **Email (optional)** — add `RESEND_API_KEY` and `MAIL_FROM` to
    `~/.config/brandos/prod.env` and re-run the setup script, or set them in Coolify.
