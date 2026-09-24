@@ -37,7 +37,7 @@ export function Notifier() {
     const fresh = [...items.entries()].filter(([k]) => !seen.current!.has(k));
     seen.current = new Set(items.keys());
     if (!fresh.length) return;
-    toast(fresh.length === 1 ? fresh[0][1] : `${fresh.length} new things need you`);
+    toast(fresh.length === 1 ? fresh[0][1] : `${fresh.length} new things need you`, "info");
     if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
       try {
         const n = new Notification("BrandOS", { body: fresh.map(([, v]) => v).slice(0, 3).join("\n"), icon: "/icons/icon-192.png", tag: "brandos-inbox" });

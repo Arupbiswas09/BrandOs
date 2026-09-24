@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, Search } from "lucide-react";
 import { archivedOnly, live } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
 import { AssetCard } from "@/components/cards";
@@ -32,22 +33,26 @@ export function Library() {
       <PageHead eyebrow="Shared across every client" title="Global Library" actions={(ws.can("library") || canBulk(ws, true)) && (
           <>
             {canBulk(ws, true) && all.length > 0 && <SelectToggle s={sel} />}
-            {ws.can("library") && <Btn variant="dark" size="lg" onClick={upload}>+ Add to library</Btn>}
+            {ws.can("library") && <Btn variant="dark" size="lg" onClick={upload}><Plus aria-hidden className="h-4 w-4" />Add to library</Btn>}
           </>
         )}
         sub={<>{live(all).length} shared items — checklists, prompts, templates and SOPs. Nothing here belongs to a brand, so nothing here is themed. Clone one into a brand when you actually run it.</>}
       />
-      <div className="mb-3.5 flex items-center gap-2.5">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field max-w-[280px] flex-1 text-[15px]" />
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <label className="relative block w-full max-w-[300px]">
+          <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-4" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field pl-9 text-[15px]" />
+        </label>
+        <Pills tone="dark" value={tab} onChange={setTab} options={TABS.map((x) => ({ ...x, count: live(all).filter((a) => x.value === "All" || a.type === x.value).length }))} label="Type" />
       </div>
-      <Pills className="mb-[26px]" tone="dark" value={tab} onChange={setTab} options={TABS.map((x) => ({ ...x, count: live(all).filter((a) => x.value === "All" || a.type === x.value).length }))} />
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
         {grid.map((a) => <AssetCard key={a.id} a={a} variant="library" selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} />)}
       </div>
       {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="item" onOpen={(a) => openAsset(a.id)} />}
       {sel.on && <BulkBar s={sel} shown={grid} library />}
       {!grid.length && (
-        <Empty title="Nothing here" body={q ? "Nothing matches that search." : "Checklists, prompts, templates and SOPs live in the library."}>
+        <Empty art={q ? "search" : "folder"} title={q ? "Nothing matches that search" : "Nothing here yet"} body={q ? "Try another word, or clear the search to see every item." : "Checklists, prompts, templates and SOPs live in the library."}>
+          {q && <Btn onClick={() => setQ("")}>Clear the search</Btn>}
           {ws.can("library") && <Btn variant="dark" size="lg" onClick={upload}>Add something</Btn>}
         </Empty>
       )}

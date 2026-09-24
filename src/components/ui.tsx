@@ -4,6 +4,7 @@ import Link from "next/link";
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { hexA, onColor, readable } from "@/lib/color";
 import { DUE_COLOR, dueLabel } from "@/lib/time";
+import { SpotArt, type ArtKind } from "@/components/art";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -15,11 +16,12 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   return <div className={cx("eyebrow", className)}>{children}</div>;
 }
 
+/** The white header band at the top of a page. `tabs` sit flush on its bottom edge. */
 export function PageHead({
-  eyebrow, title, sub, actions, size = 26, children,
-}: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; size?: number; children?: ReactNode }) {
+  eyebrow, title, sub, actions, size = 26, children, tabs,
+}: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; size?: number; children?: ReactNode; tabs?: ReactNode }) {
   return (
-    <div className="head-band -mt-8 mb-8 pb-6 pt-8 sm:-mt-10 sm:pt-10">
+    <div className={cx("head-band -mt-8 mb-7 pt-8 sm:-mt-10 sm:pt-10", tabs ? "pb-0" : "pb-6")}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {eyebrow && <Eyebrow className="mb-2">{eyebrow}</Eyebrow>}
@@ -29,17 +31,18 @@ export function PageHead({
         {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
       </div>
       {children}
+      {tabs}
     </div>
   );
 }
 
 /** A section title inside the content area (under a header band that already exists). */
-export function SectionHead({ eyebrow, title, sub, actions }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode }) {
+export function SectionHead({ eyebrow, title, sub, actions, icon }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; icon?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow && <Eyebrow className="mb-1.5">{eyebrow}</Eyebrow>}
-        <h2 className="m-0 text-[20px] font-semibold tracking-[-0.015em] text-ink">{title}</h2>
+        <h2 className="m-0 flex items-center gap-2.5 text-[20px] font-semibold tracking-[-0.015em] text-ink">{icon && <IconTile>{icon}</IconTile>}{title}</h2>
         {sub && <p className="mb-0 mt-1.5 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
       </div>
       {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
@@ -52,7 +55,7 @@ export function Tabs({ items, className }: { items: { key: string; label: ReactN
   return (
     <div role="tablist" className={cx("mt-5 flex flex-none gap-1 overflow-x-auto", className)}>
       {items.map((t) => {
-        const cls = cx("-mb-px flex-none whitespace-nowrap border-b-2 px-3 pb-3 pt-1 text-[14.5px] font-medium transition-colors", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:text-ink");
+        const cls = cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-md border-b-2 px-3 pb-3 pt-1.5 text-[14.5px] font-medium transition-colors duration-150", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink");
         return t.href ? (
           <Link key={t.key} href={t.href} role="tab" aria-selected={t.active} className={cls} scroll={false}>{t.label}</Link>
         ) : (
@@ -63,18 +66,24 @@ export function Tabs({ items, className }: { items: { key: string; label: ReactN
   );
 }
 
-export function H2({ children, className, right }: { children: ReactNode; className?: string; right?: ReactNode }) {
-  if (!right) return <h2 className={cx("m-0 mb-3.5 text-[17px] font-semibold tracking-[-0.01em]", className)}>{children}</h2>;
+/** The small tinted square that holds a section icon. */
+export function IconTile({ children, className }: { children: ReactNode; className?: string }) {
+  return <span aria-hidden className={cx("flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-soft text-accent theme-fade [&>svg]:h-4 [&>svg]:w-4", className)}>{children}</span>;
+}
+
+export function H2({ children, className, right, icon }: { children: ReactNode; className?: string; right?: ReactNode; icon?: ReactNode }) {
+  const h = <h2 className={cx("m-0 text-[17px] font-semibold tracking-[-0.01em]", !!icon && "flex items-center gap-2.5", !right && !/(^|\s)mb-/.test(className ?? "") && "mb-3.5", !right && className)}>{icon && <IconTile>{icon}</IconTile>}{children}</h2>;
+  if (!right) return h;
   return (
-    <div className={cx("mb-3.5 flex items-baseline justify-between gap-4", className)}>
-      <h2 className="m-0 text-[17px] font-semibold tracking-[-0.01em]">{children}</h2>
+    <div className={cx(!/(^|\s)mb-/.test(className ?? "") && "mb-3.5", "flex items-center justify-between gap-4", className)}>
+      {h}
       {right}
     </div>
   );
 }
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("mx-auto max-w-[1180px] animate-rise px-4 pb-[88px] pt-8 sm:px-8 sm:pt-10", className)}>{children}</div>;
+  return <div className={cx("mx-auto max-w-[1180px] animate-rise px-4 pb-12 pt-8 sm:px-8 sm:pt-10 lg:pb-[88px]", className)}>{children}</div>;
 }
 
 /* ---------------------------------------------------------------- buttons */
@@ -100,7 +109,7 @@ export const Btn = forwardRef<HTMLButtonElement, BtnProps>(function Btn({ varian
     <button
       ref={ref}
       type={type}
-      className={cx("inline-flex flex-none items-center justify-center gap-1.5 whitespace-nowrap transition disabled:cursor-not-allowed disabled:opacity-50", variant !== "link" && sizes[size], variants[variant], className)}
+      className={cx("inline-flex flex-none items-center justify-center gap-1.5 whitespace-nowrap transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 enabled:active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:flex-none", variant !== "link" && sizes[size], variants[variant], className)}
       {...rest}
     />
   );
@@ -172,9 +181,11 @@ export function Card({ children, className, style }: { children: ReactNode; clas
   return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)] theme-fade", className)} style={style}>{children}</div>;
 }
 
-export function Empty({ title, body, children, compact }: { title?: string; body?: ReactNode; children?: ReactNode; compact?: boolean }) {
+/** An empty state. `art` adds a spot illustration above the title. */
+export function Empty({ title, body, children, compact, art }: { title?: string; body?: ReactNode; children?: ReactNode; compact?: boolean; art?: ArtKind }) {
   return (
-    <div className={cx("rounded-[14px] border border-dashed border-line-strong text-center", compact ? "p-7" : "p-8 sm:p-[52px]")}>
+    <div className={cx("rounded-[14px] border border-dashed border-line-strong text-center", art && "bg-white/60", compact ? "p-7" : art ? "px-8 py-9 sm:px-[52px] sm:py-10" : "p-8 sm:p-[52px]")}>
+      {art && <SpotArt kind={art} className="mx-auto mb-3" />}
       {title && <div className="mb-1.5 text-[16px] font-semibold">{title}</div>}
       {body && <div className="mx-auto mb-5 max-w-[46ch] text-[15px] leading-[1.55] text-mute-2 text-pretty">{body}</div>}
       {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
@@ -229,8 +240,8 @@ export function Pills<T extends string>({
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cx(
-              "rounded-full border px-3 py-[5px] text-[14.5px] font-medium transition",
-              on ? (tone === "dark" ? "border-ink bg-ink text-white" : "border-accent bg-accent text-on-accent") : "border-line bg-white text-mute-1 hover:border-mute-4",
+              "rounded-full border px-3 py-[5px] text-[14.5px] font-medium transition-colors duration-150",
+              on ? (tone === "dark" ? "border-ink bg-ink text-white" : "border-accent bg-accent text-on-accent") : "border-line bg-white text-mute-1 hover:border-mute-4 hover:text-ink",
             )}
           >
             {o.label}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { X } from "lucide-react";
 import { useApp } from "@/components/app/provider";
 import { Btn, cx } from "@/components/ui";
 
@@ -46,22 +47,25 @@ export function Modal({
   const Inner = onSubmit ? "form" : "div";
   return (
     <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-[72px]">
-      <div className="fixed inset-0 animate-fade bg-[rgba(16,22,20,.34)]" onClick={close} />
+      <div className="fixed inset-0 animate-fade bg-[rgba(15,23,42,.38)] backdrop-blur-[2px]" onClick={close} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={label ?? (typeof title === "string" ? title : undefined)}
-        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl bg-white shadow-[0_24px_64px_rgba(16,22,20,.22)]"
+        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_64px_rgba(15,23,42,.22)]"
         style={{ maxWidth: width }}
       >
         <Inner
           {...(onSubmit ? { onSubmit: (e: React.FormEvent) => { e.preventDefault(); onSubmit(); } } : {})}
         >
-          <div className={cx("px-6 pb-4 pt-6 sm:px-7", (children || footer) ? "border-b border-line" : "")}>
-            {eyebrow && <div className="mb-[7px] text-[13.5px] font-semibold uppercase tracking-[0.08em] text-mute-4">{eyebrow}</div>}
-            <div className="text-[20px] font-semibold tracking-[-0.015em]">{title}</div>
-            {sub && <div className="mt-1 text-[15px] leading-[1.5] text-mute-2">{sub}</div>}
+          <div className={cx("relative py-5 pl-6 pr-14 sm:pl-7", (children || footer) ? "border-b border-line" : "")}>
+            {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
+            <div className="text-[20px] font-semibold leading-[1.3] tracking-[-0.015em]">{title}</div>
+            {sub && <div className="mt-1 text-[15px] leading-[1.5] text-mute-2 text-pretty">{sub}</div>}
+            <button type="button" onClick={close} aria-label="Close" className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-md text-mute-3 transition-colors hover:bg-hover hover:text-ink">
+              <X className="h-[18px] w-[18px]" />
+            </button>
           </div>
           {children && <div className={cx("flex flex-col gap-4 px-6 pb-6 pt-[22px] sm:px-7", bodyClass)}>{children}</div>}
           {footer && (

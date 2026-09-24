@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlarmClock, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Rss, TriangleAlert } from "lucide-react";
 import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { useApp } from "@/components/app/provider";
@@ -47,7 +48,7 @@ export function Calendar() {
   const brandOptions = [{ value: "all", label: "Every brand" }, ...ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name }))];
 
   const Row = ({ x }: { x: (typeof items)[number] }) => (
-    <button type="button" onClick={() => open(x)} className="flex w-full items-center gap-3 border-t border-divider px-5 py-3 text-left first:border-t-0 hover:bg-wash">
+    <button type="button" onClick={() => open(x)} className="focus-inset flex w-full items-center gap-3 border-t border-divider px-5 py-3 text-left transition-colors first:border-t-0 hover:bg-wash">
       <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: x.color }} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{x.name}</span>
@@ -62,30 +63,30 @@ export function Calendar() {
       <PageHead eyebrow="What is due" title="Calendar"
         sub={<>Asset deadlines and offer launches across every brand you can see. Set a date from any asset or offer.</>}
       />
-      <Pills className="mb-6" tone="dark" value={brand} onChange={(v) => { setBrand(v); setSelected(null); }} options={brandOptions} label="Brand" />
+      <Pills className="mb-5" tone="dark" value={brand} onChange={(v) => { setBrand(v); setSelected(null); }} options={brandOptions} label="Brand" />
 
-      <div className="mb-8 grid gap-5 md:grid-cols-2">
+      <div className="mb-7 grid gap-5 md:grid-cols-2">
         <div>
-          <H2>Overdue <span className="ml-1 font-mono text-[14px] font-normal text-change-ink">{overdue.length}</span></H2>
-          <Card className="overflow-hidden">
+          <H2 icon={<TriangleAlert />}>Overdue <Count n={overdue.length} bad={overdue.length > 0} /></H2>
+          <Card className="max-h-[320px] overflow-y-auto">
             {overdue.map((x) => <Row key={x.kind + x.id} x={x} />)}
-            {!overdue.length && <div className="px-5 py-6 text-center text-[14.5px] text-mute-3">Nothing is late.</div>}
+            {!overdue.length && <Quiet>Nothing is late.</Quiet>}
           </Card>
         </div>
         <div>
-          <H2>Next two weeks <span className="ml-1 font-mono text-[14px] font-normal text-mute-3">{soon.length}</span></H2>
-          <Card className="overflow-hidden">
+          <H2 icon={<AlarmClock />}>Next two weeks <Count n={soon.length} /></H2>
+          <Card className="max-h-[320px] overflow-y-auto">
             {soon.map((x) => <Row key={x.kind + x.id} x={x} />)}
-            {!soon.length && <div className="px-5 py-6 text-center text-[14.5px] text-mute-3">Nothing due soon.</div>}
+            {!soon.length && <Quiet>Nothing due soon.</Quiet>}
           </Card>
         </div>
       </div>
 
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="m-0 flex-1 text-[17px] font-semibold">{month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</h2>
-        <Btn size="sm" aria-label="Previous month" onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); setSelected(null); }}>←</Btn>
+        <H2 icon={<CalendarRange />} className="mb-0 flex-1">{month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</H2>
+        <Btn size="sm" aria-label="Previous month" className="px-2" onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); setSelected(null); }}><ChevronLeft className="h-4 w-4" /></Btn>
         <Btn size="sm" onClick={() => { setMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setSelected(null); }}>Today</Btn>
-        <Btn size="sm" aria-label="Next month" onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); setSelected(null); }}>→</Btn>
+        <Btn size="sm" aria-label="Next month" className="px-2" onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); setSelected(null); }}><ChevronRight className="h-4 w-4" /></Btn>
       </div>
       <Card className="overflow-hidden">
         <div className="grid grid-cols-7 border-b border-line bg-wash-2">
@@ -99,7 +100,7 @@ export function Calendar() {
             const isToday = k === key(today);
             return (
               <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-label={`${d.toDateString()}, ${list.length} due`}
-                className={cx("flex min-h-[64px] flex-col items-stretch gap-1 border-b border-r border-divider p-1.5 text-left sm:min-h-[104px]", !inMonth && "bg-wash-2", selected === k && "outline-2 -outline-offset-2 outline-accent")}>
+                className={cx("focus-inset flex min-h-[60px] flex-col items-stretch gap-1 border-b border-r border-divider p-1.5 text-left transition-colors hover:bg-wash sm:min-h-[96px]", !inMonth && "bg-wash-2", selected === k && "bg-soft outline-2 -outline-offset-2 outline-accent")}>
                 <span className={cx("self-start rounded-full px-1.5 text-[13px]", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-5")}>{d.getDate()}</span>
                 <span className="hidden flex-col gap-1 sm:flex">
                   {list.slice(0, 3).map((x) => (
@@ -117,15 +118,27 @@ export function Calendar() {
       </Card>
       {dayItems && (
         <div className="mt-5">
-          <H2>{new Date(weeks.find((d) => key(d) === selected)!).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</H2>
+          <H2 icon={<CalendarDays />}>{new Date(weeks.find((d) => key(d) === selected)!).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</H2>
           <Card className="overflow-hidden">
             {dayItems.map((x) => <Row key={x.kind + x.id} x={x} />)}
-            {!dayItems.length && <div className="px-5 py-6 text-center text-[14.5px] text-mute-3">Nothing due that day.</div>}
+            {!dayItems.length && <Quiet>Nothing due that day.</Quiet>}
           </Card>
         </div>
       )}
-      <H2 className="mt-8">In your own calendar</H2>
+      <H2 className="mt-7" icon={<Rss />}>In your own calendar</H2>
       <CalendarFeedCard />
     </Page>
   );
+}
+
+function Count({ n, bad }: { n: number; bad?: boolean }) {
+  return <span className={cx("rounded-full px-2 py-px text-[12.5px] font-semibold", bad ? "bg-[#FEE4E2] text-[#B42318]" : "bg-chip text-mute-2")}>{n}</span>;
+}
+
+function Quiet({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center justify-center gap-2 px-5 py-6 text-center text-[14.5px] text-mute-3"><CheckDot />{children}</div>;
+}
+
+function CheckDot() {
+  return <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />;
 }

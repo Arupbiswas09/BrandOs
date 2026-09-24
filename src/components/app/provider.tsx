@@ -7,7 +7,7 @@ import { WS } from "@/lib/ws";
 import type { Result } from "@/app/actions";
 import type { ModalSpec } from "@/components/modals/types";
 
-type Toast = { id: number; text: string; tone: "ok" | "error" };
+export type Toast = { id: number; text: string; tone: "ok" | "error" | "info" };
 
 type Ctx = {
   ws: WS;
@@ -25,6 +25,7 @@ type Ctx = {
   closeAsset: () => void;
   toast: (text: string, tone?: Toast["tone"]) => void;
   toasts: Toast[];
+  dismissToast: (id: number) => void;
   nudge: { assetId: string; offerId: string } | null;
   setNudge: (n: { assetId: string; offerId: string } | null) => void;
 };
@@ -51,8 +52,9 @@ export function WorkspaceProvider({ data, children }: { data: Workspace; childre
   const toast = useCallback((text: string, tone: Toast["tone"] = "ok") => {
     const id = ++seq.current;
     setToasts((t) => [...t, { id, text, tone }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), tone === "error" ? 5200 : 2400);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), tone === "error" ? 6000 : 3200);
   }, []);
+  const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
   const withParam = useCallback((key: string, value: string | null, extra?: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());
@@ -70,7 +72,7 @@ export function WorkspaceProvider({ data, children }: { data: Workspace; childre
 
   const value: Ctx = {
     ws, modal, open: (m) => { setCmdk(false); setModal(m); }, close: () => setModal(null),
-    cmdk, setCmdk, inbox, setInbox, nav, setNav, assetId, openAsset, closeAsset, toast, toasts, nudge, setNudge,
+    cmdk, setCmdk, inbox, setInbox, nav, setNav, assetId, openAsset, closeAsset, toast, toasts, dismissToast, nudge, setNudge,
   };
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
