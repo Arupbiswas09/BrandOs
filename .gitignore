@@ -55,3 +55,4 @@ next-env.d.ts
 /.claude/worktrees
 /.mob.mjs
 /.prod.mjs
+/.live.mjs
