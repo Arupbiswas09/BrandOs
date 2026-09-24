@@ -277,7 +277,7 @@ function PinNote({ c, n, on, onPick, onHover }: { c: PinnedComment; n: number; o
         <span className="flex-1" />
         <span className="font-mono text-[12.5px] text-mute-4">{ws.ago(c.createdAt)}</span>
         {ws.can("comment") && (
-          <button type="button" disabled={pending} onClick={() => run(toggleResolve, c.id)} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
+          <button type="button" disabled={pending} onClick={() => run(toggleResolve, c.id)} aria-label={`${c.resolved ? "Reopen" : "Resolve"} note ${n}`} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
         )}
         {(mine || ws.can("del")) && (
           <button type="button" disabled={pending} onClick={() => { if (window.confirm(`Delete note ${n}?`)) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-danger">Delete</button>

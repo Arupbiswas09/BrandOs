@@ -42,7 +42,7 @@ test("pin a note on an image, find it in the discussion, and jump back to it", a
   await expect(pin).toBeVisible();
 
   // Resolving greys the pin out and moves it under the Resolved filter.
-  await drawer.getByRole("button", { name: "Resolve" }).first().click();
+  await drawer.getByRole("button", { name: /^Resolve note \d+/ }).click();
   await expect(pin).toHaveCount(0);
   await drawer.getByRole("button", { name: /^Resolved/ }).click();
   await expect(drawer.getByRole("button", { name: /Logo is too close to the edge \(resolved\)/ })).toBeVisible();
