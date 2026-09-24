@@ -18,6 +18,9 @@ RUN npx next build
 FROM node:24-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+# The commit being run, reported by /api/health (docker build --build-arg GIT_SHA=$(git rev-parse HEAD) .).
+ARG GIT_SHA=""
+ENV GIT_SHA=$GIT_SHA
 RUN addgroup -S brandos && adduser -S brandos -G brandos
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static

@@ -8,6 +8,9 @@ import { can } from "@/lib/access";
 import { hashPassword, verifyPassword } from "@/server/password";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
 import { appUrl, mailEnabled, sendMail } from "@/server/mail";
+import { recordSecurity } from "@/server/audit";
+import { BREACHED_MESSAGE, isBreachedPassword } from "@/server/pwned";
+import { EV } from "@/lib/audit";
 
 export type FormState = { error?: string; email?: string } | undefined;
 
@@ -31,17 +34,24 @@ export async function signInWithPassword(_: FormState, form: FormData): Promise<
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
   if (!email || !password) return { error: "Enter your email and password.", email };
+  // Not logged while throttled, so a script cannot flood the audit log for one address.
   if (throttled(email)) return { error: "Too many tries. Wait a minute and try again.", email };
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1);
   const ok = await verifyPassword(password, u?.passwordHash);
   if (!u || !ok) {
     recordFailure(email);
+    // The email only, never what was typed as the password.
+    await recordSecurity({
+      userId: u?.id, action: EV.signInFailed, label: email.slice(0, 200),
+      field: !u ? "no account with that email" : u.passwordHash ? "wrong password" : "no password set yet", withIp: true,
+    });
     return { error: "That email and password do not match.", email };
   }
   attempts.delete(email);
   await endSession();
   await startSession(u.id);
+  await recordSecurity({ userId: u.id, action: EV.signedIn, label: email, field: "password", withIp: true });
   redirect("/");
 }
 
@@ -56,6 +66,7 @@ export async function createInvite(userId: string): Promise<{ ok: true; path: st
   const purpose = u.passwordHash ? "reset" : "invite";
   await db.insert(s.invites).values({ token, userId, purpose, createdBy: me.id, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) });
   const path = `/invite/${token}`;
+  await recordSecurity({ userId: me.id, action: purpose === "invite" ? EV.inviteLink : EV.resetLink, itemId: u.id, label: u.name });
   let emailed = false;
   if (u.email && mailEnabled()) {
     emailed = await sendMail({
@@ -83,6 +94,7 @@ export async function requestReset(_: FormState, form: FormData): Promise<FormSt
   recordFailure("reset:" + email);
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1);
+  await recordSecurity({ userId: u?.id, action: EV.resetRequested, label: email.slice(0, 200), field: u ? "link emailed" : "no account with that email", withIp: true });
   if (u) {
     const token = randomBytes(24).toString("base64url");
     await db.insert(s.invites).values({ token, userId: u.id, purpose: "reset", expiresAt: new Date(Date.now() + 3600 * 1000) });
@@ -109,12 +121,14 @@ export async function acceptInvite(_: FormState, form: FormData): Promise<FormSt
   if (!inv) return { error: "This invite has expired or was already used. Ask for a new one.", email };
   const [clash] = await db.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, email));
   if (clash && clash.id !== inv.userId) return { error: "Someone already uses that email address.", email };
+  if (await isBreachedPassword(password)) return { error: BREACHED_MESSAGE, email };
   await db.transaction(async (tx) => {
     await tx.update(s.users).set({ email, passwordHash: await hashPassword(password), updatedAt: new Date() }).where(eq(s.users.id, inv.userId));
     await tx.update(s.invites).set({ usedAt: new Date() }).where(eq(s.invites.token, token));
     // A new password signs out every other device.
     await tx.delete(s.sessions).where(eq(s.sessions.userId, inv.userId));
   });
+  await recordSecurity({ userId: inv.userId, action: EV.setPassword, label: email, field: `${inv.purpose} link`, withIp: true });
   await endSession();
   await startSession(inv.userId);
   redirect("/");
@@ -127,7 +141,9 @@ export async function changePassword(_: FormState, form: FormData): Promise<Form
   const next = String(form.get("next") ?? "");
   if (authMode() === "password" && !(await verifyPassword(current, me.passwordHash))) return { error: "Your current password is not right." };
   if (next.length < 10) return { error: "Use at least ten characters." };
+  if (await isBreachedPassword(next)) return { error: BREACHED_MESSAGE };
   const db = await getDb();
   await db.update(s.users).set({ passwordHash: await hashPassword(next) }).where(eq(s.users.id, me.id));
+  await recordSecurity({ userId: me.id, action: EV.changedPassword, label: me.email ?? me.name, withIp: true });
   return { error: undefined, email: "saved" };
 }

@@ -1,6 +1,8 @@
 import { can } from "@/lib/access";
 import { readAll } from "@/server/data";
 import { getViewer } from "@/server/session";
+import { recordSecurity } from "@/server/audit";
+import { EV } from "@/lib/audit";
 
 /** Admins can download the whole workspace as JSON (backups, moving hosts). */
 export async function GET() {
@@ -11,6 +13,7 @@ export async function GET() {
   const users = all.users.map(({ passwordHash: _p, ...u }) => u);
   const body = JSON.stringify({ exportedAt: new Date().toISOString(), exportedBy: me.email ?? me.id, ...all, users }, null, 2);
   const date = new Date().toISOString().slice(0, 10);
+  await recordSecurity({ userId: me.id, action: EV.exported, label: `brandos-export-${date}.json`, field: `${Math.round(body.length / 1024)} KB`, withIp: true });
   return new Response(body, {
     headers: {
       "Content-Type": "application/json; charset=utf-8",

@@ -4,8 +4,7 @@ import { can, canChange } from "@/lib/access";
 import { readAll, makeVisibility, scopeFor } from "@/server/data";
 import { getViewer } from "@/server/session";
 import { humanSize, saveFile, storageProblem } from "@/server/storage";
-
-const MAX = 25 * 1024 * 1024;
+import { checkUpload, maxUploadBytes, maxUploadLabel } from "@/server/uploads";
 
 export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/files">) {
   const { id } = await ctx.params;
@@ -24,15 +23,20 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
   const form = await req.formData().catch(() => null);
   const files = (form?.getAll("file") ?? []).filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) return Response.json({ error: "No file came through." }, { status: 400 });
-  const tooBig = files.find((f) => f.size > MAX);
-  if (tooBig) return Response.json({ error: `${tooBig.name} is over 25 MB.` }, { status: 413 });
+  // Set MAX_UPLOAD_MB to change the limit (25 MB by default).
+  const tooBig = files.find((f) => f.size > maxUploadBytes());
+  if (tooBig) return Response.json({ error: `${tooBig.name} is over ${maxUploadLabel()}.` }, { status: 413 });
+  // Check every file before storing any, so a refused file does not leave half an upload behind.
+  const checked = files.map((f) => ({ f, c: checkUpload(f.name, f.type) }));
+  const refused = checked.find((x) => !x.c.ok);
+  if (refused && !refused.c.ok) return Response.json({ error: refused.c.error }, { status: 415 });
 
   const added = [];
-  for (const f of files) {
+  for (const { f, c } of checked) {
     const clean = f.name.replace(/[^\w.\- ()]+/g, "_").slice(-120) || "file";
     const key = `assets/${id}/${crypto.randomUUID().slice(0, 8)}-${clean}`;
     await saveFile(key, f);
-    added.push({ name: f.name.slice(0, 300), size: humanSize(f.size), key, type: f.type, url: `/api/files/${key}` });
+    added.push({ name: f.name.slice(0, 300), size: humanSize(f.size), key, type: c.ok ? c.type : "application/octet-stream", url: `/api/files/${key}` });
   }
   // Same file name again replaces the older entry rather than listing it twice.
   const names = new Set(added.map((x) => x.name));
