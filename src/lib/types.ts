@@ -1,8 +1,9 @@
 import type {
-  Activity, Asset, Brand, Client, Comment, Cta, Group, Link, Offer, Service, ShareLink, User,
+  Activity, Asset, Brand, Client, Comment, Cta, Group, Link, NotifyPrefs, Offer, Service, ShareLink, User,
 } from "@/db/schema";
 
-export type PublicUser = Omit<User, "passwordHash"> & { hasPassword: boolean };
+/** A person as the browser sees them. Email choices stay on the server, except my own (Workspace.notify). */
+export type PublicUser = Omit<User, "passwordHash" | "notifyPrefs" | "lastDigestAt"> & { hasPassword: boolean };
 
 export type Recent = { kind: string; itemId: string };
 
@@ -35,6 +36,18 @@ export type Workspace = {
   queueCounts: Record<string, number>;
   /** Comment ids that mention me and that I have not opened yet. */
   unreadMentions: string[];
+  /** My email choices, and which outside services this install has switched on. */
+  notify: {
+    prefs: NotifyPrefs;
+    /** RESEND_API_KEY is set. */
+    mail: boolean;
+    /** CRON_SECRET is set, so the morning digest can run. */
+    digest: boolean;
+    /** SLACK_WEBHOOK_URL is set. Only told to people who manage the team. */
+    slack: boolean;
+  };
+  /** My private calendar link, if I made one. The URL itself is only shown when it is created. */
+  calendarFeed: { createdAt: Date; lastUsedAt: Date | null } | null;
 };
 
 export type WaitOn = { who: string; verb: "Review" | "Make changes"; act: "review" | "change" };

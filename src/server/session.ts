@@ -73,12 +73,13 @@ export async function endSession() {
 
 export async function viewerExtras(userId: string) {
   const db = await getDb();
-  const [recents, reads, shares] = await Promise.all([
+  const [recents, reads, shares, feeds] = await Promise.all([
     db.select({ kind: s.recents.kind, itemId: s.recents.itemId })
       .from(s.recents).where(eq(s.recents.userId, userId))
       .orderBy(desc(s.recents.visitedAt)).limit(8),
     db.select({ commentId: s.reads.commentId }).from(s.reads).where(eq(s.reads.userId, userId)),
     db.select().from(s.shareLinks).where(isNull(s.shareLinks.revokedAt)).orderBy(desc(s.shareLinks.createdAt)),
+    db.select({ createdAt: s.calendarFeeds.createdAt, lastUsedAt: s.calendarFeeds.lastUsedAt }).from(s.calendarFeeds).where(eq(s.calendarFeeds.userId, userId)),
   ]);
-  return { recents, readIds: new Set(reads.map((r) => r.commentId)), shareLinks: shares };
+  return { recents, readIds: new Set(reads.map((r) => r.commentId)), shareLinks: shares, calendarFeed: feeds[0] ?? null };
 }

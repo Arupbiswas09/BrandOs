@@ -6,6 +6,7 @@ import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { useApp } from "@/components/app/provider";
 import { Btn, Card, DueBadge, H2, Page, PageHead, Pills, cx } from "@/components/ui";
+import { CalendarFeedCard } from "@/components/calendar-feed";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
@@ -123,6 +124,8 @@ export function Calendar() {
           </Card>
         </div>
       )}
+      <H2 className="mt-8">In your own calendar</H2>
+      <CalendarFeedCard />
     </Page>
   );
 }

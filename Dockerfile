@@ -19,6 +19,8 @@ FROM node:24-alpine AS run
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S brandos && adduser -S brandos -G brandos
+# curl is for the Coolify scheduled task that calls /api/cron/digest (docs/DEPLOY.md).
+RUN apk add --no-cache curl
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public

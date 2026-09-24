@@ -71,6 +71,12 @@ export type BrandKit = {
 export type FileRef = { name: string; size: string; url?: string; key?: string; type?: string };
 export type AssetCopy = { headline: string; body: string; cta: string };
 export type CheckItem = { text: string; done: boolean };
+/** Things BrandOS can email someone about. */
+export type NotifyEvent = "review" | "changes" | "approved" | "mention" | "due";
+/** "instant" emails straight away, "digest" waits for the morning email, "off" sends nothing. */
+export type NotifyMode = "instant" | "digest" | "off";
+/** Only what a person changed; anything missing uses the defaults in src/lib/notify.ts. */
+export type NotifyPrefs = Partial<Record<NotifyEvent, NotifyMode>>;
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -84,6 +90,10 @@ export const users = pgTable("users", {
   clientIds: text("client_ids").array().notNull().default([]),
   brandIds: text("brand_ids").array().notNull().default([]),
   groupIds: text("group_ids").array().notNull().default([]),
+  /** Email choices per kind of event. */
+  notifyPrefs: jsonb("notify_prefs").$type<NotifyPrefs>().notNull().default({}),
+  /** When this person's daily digest last went out, so a second run the same day sends nothing. */
+  lastDigestAt: timestamp("last_digest_at", { withTimezone: true }),
   ...stamps,
 }, (t) => [uniqueIndex("users_email_idx").on(t.email)]);
 
@@ -325,6 +335,33 @@ export const trash = pgTable("trash", {
 }, (t) => [index("trash_deleted_idx").on(t.deletedAt)]);
 
 export type TrashEntry = typeof trash.$inferSelect;
+
+/** Emails waiting for someone's daily digest. Cleared when the digest goes out. */
+export const notificationQueue = pgTable("notification_queue", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  event: text("event").$type<NotifyEvent>().notNull(),
+  subject: text("subject").notNull(),
+  heading: text("heading").notNull(),
+  body: text("body").notNull().default(""),
+  quote: text("quote"),
+  href: text("href"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("notification_queue_user_idx").on(t.userId)]);
+
+/**
+ * A private calendar subscription URL, one per person. Only a hash of the
+ * token is kept, so the link cannot be read back out of the database.
+ */
+export const calendarFeeds = pgTable("calendar_feeds", {
+  userId: text("user_id").primaryKey(),
+  tokenHash: text("token_hash").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+}, (t) => [uniqueIndex("calendar_feeds_token_idx").on(t.tokenHash)]);
+
+export type QueuedNotification = typeof notificationQueue.$inferSelect;
+export type CalendarFeed = typeof calendarFeeds.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Group = typeof groups.$inferSelect;
 export type Client = typeof clients.$inferSelect;
