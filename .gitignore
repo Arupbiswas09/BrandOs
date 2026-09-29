@@ -56,3 +56,4 @@ next-env.d.ts
 /.mob.mjs
 /.prod.mjs
 /.live.mjs
+/.anshu.mjs
