@@ -21,6 +21,8 @@ export type ModalSpec =
   | { kind: "goal"; brandId: string; name?: string; description?: string; original?: string }
   | { kind: "mergeGoal"; brandId: string; from: string }
   | { kind: "goalOffers"; brandId: string; name: string }
+  /** The brand's offer types. `edit` opens with that type being renamed; `add` opens on the new-type field. */
+  | { kind: "offerTypes"; brandId: string; edit?: string; add?: boolean }
   | { kind: "person"; draft?: Partial<PublicUser> }
   | { kind: "group"; draft?: Partial<Group> }
   | { kind: "sendReview"; item: ItemKind; id: string }

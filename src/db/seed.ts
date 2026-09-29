@@ -1,6 +1,6 @@
 import type { DB } from "./index";
 import * as s from "./schema";
-import { DEFAULT_GOALS } from "@/lib/constants";
+import { DEFAULT_GOALS, OFFER_TYPES } from "@/lib/constants";
 
 /** Turns the prototype's "3 days ago" style strings into real dates. */
 function ago(label: string, now: Date): Date {
@@ -52,6 +52,7 @@ export async function seed(db: DB) {
   ];
 
   const goals = () => DEFAULT_GOALS.map((g) => ({ ...g }));
+  const offerTypes = () => [...OFFER_TYPES];
   const brands: s.Brand[] = [
     {
       id: "br1", clientId: "cl1", parentId: null, name: "Quokka For Good", mark: "QG", tagline: "Nonprofit growth, argued three ways.", primary: "#1F6F5C", secondary: "#E8B44A", ownerId: "pr", teamSize: 6,
@@ -102,7 +103,7 @@ export async function seed(db: DB) {
         donts: ["Write \"make a difference\"", "Use Sand Gold for text on white", "Mix more than two typefaces"],
       },
       guidelines: [{ name: "Brand Guidelines 2026.pdf", size: "8.4 MB" }, { name: "Tone of voice one-pager.pdf", size: "420 KB" }],
-      goals: goals(), archived: false, createdAt: at("1 year ago"), updatedAt: at("2 hours ago"),
+      goals: goals(), offerTypes: offerTypes(), archived: false, createdAt: at("1 year ago"), updatedAt: at("2 hours ago"),
     },
     {
       id: "br2", clientId: "cl2", parentId: null, name: "St Aidan Parish", mark: "SA", tagline: "A church that shows its working.", primary: "#6B4E9E", secondary: "#C9A227", ownerId: "do", teamSize: 2,
@@ -113,7 +114,7 @@ export async function seed(db: DB) {
       fonts: [{ name: "Instrument Sans", role: "All type", files: "4 files · woff2" }],
       colours: [{ name: "Vespers", hex: "#6B4E9E", usage: "Primary." }, { name: "Brass", hex: "#C9A227", usage: "Secondary." }, { name: "Ink", hex: "#191424", usage: "Body text." }],
       guidelines: [{ name: "Parish identity notes.pdf", size: "1.6 MB" }], kit: { weAre: ["Plain", "Unhurried", "Welcoming"], weAreNot: ["Churchy", "Preachy"] },
-      goals: goals(), archived: false, createdAt: at("1 year ago"), updatedAt: at("yesterday"),
+      goals: goals(), offerTypes: offerTypes(), archived: false, createdAt: at("1 year ago"), updatedAt: at("yesterday"),
     },
     {
       id: "br3", clientId: "cl2", parentId: "br2", name: "St Aidan Youth", mark: "SY", tagline: "Thursday nights, all welcome.", primary: "#C9622A", secondary: "#2F7A6B", ownerId: "do", teamSize: 1,
@@ -123,7 +124,7 @@ export async function seed(db: DB) {
       segments: [{ name: "Young people", color: "#C9622A" }, { name: "Parents", color: "#2F7A6B" }, { name: "All segments", color: "#6E7C76" }],
       fonts: [{ name: "Instrument Sans", role: "All type", files: "4 files · woff2" }],
       colours: [{ name: "Ember", hex: "#C9622A", usage: "Primary." }, { name: "Pitch Green", hex: "#2F7A6B", usage: "Secondary." }],
-      guidelines: [], kit: {}, goals: goals(), archived: false, createdAt: at("8 months ago"), updatedAt: at("5 days ago"),
+      guidelines: [], kit: {}, goals: goals(), offerTypes: offerTypes(), archived: false, createdAt: at("8 months ago"), updatedAt: at("5 days ago"),
     },
     {
       id: "br4", clientId: "cl3", parentId: null, name: "Northgate Athletics", mark: "NA", tagline: "Every kid gets a lane.", primary: "#1D6FA3", secondary: "#E0553B", ownerId: "jw", teamSize: 3,
@@ -134,7 +135,7 @@ export async function seed(db: DB) {
       fonts: [{ name: "Instrument Sans", role: "All type", files: "4 files · woff2" }],
       colours: [{ name: "Track Blue", hex: "#1D6FA3", usage: "Primary." }, { name: "Lane Red", hex: "#E0553B", usage: "Secondary." }, { name: "Ink", hex: "#101820", usage: "Body text." }],
       guidelines: [{ name: "Trust brand book.pdf", size: "4.1 MB" }], kit: {},
-      goals: goals(), archived: false, createdAt: at("1 year ago"), updatedAt: at("2 days ago"),
+      goals: goals(), offerTypes: offerTypes(), archived: false, createdAt: at("1 year ago"), updatedAt: at("2 days ago"),
     },
   ];
 

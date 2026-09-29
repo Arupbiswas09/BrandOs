@@ -67,7 +67,13 @@ export const DEFAULT_GOALS = [
 
 export const GOAL_PALETTE = ["#8156C7", "#2D6FA8", "#2F8F62", "#C2740C", "#C2410C", "#0E7490", "#7C6AC4", "#B4553A"];
 
+/** The starting list of offer types. Each brand keeps its own editable copy (brands.offerTypes). */
 export const OFFER_TYPES = ["Audit", "Free consultation", "Lead magnet", "Content series", "Paid engagement", "Campaign"];
+
+/** A brand's offer types, or the starting list when it has none. */
+export function offerTypesOf(b: { offerTypes?: string[] | null } | null | undefined): string[] {
+  return b?.offerTypes?.length ? b.offerTypes : OFFER_TYPES;
+}
 
 export const DELIVERY = ["Designed page", "Doc link", "File download", "Email sequence", "None"];
 

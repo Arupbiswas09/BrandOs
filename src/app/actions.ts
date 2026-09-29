@@ -8,7 +8,7 @@ import { getDb, schema as s } from "@/db";
 import type { DB } from "@/db";
 import { seed } from "@/db/seed";
 import { can, canChange, cleanOverrides, type Perm } from "@/lib/access";
-import { DEFAULT_GOALS, ASSET_TYPES } from "@/lib/constants";
+import { DEFAULT_GOALS, ASSET_TYPES, offerTypesOf } from "@/lib/constants";
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
@@ -745,6 +745,57 @@ export async function deleteGoal(brandId: string, goal: string) {
       }
       await log(tx, me.id, "removed goal", "brand", brandId, goal);
     });
+  });
+}
+
+/* ================================================================ offer types */
+
+/** Adds an offer type to a brand, or renames one. A renamed type takes its offers with it. */
+export async function saveOfferType(brandId: string, name: string, original?: string) {
+  return run(async () => {
+    const { me, vis, db, all } = await context();
+    needAny(me, "structure", "kit");
+    need(vis.brand(brandId));
+    const nm = name.trim();
+    if (!nm) throw new Denied("Give the offer type a name.");
+    if (nm.length > 80) throw new Denied("Keep the offer type under 80 characters.");
+    const b = all.brands.find((x) => x.id === brandId)!;
+    const types = [...offerTypesOf(b)];
+    const taken = types.some((t) => t !== original && t.toLowerCase() === nm.toLowerCase());
+    await db.transaction(async (tx) => {
+      if (original) {
+        const i = types.indexOf(original);
+        need(i >= 0, "That offer type no longer exists.");
+        if (taken) throw new Denied("An offer type with that name already exists.");
+        types[i] = nm;
+        if (nm !== original) {
+          await tx.update(s.offers).set({ offerType: nm }).where(and(eq(s.offers.brandId, brandId), eq(s.offers.offerType, original)));
+        }
+        await log(tx, me.id, "renamed offer type", "brand", brandId, nm, original === nm ? "" : `${original} → ${nm}`);
+      } else {
+        if (taken) throw new Denied("That offer type already exists.");
+        types.push(nm);
+        await log(tx, me.id, "added offer type", "brand", brandId, nm);
+      }
+      await tx.update(s.brands).set({ offerTypes: types, updatedAt: new Date() }).where(eq(s.brands.id, brandId));
+    });
+  });
+}
+
+/** Removes an offer type nobody uses. Offers keep their type, so a type in use has to be emptied first. */
+export async function deleteOfferType(brandId: string, name: string) {
+  return run(async () => {
+    const { me, vis, db, all } = await context();
+    needAny(me, "structure", "kit");
+    need(vis.brand(brandId));
+    const b = all.brands.find((x) => x.id === brandId)!;
+    const types = offerTypesOf(b);
+    need(types.includes(name), "That offer type no longer exists.");
+    const used = all.offers.filter((o) => o.brandId === brandId && o.offerType === name).length;
+    if (used) throw new Denied(`${used === 1 ? "One offer still uses" : `${used} offers still use`} ${name}. Give ${used === 1 ? "it" : "them"} another type first.`);
+    if (types.length < 2) throw new Denied("A brand needs at least one offer type. Add another before removing this one.");
+    await db.update(s.brands).set({ offerTypes: types.filter((t) => t !== name), updatedAt: new Date() }).where(eq(s.brands.id, brandId));
+    await log(db, me.id, "removed offer type", "brand", brandId, name);
   });
 }
 

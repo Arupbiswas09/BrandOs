@@ -273,16 +273,19 @@ export function LinkModal({ offerId }: { offerId: string }) {
   const linked = new Set(ws.linkedAssetIds(offerId));
   const pool = ws.d.assets.filter((a) => a.brandId === o.brandId && ws.catOf(a) !== "master" && !a.archived);
   const t = q.toLowerCase();
+  // With nothing linked yet every scope lists the same assets, so the row is no choice and hides.
+  const choosable = pool.some((a) => linked.has(a.id));
+  const shown = choosable ? scope : "all";
   const rows = pool.filter((a) => {
-    if (scope === "unlinked" && linked.has(a.id)) return false;
-    if (scope === "linked" && !linked.has(a.id)) return false;
+    if (shown === "unlinked" && linked.has(a.id)) return false;
+    if (shown === "linked" && !linked.has(a.id)) return false;
     return !t || `${a.name} ${a.short} ${a.type} ${a.tags.join(" ")}`.toLowerCase().includes(t);
   });
   const color = ws.brand(o.brandId)?.primary ?? "#64748B";
   return (
     <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and appears in one more offer." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
       <input className="field text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
-      <Pills tone="dark" value={scope} onChange={setScope} options={[{ value: "unlinked", label: "Not yet linked" }, { value: "linked", label: "Already linked" }, { value: "all", label: "Everything" }]} />
+      {choosable && <Pills tone="dark" label="Show" value={scope} onChange={setScope} options={[{ value: "unlinked", label: "Not yet linked" }, { value: "linked", label: "Already linked" }, { value: "all", label: "Everything" }]} />}
       <div data-scroll className="-mx-2 max-h-[340px] overflow-y-auto">
         {rows.slice(0, 60).map((a) => {
           const on = linked.has(a.id);
