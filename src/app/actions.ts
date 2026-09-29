@@ -178,15 +178,17 @@ const clientDraft = z.object({
 export async function saveClient(input: z.input<typeof clientDraft>) {
   let id = input.id;
   const r = await run(async () => {
-    const { me, vis, db } = await context("structure");
+    const { me, all, vis, db } = await context("structure");
     const d = clientDraft.parse(input);
+    // The primary contact is someone on the team, never a client guest.
+    if (d.contactId) need(all.users.some((u) => u.id === d.contactId && u.access !== "Client"), "Pick someone on the team as the primary contact.");
     if (d.id) {
       need(vis.client(d.id));
-      await db.update(s.clients).set({ name: d.name, kind: d.kind, note: d.note, contactId: d.contactId ?? undefined, updatedAt: new Date() }).where(eq(s.clients.id, d.id));
+      await db.update(s.clients).set({ name: d.name, kind: d.kind, note: d.note, contactId: d.contactId === undefined ? undefined : d.contactId, updatedAt: new Date() }).where(eq(s.clients.id, d.id));
       await log(db, me.id, "updated", "client", d.id, d.name, "Details");
     } else {
       id = newId("cl");
-      await db.insert(s.clients).values({ id, name: d.name, kind: d.kind, note: d.note, contactId: me.id, since: d.since || String(new Date().getFullYear()) });
+      await db.insert(s.clients).values({ id, name: d.name, kind: d.kind, note: d.note, contactId: d.contactId || me.id, since: d.since || String(new Date().getFullYear()) });
       // Someone with a narrow scope should still see the client they just made.
       if (!me.allClients) await db.update(s.users).set({ clientIds: [...me.clientIds, id] }).where(eq(s.users.id, me.id));
       await log(db, me.id, "created", "client", id, d.name);

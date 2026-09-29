@@ -14,12 +14,13 @@ import { Footer, Modal } from "./frame";
 /* ---------------------------------------------------------------- client */
 
 export function ClientModal({ draft }: { draft?: Partial<Client> }) {
-  const { close } = useApp();
+  const { ws, close } = useApp();
   const router = useRouter();
   const [run, pending] = useAction();
-  const [d, setD] = useState({ name: draft?.name ?? "", kind: draft?.kind ?? "", note: draft?.note ?? "" });
+  const [d, setD] = useState({ name: draft?.name ?? "", kind: draft?.kind ?? "", note: draft?.note ?? "", contactId: draft?.contactId ?? (draft?.id ? "" : ws.me.id) });
+  const team = ws.d.users.filter((u) => u.access !== "Client");
   const save = async () => {
-    const r = await run(saveClient, { id: draft?.id, ...d });
+    const r = await run(saveClient, { id: draft?.id, ...d, contactId: d.contactId || null });
     if (r.ok) { close(); if (!draft?.id && r.id) router.push(href.client(r.id)); }
   };
   return (
@@ -27,6 +28,9 @@ export function ClientModal({ draft }: { draft?: Partial<Client> }) {
       <Field label="Client name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
       <Field label="Sector and location"><input className="field" value={d.kind} onChange={(e) => setD({ ...d, kind: e.target.value })} placeholder="Wildlife conservation · Western Australia" /></Field>
       <Field label="What we do for them"><textarea rows={3} className="field leading-[1.55]" value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></Field>
+      <Field label="Primary contact" hint={<span className="font-normal text-mute-4">who on the team looks after them</span>}>
+        <Select value={d.contactId} onChange={(v) => setD({ ...d, contactId: v })} options={[{ value: "", label: "No one yet" }, ...team.map((u) => ({ value: u.id, label: u.name }))]} />
+      </Field>
     </Modal>
   );
 }
