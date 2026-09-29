@@ -23,6 +23,7 @@ import { NOTIFY_EVENTS } from "@/lib/notify";
 import { href } from "@/lib/routes";
 import { recordSecurity } from "@/server/audit";
 import { EV } from "@/lib/audit";
+import { draftNewOfferFunnel } from "@/server/funnel";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -440,6 +441,7 @@ export async function saveOffer(input: z.input<typeof offerDraft>) {
     } else {
       id = newId("of");
       await db.insert(s.offers).values({ id, ...values, ownerId: me.access === "Contributor" ? me.id : d.ownerId || me.id });
+      await draftNewOfferFunnel(db, id);
       await log(db, me.id, "created", "offer", id, d.name);
     }
     return ok(id);

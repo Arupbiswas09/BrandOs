@@ -86,6 +86,14 @@ export type NotifyMode = "instant" | "digest" | "off";
 /** Only what a person changed; anything missing uses the defaults in src/lib/notify.ts. */
 export type NotifyPrefs = Partial<Record<NotifyEvent, NotifyMode>>;
 
+/** What a funnel box points at. Assets may be Global Library items; the rest come from the offer's brand. */
+export type FunnelLink = { type: "asset" | "offer" | "service" | "cta"; id: string };
+/** One box on an offer's funnel board. x and y are canvas pixels from the top left. */
+export type FunnelBox = { id: string; kind: "step" | "stage" | "note"; x: number; y: number; w?: number; text: string; link?: FunnelLink };
+export type FunnelArrow = { id: string; from: string; to: string; label?: string };
+/** The whole path for an offer on one board: boxes and the arrows between them. */
+export type Funnel = { boxes: FunnelBox[]; arrows: FunnelArrow[] };
+
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
@@ -189,6 +197,8 @@ export const offers = pgTable("offers", {
   changeNote: text("change_note").notNull().default(""),
   /** When this offer should launch. */
   dueAt: timestamp("due_at", { withTimezone: true }),
+  /** The funnel board: how people move through this offer, and what each step points at. */
+  funnel: jsonb("funnel").$type<Funnel>().notNull().default({ boxes: [], arrows: [] }),
   archived: boolean("archived").notNull().default(false),
   ...stamps,
 }, (t) => [index("offers_brand_idx").on(t.brandId), index("offers_service_idx").on(t.serviceId)]);

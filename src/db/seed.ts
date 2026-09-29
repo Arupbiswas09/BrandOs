@@ -158,7 +158,7 @@ export async function seed(db: DB) {
   ): s.Offer => ({
     id, brandId, serviceId, name, short, segment, goals: goalNames, status, ownerId, positioning, promise, proof,
     primaryCtaId: primaryCtaId || null, secondaryCtaId: secondaryCtaId || null, tags, offerType,
-    review: "None", reviewerId: null, changeNote: "", dueAt: null, archived: false, createdAt: at("3 months ago"), updatedAt: at(when),
+    review: "None", reviewerId: null, changeNote: "", dueAt: null, funnel: { boxes: [], arrows: [] }, archived: false, createdAt: at("3 months ago"), updatedAt: at(when),
   });
   const offers: s.Offer[] = [
     O("of1", "br1", "sv1", "Ad Grant for Church Reach", "Fill the pews from search", "Church", ["Audience growth"], "Active", "pr", "2 hours ago",
@@ -245,6 +245,29 @@ export async function seed(db: DB) {
   setO("of24", { review: "Approved", reviewerId: "jw" });
   setO("of14", { archived: true });
   setO("of5", { archived: true });
+  // The example funnel: three paid sources, one page, the audit, the consultation, and the service it feeds.
+  setO("of15", {
+    funnel: {
+      boxes: [
+        { id: "b1", kind: "step", x: 40, y: 40, text: "", link: { type: "asset", id: "as3" } },
+        { id: "b2", kind: "step", x: 40, y: 140, text: "", link: { type: "asset", id: "as4" } },
+        { id: "b3", kind: "step", x: 40, y: 240, text: "", link: { type: "asset", id: "as5" } },
+        { id: "b4", kind: "step", x: 300, y: 140, text: "", link: { type: "asset", id: "as1" } },
+        { id: "b5", kind: "step", x: 600, y: 140, w: 160, text: "The audit" },
+        { id: "b6", kind: "step", x: 860, y: 140, w: 200, text: "", link: { type: "offer", id: "of24" } },
+        { id: "b7", kind: "step", x: 860, y: 260, w: 200, text: "", link: { type: "service", id: "sv1" } },
+        { id: "b8", kind: "note", x: 600, y: 260, text: "38 percent of new clients started here." },
+      ],
+      arrows: [
+        { id: "a1", from: "b1", to: "b4" },
+        { id: "a2", from: "b2", to: "b4" },
+        { id: "a3", from: "b3", to: "b4" },
+        { id: "a4", from: "b4", to: "b5", label: "form submit" },
+        { id: "a5", from: "b5", to: "b6", label: "booked call" },
+        { id: "a6", from: "b6", to: "b7", label: "34% convert" },
+      ],
+    },
+  });
 
   const ctas = [
     { id: "ct1", brandId: "br1", text: "Book a Free Audit", bg: "#1F6F5C", fg: "#FFFFFF", style: "solid", url: "quokkaforgood.org/audit" },
