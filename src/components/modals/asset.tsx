@@ -1,11 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CloudUpload, Paperclip, X } from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY } from "@/lib/constants";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
-import { toDateInput } from "@/lib/time";
+import { checkBatch, sizeLabel } from "@/lib/upload-policy";
 import { useAction, useApp } from "@/components/app/provider";
 import { Btn, CheckRow, Chip, Field, Mark, Pills, Select, Tick, cx } from "@/components/ui";
 import { Footer, Modal } from "./frame";
@@ -13,9 +15,18 @@ import type { AssetDraft } from "./types";
 
 type Step = 0 | 1 | 2 | 3;
 
+const plural = (n: number) => `${n} file${n === 1 ? "" : "s"}`;
+
 export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft; step?: Step }) {
-  const { ws, close, openAsset } = useApp();
+  const { ws, close, openAsset, toast } = useApp();
   const [run, pending] = useAction();
+  const router = useRouter();
+  // Files picked here wait until the asset is saved (a new one has no id to upload to yet), then go up in one batch.
+  const [queued, setQueued] = useState<File[]>([]);
+  const [drag, setDrag] = useState(false);
+  const picker = useRef<HTMLInputElement>(null);
+  const canUpload = ws.can("upload");
+  const limits = ws.d.uploads.mine;
   const editing = !!draft.id;
   const [step, setStep] = useState<Step>(initialStep);
   const [d, setD] = useState({
@@ -39,7 +50,6 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     prompt: draft.prompt ?? "",
     checks: (draft.items ?? []).map((i) => i.text).join("\n"),
     offerIds: draft.offerIds ?? [],
-    dueAt: toDateInput(draft.dueAt),
   });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((x) => ({ ...x, [k]: v }));
   const known = !editing && !!d.brandId && d.offerIds.length > 0;
@@ -51,7 +61,40 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     return ws.d.assets.filter((a) => a.id !== draft.id && !a.archived && words.some((w) => a.name.toLowerCase().includes(w))).slice(0, 3);
   }, [d.name, ws, draft.id]);
 
+  /** Adds files to the queue, same name replacing same name, if the whole batch still fits the upload limits. */
+  const addFiles = (list: FileList | File[] | null) => {
+    const picked = Array.from(list ?? []);
+    if (!picked.length) return;
+    const names = new Set(picked.map((f) => f.name));
+    const next = [...queued.filter((f) => !names.has(f.name)), ...picked];
+    const problem = checkBatch(next.map((f) => ({ name: f.name, size: f.size })), limits);
+    if (problem) { toast(problem, "error"); return; }
+    setQueued(next);
+  };
+
+  /** Runs after the modal has closed, so progress and problems are toasts. */
+  const uploadQueued = async (id: string, list: File[]) => {
+    toast(`Uploading ${plural(list.length)}…`, "info");
+    try {
+      const fd = new FormData();
+      list.forEach((f) => fd.append("file", f));
+      const res = await fetch(`/api/assets/${id}/files`, { method: "POST", body: fd });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) toast(`The asset is saved, but its files did not upload. ${body.error ?? "Try again from its Files tab."}`, "error");
+      else toast(`${plural(list.length)} added`);
+    } catch {
+      toast("The asset is saved, but its files did not upload. Check your connection and try again from its Files tab.", "error");
+    } finally {
+      router.refresh();
+    }
+  };
+
   const save = async () => {
+    const files = canUpload ? queued : [];
+    if (files.length) {
+      const problem = checkBatch(files.map((f) => ({ name: f.name, size: f.size })), limits);
+      if (problem) { toast(problem, "error"); return; }
+    }
     const r = await run(saveAsset, {
       id: draft.id, brandId: d.brandId, name: d.name, type: d.type, channel: d.channel, status: d.status as Asset["status"],
       short: d.short, url: d.url, notes: d.notes, specs: d.specs, audienceNotes: d.audienceNotes, aiPrompt: d.aiPrompt,
@@ -61,9 +104,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       ...(d.type === "Prompt" && { promptFor: d.promptFor, prompt: d.prompt }),
       ...(d.type === "Checklist" && !editing && { items: d.checks.split("\n").map((t) => t.trim()).filter(Boolean).map((text) => ({ text, done: false })) }),
       offerIds: d.brandId ? d.offerIds : [],
-      dueAt: d.dueAt || null,
     });
-    if (r.ok) { close(); if (!editing && r.id) openAsset(r.id); }
+    if (!r.ok) return;
+    const id = r.id ?? draft.id;
+    close();
+    if (!editing && id) openAsset(id, files.length ? "files" : undefined);
+    if (files.length && id) void uploadQueued(id, files);
   };
 
   const valid = !!(d.name.trim() && d.type);
@@ -91,7 +137,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           {(["campaign", "master", "global"] as const).map((cat) => (
             <div key={cat} className="mb-3 last:mb-0">
-              <div className="eyebrow mb-2 text-[12px]">{cat === "campaign" ? "Campaign work" : cat === "master" ? "Master files for the Brand Kit" : "Process — usually in the Global Library"}</div>
+              <div className="eyebrow mb-2 text-[12px]">{cat === "campaign" ? "Campaign work" : cat === "master" ? "Master files for the Brand Kit" : "Reusable — usually in the Global Library"}</div>
               <div className="grid grid-cols-2 gap-[9px] sm:grid-cols-3">
                 {Object.entries(ASSET_TYPES).filter(([k, t]) => t.cat === cat && k !== "Newsletter ad").map(([k, t]) => (
                   <button key={k} type="button" aria-pressed={d.type === k}
@@ -124,7 +170,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           </div>
           <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-[11px] border border-dashed border-line-strong bg-white p-3.5 text-left hover:border-mute-2">
             <span className="block text-[15px] font-semibold">No brand — put it in the Global Library</span>
-            <span className="mt-0.5 block text-[14.5px] text-mute-2">Checklists, prompts, templates, SOPs</span>
+            <span className="mt-0.5 block text-[14.5px] text-mute-2">Checklists, prompts, templates, SOPs, ad creatives</span>
           </button>
         </div>
       )}
@@ -161,9 +207,43 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Short description"><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
-            <Field label="Due"><input type="date" className="field" value={d.dueAt} onChange={(e) => set("dueAt", e.target.value)} /></Field>
             <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>
           </div>
+          {canUpload && (
+            <div>
+              <div className="label">Files</div>
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+                onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
+                onDrop={(e) => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
+                className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-dashed px-3.5 py-3 transition-colors", drag ? "border-accent bg-soft" : "border-line-strong bg-wash-2")}
+              >
+                <CloudUpload aria-hidden size={20} className="flex-none text-mute-3" />
+                <span className="min-w-[140px] flex-1 text-[14.5px] text-mute-2">Drop files here, or choose them from your computer.</span>
+                <Btn size="sm" onClick={() => picker.current?.click()}>Choose files</Btn>
+                <input ref={picker} type="file" multiple hidden onChange={(e) => { addFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
+              </div>
+              {queued.length > 0 && (
+                <ul aria-label="Files to upload" className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
+                  {queued.map((f) => (
+                    <li key={f.name} className="flex items-center gap-2.5 rounded-[8px] border border-line bg-white py-1.5 pl-3 pr-1.5">
+                      <Paperclip aria-hidden size={14} className="flex-none text-mute-4" />
+                      <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-3">{f.name}</span>
+                      <span className="flex-none font-mono text-[13px] text-mute-3">{sizeLabel(f.size)}</span>
+                      <button type="button" aria-label={`Remove ${f.name} from the upload`} onClick={() => setQueued((q) => q.filter((x) => x !== f))}
+                        className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-mute-3 transition-colors hover:bg-hover hover:text-danger">
+                        <X aria-hidden size={15} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="m-0 mt-1.5 text-[13px] leading-[1.5] text-mute-3">
+                {queued.length ? `${plural(queued.length)} will upload when you save.` : editing ? "New files are added when you save." : "They upload as soon as the asset is saved."}
+                {editing && (draft.files?.length ?? 0) > 0 && " Replace or remove the files already here from the asset's Files tab."}
+              </p>
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Type" required><Select value={d.type} onChange={(v) => set("type", v)} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
             <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
@@ -195,7 +275,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               <textarea rows={6} className="field leading-[1.55]" value={d.checks} onChange={(e) => set("checks", e.target.value)} placeholder={"Tracking fires on submit\nCTA matches the library entry"} />
             </Field>
           )}
-          {ASSET_TYPES[d.type]?.cat !== "global" && (
+          {(ASSET_TYPES[d.type]?.cat !== "global" || d.type === "Ad creative") && (
             <div className="border-t border-divider pt-1.5">
               <div className="label mt-2">Copy</div>
               <input className="field mb-2" value={d.copy.headline} onChange={(e) => set("copy", { ...d.copy, headline: e.target.value })} placeholder="Headline" aria-label="Headline" />

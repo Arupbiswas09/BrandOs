@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Copy, Eye, History as HistoryIcon, LayoutGrid, Library as LibraryIcon, Link2, ListChecks, MessageSquare, Paperclip, Pencil, ScanEye, Terminal, Type, type LucideIcon,
+  ArrowLeft, Copy, Download, Eye, History as HistoryIcon, LayoutGrid, Library as LibraryIcon, Link2, ListChecks, MessageSquare, Paperclip, Pencil, RefreshCw, ScanEye, Terminal, Type, type LucideIcon,
 } from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
@@ -14,12 +14,11 @@ import { href } from "@/lib/routes";
 import { waitOn } from "@/lib/types";
 import {
   addItem, approveItem, listVersions, moveItem, removeFile, removeItem, resetList, restoreVersion,
-  setArchived, setDue, setStatus, toggleClientVisible, toggleItem, toggleLink, trackVisit,
+  setArchived, setStatus, toggleClientVisible, toggleItem, toggleLink, trackVisit,
 } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Thread } from "@/components/discussion";
-import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, DueBadge, Eyebrow, Hint, cx } from "@/components/ui";
-import { toDateInput } from "@/lib/time";
+import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, Eyebrow, Hint, cx } from "@/components/ui";
 import { AiDraftButton } from "@/components/ai";
 import { ProofView } from "@/components/proof";
 import { PinLink, isPinned, proofFiles, type PinnedComment } from "@/components/proof-link";
@@ -164,16 +163,6 @@ function Drawer({ a }: { a: Asset }) {
               <Meta label="Access" border="b">{a.gated ? "Gated — requested, then sent" : "Open"}</Meta>
               <Meta label="Owner" border="r">{ws.user(a.ownerId).name}</Meta>
               <Meta label="Version">v{a.version} · updated {ws.ago(a.updatedAt)}</Meta>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 border-t border-line px-4 py-3">
-              <span className="text-[13px] text-mute-4">Due</span>
-              {canEdit ? (
-                <input type="date" aria-label="Due date" defaultValue={toDateInput(a.dueAt)} key={String(a.dueAt)}
-                  onChange={(e) => run(setDue, "asset", a.id, e.target.value || null)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[14px]" />
-              ) : (
-                <span className="text-[15px] font-medium">{a.dueAt ? new Date(a.dueAt).toDateString() : "No date"}</span>
-              )}
-              <DueBadge at={a.dueAt} now={ws.d.now} done={a.status === "Live"} />
             </div>
           </div>
 
@@ -448,48 +437,104 @@ function CopyLink({ on, onClick }: { on: boolean; onClick: () => void }) {
   return <button type="button" onClick={onClick} className="text-[13px] text-mute-4 hover:text-ink">{on ? "Copied" : "Copy"}</button>;
 }
 
+const ROW_BTN = "inline-flex flex-none items-center gap-1.5 rounded-[7px] border border-line bg-white px-[9px] py-[5px] text-[14px] font-semibold transition-colors hover:border-accent disabled:opacity-60 sm:px-[11px]";
+
 function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
   const { ws, toast } = useApp();
   const [run] = useAction();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  // One file input serves "Upload files" and every "Replace": this is the stored file being replaced while the picker is open.
+  const replaceFor = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [swapping, setSwapping] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
   const files = a.files ?? [];
+  const stored = files.filter((f) => f.key);
   const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
   const canUpload = canEdit && ws.can("upload");
   const limits = ws.d.uploads.mine;
 
-  const upload = async (list: FileList | null) => {
-    if (!list?.length) return;
+  const upload = async (list: File[]) => {
+    if (!list.length) return;
     // Same rules the server applies, checked first so nobody waits for a big file to be refused.
-    const problem = checkBatch(Array.from(list).map((f) => ({ name: f.name, size: f.size })), limits);
-    if (problem) { toast(problem, "error"); if (input.current) input.current.value = ""; return; }
+    const problem = checkBatch(list.map((f) => ({ name: f.name, size: f.size })), limits);
+    if (problem) { toast(problem, "error"); return; }
     setBusy(true);
     try {
       const fd = new FormData();
-      Array.from(list).forEach((f) => fd.append("file", f));
+      list.forEach((f) => fd.append("file", f));
       const res = await fetch(`/api/assets/${a.id}/files`, { method: "POST", body: fd });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) toast(body.error ?? "Upload failed.", "error");
       else { toast(`${list.length} file${list.length > 1 ? "s" : ""} added`); router.refresh(); }
+    } catch {
+      toast("Upload failed. Check your connection and try again.", "error");
     } finally {
       setBusy(false);
-      if (input.current) input.current.value = "";
     }
+  };
+
+  /** Swaps one stored file for a new one in the same place in the list. The server drops the old copy once nothing points at it. */
+  const replace = async (key: string, f: File) => {
+    const old = files.find((x) => x.key === key);
+    if (!old) return;
+    const problem = checkBatch([{ name: f.name, size: f.size }], limits);
+    if (problem) { toast(problem, "error"); return; }
+    setSwapping(key);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      fd.append("replace", key);
+      const res = await fetch(`/api/assets/${a.id}/files`, { method: "POST", body: fd });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) toast(body.error ?? "The file could not be replaced.", "error");
+      else { toast(`Replaced ${old.name}`); router.refresh(); }
+    } catch {
+      toast("The file could not be replaced. Check your connection and try again.", "error");
+    } finally {
+      setSwapping(null);
+    }
+  };
+
+  const pick = (key: string | null) => {
+    const el = input.current;
+    if (!el) return;
+    replaceFor.current = key;
+    el.multiple = !key;
+    el.click();
+  };
+
+  const picked = (el: HTMLInputElement) => {
+    const list = Array.from(el.files ?? []);
+    const key = replaceFor.current;
+    replaceFor.current = null;
+    el.value = "";
+    el.multiple = true;
+    if (!list.length) return;
+    if (key) void replace(key, list[0]);
+    else void upload(list);
   };
 
   return (
     <div
       onDragOver={(e) => { if (canUpload) { e.preventDefault(); setDrag(true); } }}
       onDragLeave={() => setDrag(false)}
-      onDrop={(e) => { if (!canUpload) return; e.preventDefault(); setDrag(false); void upload(e.dataTransfer.files); }}
+      onDrop={(e) => { if (!canUpload) return; e.preventDefault(); setDrag(false); void upload(Array.from(e.dataTransfer.files)); }}
       className={cx("rounded-xl transition", drag && "outline-2 outline-dashed outline-accent outline-offset-4")}
     >
       {onProof && (
         <div className="mb-3 flex flex-wrap items-center gap-3 rounded-[11px] bg-wash px-[15px] py-[11px]">
           <span className="flex-1 text-[15px] text-ink-3">Feedback on a visual? Pin notes right where they apply.</span>
           <Btn size="sm" onClick={onProof}>Open proof view</Btn>
+        </div>
+      )}
+      {stored.length > 1 && (
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <span className="min-w-0 flex-1 text-[15px] text-mute-2">{stored.length} uploaded files</span>
+          <a href={`/api/assets/${a.id}/download`} download aria-label={`Download all ${stored.length} files as a zip`} className={cx(ROW_BTN, "text-accent")}>
+            <Download aria-hidden size={14} />Download all
+          </a>
         </div>
       )}
       {files.some((f) => f.url && IMAGE.test(f.type ?? "")) && (
@@ -505,13 +550,22 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
       {files.length > 0 && (
         <div className="rounded-xl border border-line px-[18px] py-1">
           {files.map((f) => (
-            <div key={f.name} className="group flex items-center gap-3 border-t border-divider py-3 first:border-t-0">
-              <span className="min-w-0 flex-1 truncate text-[16px] font-medium">{f.name}</span>
-              <span className="flex-none font-mono text-[14px] text-[#526077]">{f.size}</span>
+            <div key={f.name} className="group flex items-center gap-2 border-t border-divider py-2.5 first:border-t-0 sm:gap-2.5">
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[16px] font-medium">{f.name}</span>
+                <span className="block font-mono text-[13px] text-mute-4">{f.size}</span>
+              </span>
               {f.url ? (
-                <a href={f.url} download={f.name} className="flex-none rounded-[7px] border border-line bg-white px-[11px] py-[5px] text-[14px] font-semibold text-accent hover:border-accent">Download</a>
+                <a href={f.url} download={f.name} aria-label={`Download ${f.name}`} title={`Download ${f.name}`} className={cx(ROW_BTN, "text-accent")}>
+                  <Download aria-hidden size={14} /><span className="hidden sm:inline">Download</span>
+                </a>
               ) : (
                 <span title="Listed for reference. The file itself was never uploaded here." className="flex-none rounded-[7px] border border-dashed border-line px-[11px] py-[5px] text-[14px] text-mute-4">Not uploaded</span>
+              )}
+              {canUpload && f.key && (
+                <button type="button" aria-label={`Replace ${f.name}`} title={`Replace ${f.name} with a new file`} disabled={busy || !!swapping} onClick={() => pick(f.key!)} className={cx(ROW_BTN, "text-ink-3")}>
+                  <RefreshCw aria-hidden size={14} className={cx(swapping === f.key && "animate-spin motion-reduce:animate-none")} /><span className="hidden sm:inline">Replace</span>
+                </button>
               )}
               {canEdit && <button type="button" aria-label={`Remove ${f.name}`} onClick={() => run(removeFile, a.id, f.name)} className="flex-none px-1 text-[14.5px] text-line-strong opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100">✕</button>}
             </div>
@@ -521,9 +575,9 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
       {!files.length && <div className="rounded-xl border border-dashed border-line-strong p-9 text-center text-[15px] text-mute-2">No files attached yet.</div>}
       {canUpload && (
         <>
-          <input ref={input} type="file" multiple hidden onChange={(e) => upload(e.target.files)} />
-          <button type="button" disabled={busy} onClick={() => input.current?.click()} className="mt-2.5 w-full rounded-[10px] border border-line bg-white p-2.5 text-[15px] font-semibold text-ink-3 hover:border-mute-2 disabled:opacity-60">
-            {busy ? "Uploading…" : "Upload files — or drop them here"}
+          <input ref={input} type="file" multiple hidden onChange={(e) => picked(e.currentTarget)} />
+          <button type="button" disabled={busy || !!swapping} onClick={() => pick(null)} className="mt-2.5 w-full rounded-[10px] border border-line bg-white p-2.5 text-[15px] font-semibold text-ink-3 hover:border-mute-2 disabled:opacity-60">
+            {busy ? "Uploading…" : swapping ? "Replacing…" : "Upload files — or drop them here"}
           </button>
           <UploadLimitsHint limits={limits} />
         </>

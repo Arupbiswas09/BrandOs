@@ -25,6 +25,7 @@ export const ASSET_TYPES: Record<string, { code: string; cat: AssetCategory }> =
   Prompt: { code: "PRM", cat: "global" },
   Template: { code: "TPL", cat: "global" },
   SOP: { code: "SOP", cat: "global" },
+  "Ad creative": { code: "AD", cat: "global" },
 };
 
 export const CHANNELS = [

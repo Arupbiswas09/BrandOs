@@ -3,7 +3,7 @@ import { getDb, schema as s } from "@/db";
 import { can, canChange } from "@/lib/access";
 import { readAll, makeVisibility, scopeFor } from "@/server/data";
 import { getViewer } from "@/server/session";
-import { humanSize, saveFile, storageProblem } from "@/server/storage";
+import { humanSize, removeStoredFile, saveFile, storageProblem } from "@/server/storage";
 import { checkUpload } from "@/server/uploads";
 import { getUploadPolicy, myLimits } from "@/server/limits";
 import { checkBatch } from "@/lib/upload-policy";
@@ -25,6 +25,14 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
   const form = await req.formData().catch(() => null);
   const files = (form?.getAll("file") ?? []).filter((f): f is File => f instanceof File && f.size > 0);
   if (!files.length) return Response.json({ error: "No file came through." }, { status: 400 });
+  // "replace" swaps one stored file for a new one, keeping its place in the list.
+  const replaceField = form?.get("replace");
+  const replaceKey = typeof replaceField === "string" ? replaceField : "";
+  const at = replaceKey ? asset.files.findIndex((x) => x.key === replaceKey) : -1;
+  if (replaceKey) {
+    if (files.length !== 1) return Response.json({ error: "Replace one file at a time." }, { status: 400 });
+    if (at < 0) return Response.json({ error: "That file is not on this asset any more. Refresh and try again." }, { status: 404 });
+  }
   // Check every file before storing any, so a refused file does not leave half an upload behind.
   const checked = files.map((f) => ({ f, c: checkUpload(f.name, f.type) }));
   const refused = checked.find((x) => !x.c.ok);
@@ -40,10 +48,25 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
     await saveFile(key, f);
     added.push({ name: f.name.slice(0, 300), size: humanSize(f.size), bytes: f.size, uploadedBy: me.id, key, type: c.ok ? c.type : "application/octet-stream", url: `/api/files/${key}` });
   }
+  const db = await getDb();
+  if (replaceKey) {
+    const old = asset.files[at];
+    const fresh = added[0];
+    // Same slot, new file. Another entry already called what the new file is called gives way, as with a normal upload.
+    const next = asset.files.flatMap((x, i) => (i === at ? [fresh] : x.name === fresh.name ? [] : [x]));
+    await db.update(s.assets).set({ files: next, updatedAt: new Date() }).where(eq(s.assets.id, id));
+    await db.insert(s.activity).values({
+      id: "ac" + crypto.randomUUID().slice(0, 10), userId: me.id, action: "replaced a file on", type: "asset", itemId: id, label: asset.name,
+      field: old.name === fresh.name ? fresh.name : `${old.name} → ${fresh.name}`,
+    });
+    // Keep the stored copy while another asset (a clone) still points at it.
+    const stillUsed = next.some((f) => f.key === replaceKey) || all.assets.some((x) => x.id !== id && x.files.some((f) => f.key === replaceKey));
+    if (!stillUsed) await removeStoredFile(replaceKey);
+    return Response.json({ ok: true, files: added, replaced: replaceKey });
+  }
   // Same file name again replaces the older entry rather than listing it twice.
   const names = new Set(added.map((x) => x.name));
   const next = [...asset.files.filter((x) => !names.has(x.name)), ...added];
-  const db = await getDb();
   await db.update(s.assets).set({ files: next, updatedAt: new Date() }).where(eq(s.assets.id, id));
   await db.insert(s.activity).values({
     id: "ac" + crypto.randomUUID().slice(0, 10), userId: me.id, action: "uploaded to", type: "asset", itemId: id, label: asset.name,
