@@ -16,6 +16,7 @@ import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
 import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, DueBadge, Eyebrow, Page } from "@/components/ui";
 import { ActionRule, EmptyArt, EntityHeader, IconTile, MetaItem } from "@/components/polish";
 import { SpotArt } from "@/components/art";
+import { FunnelBoard } from "@/components/funnel/funnel-board";
 import { NotHere, useVisit } from "./common";
 
 export function OfferPage({ id }: { id: string }) {
@@ -161,6 +162,8 @@ export function OfferPage({ id }: { id: string }) {
           {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-[15px] text-warn-text">None set — readers do not know what to do next.</span>}
         </div>
       </div>
+
+      <FunnelBoard key={o.id} offer={o} />
 
       {nudgeAsset && (
         <div className="mb-[18px] flex animate-pop flex-wrap items-center gap-3.5 rounded-xl border border-accent bg-soft px-[18px] py-[15px]">
