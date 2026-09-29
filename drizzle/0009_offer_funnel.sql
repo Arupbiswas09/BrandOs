@@ -1,0 +1,1 @@
+ALTER TABLE "offers" ADD COLUMN "funnel" jsonb DEFAULT '{"boxes":[],"arrows":[]}'::jsonb NOT NULL;
