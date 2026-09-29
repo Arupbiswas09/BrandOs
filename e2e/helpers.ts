@@ -27,7 +27,6 @@ export const PAGES: [string, string][] = [
   ["brand-offers", "/brands/br1/offers"],
   ["brand-assets", "/brands/br1/assets"],
   ["brand-kit", "/brands/br1/kit"],
-  ["brand-ctas", "/brands/br1/ctas"],
   ["brand-strategy", "/brands/br1/strategy"],
   ["guidelines", "/guidelines/br1"],
   ["service", "/services/sv1"],

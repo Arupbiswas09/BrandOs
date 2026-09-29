@@ -7,7 +7,7 @@ import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { markMentionsRead } from "@/app/actions";
 import { useApp } from "./provider";
-import { Avatar, DueBadge, cx } from "@/components/ui";
+import { Avatar, cx } from "@/components/ui";
 import { SpotArt } from "@/components/art";
 
 export function Inbox() {
@@ -103,8 +103,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                       <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="lift w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]">
                         <span className="mb-1.5 flex flex-wrap items-center gap-2">
                           <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
-                          <DueBadge at={x.dueAt} now={ws.d.now} />
-                          <span className="flex-1" /><span className="text-[13px] text-mute-3">{x.ago}</span>
+                          <span className="flex-1" /><span className="text-[13px] text-mute-3">{x.act === "review" ? `In review ${x.ago.replace(/ ago$/, "")}` : `Sent back ${x.ago}`}</span>
                         </span>
                         <span className="block text-[15.5px] font-semibold leading-[1.35]">{x.name}</span>
                         <span className="mt-0.5 block text-[14.5px] text-mute-2">{x.sub}</span>

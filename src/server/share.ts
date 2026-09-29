@@ -4,6 +4,9 @@ import { getDb, schema as s } from "@/db";
 
 /** Resolves a live share link to its brand and the assets cleared to send. */
 export async function loadShare(token: string) {
+  // BrandOS is internal only. Client-facing links stay off unless someone
+  // deliberately decides otherwise and sets BRANDOS_CLIENT_LINKS=on.
+  if (process.env.BRANDOS_CLIENT_LINKS !== "on") return null;
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(token)) return null;
   const db = await getDb();
   const [link] = await db.select().from(s.shareLinks).where(and(eq(s.shareLinks.token, token), isNull(s.shareLinks.revokedAt)));

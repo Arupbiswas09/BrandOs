@@ -58,7 +58,7 @@ function Palette({ onClose }: { onClose: () => void }) {
       const actions: Row[] = [
         ...(ws.can("edit") ? [{ key: "new", title: "Create something", sub: "Offer, asset, service, CTA, brand or client", code: "", color: NEUTRAL, icon: Plus, run: () => { onClose(); open({ kind: "new" }); } }] : []),
         { key: "street", title: "Go to Dashboard", sub: "Home", code: "", color: NEUTRAL, icon: LayoutDashboard, run: () => go("/") },
-        { key: "cal", title: "Open the Calendar", sub: "Deadlines and launches", code: "", color: NEUTRAL, icon: CalendarDays, run: () => go("/calendar") },
+        { key: "cal", title: "Open Launches", sub: "Offer launch dates", code: "", color: NEUTRAL, icon: CalendarDays, run: () => go("/calendar") },
         // Client guests cannot open the library or the team page, so they are not offered.
         ...(ws.isGuest ? [] : [
           { key: "lib", title: "Open the Global Library", sub: "Checklists, prompts, templates, SOPs", code: "", color: NEUTRAL, icon: BookOpen, run: () => go("/library") },
@@ -83,7 +83,7 @@ function Palette({ onClose }: { onClose: () => void }) {
           if (r.kind === "Offer") return go(href.offer(r.id));
           if (r.kind === "Brand") return go(href.brand(r.id));
           if (r.kind === "Client") return go(href.client(r.id));
-          const c = ws.cta(r.id); if (c) go(href.brand(c.brandId, "ctas"));
+          const c = ws.cta(r.id); if (c) go(`${href.brand(c.brandId, "kit")}#kit-ctas`);
         },
       };
       groups.set(r.kind, [...(groups.get(r.kind) ?? []), row]);

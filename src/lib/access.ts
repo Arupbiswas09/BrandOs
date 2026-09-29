@@ -30,7 +30,12 @@ export type Perm =
   | "export"    // download all the data
   | "access";   // invite people and change what they can see and do
 
-export const ROLES: Access[] = ["Admin", "Manager", "Editor", "Contributor", "Reviewer", "Viewer", "Client"];
+/**
+ * Roles offered when inviting people. BrandOS is internal only, so the
+ * Client guest role is no longer offered; anyone who already has it keeps
+ * working as before.
+ */
+export const ROLES: Access[] = ["Admin", "Manager", "Editor", "Contributor", "Reviewer", "Viewer"];
 
 const T = true, F = false;
 const row = (comment: boolean, review: boolean, edit: boolean, publish: boolean, archive: boolean, structure: boolean, kit: boolean, library: boolean, share: boolean, del: boolean, exp: boolean, access: boolean): Record<Perm, boolean> =>
@@ -40,7 +45,8 @@ const row = (comment: boolean, review: boolean, edit: boolean, publish: boolean,
 export const PERMISSIONS: Record<Access, Record<Perm, boolean>> = {
   //                 comment review edit publish archive structure kit library share del export access
   Admin:       row(T, T, T, T, T, T, T, T, T, T, T, T),
-  Manager:     row(T, T, T, T, T, T, T, T, T, T, F, F),
+  // Deleting anything, and archiving whole clients or brands, is for admins only.
+  Manager:     row(T, T, T, T, T, T, T, T, T, F, F, F),
   Editor:      row(T, T, T, T, T, F, F, F, F, F, F, F),
   Contributor: row(T, F, T, F, F, F, F, F, F, F, F, F),
   Reviewer:    row(T, T, F, F, F, F, F, F, F, F, F, F),
@@ -50,26 +56,26 @@ export const PERMISSIONS: Record<Access, Record<Perm, boolean>> = {
 
 /** Plain-language names for the permission table, in display order. */
 export const PERM_INFO: { perm: Perm | "view" | "own"; label: string; note: string }[] = [
-  { perm: "view", label: "See their clients", note: "Only the clients, brands and groups they are given. Clients see only what is shared with them." },
+  { perm: "view", label: "See their clients", note: "Only the clients, brands and groups they are given." },
   { perm: "comment", label: "Comment", note: "Write notes, @mention people and tick checklists." },
   { perm: "review", label: "Approve or send back", note: "Approve work or ask for changes when it is in review." },
   { perm: "edit", label: "Create and edit work", note: "Offers, assets, services and CTAs." },
   { perm: "own", label: "Edit other people's work", note: "Contributors can edit only what they own." },
   { perm: "upload", label: "Upload files", note: "Add images, video, documents and other files, within the upload limits." },
   { perm: "publish", label: "Mark work Live", note: "Say an asset is out in the world." },
-  { perm: "archive", label: "Archive", note: "Put things away without deleting them." },
+  { perm: "archive", label: "Archive work", note: "Put offers, services and assets away without deleting them. Clients and brands: admins only." },
   { perm: "structure", label: "Set up clients and brands", note: "Add and change clients, brands and sub-brands." },
   { perm: "kit", label: "Edit Brand Kits", note: "Colours, fonts, logo rules and voice." },
   { perm: "library", label: "Edit the Global Library", note: "Checklists, prompts, templates and SOPs." },
-  { perm: "share", label: "Share with clients", note: "Create and revoke read-only share links." },
-  { perm: "del", label: "Delete and restore", note: "Delete things and use the recycle bin." },
+  { perm: "share", label: "Clear work to send", note: "Mark an asset as signed off and safe to send to the client." },
+  { perm: "del", label: "Delete, and archive clients or brands", note: "Anything that removes data or a whole client. Admins only; deleted things wait in the recycle bin for 30 days." },
   { perm: "export", label: "Export all data", note: "Download everything as JSON." },
   { perm: "access", label: "Manage the team", note: "Invite people, set roles and choose what they see." },
 ];
 
 export const ROLE_INFO: Record<Access, { summary: string; color: string; guest?: boolean }> = {
-  Admin: { summary: "Everything, everywhere. The only role that manages the team and exports data.", color: "#6D28D9" },
-  Manager: { summary: "Runs client work end to end: sets up brands, owns Brand Kits, shares with clients and deletes.", color: "#1D4ED8" },
+  Admin: { summary: "Everything, everywhere. The only role that manages the team, deletes, archives clients and exports data.", color: "#6D28D9" },
+  Manager: { summary: "Runs client work end to end: sets up brands and owns Brand Kits and strategy. Cannot delete.", color: "#1D4ED8" },
   Editor: { summary: "Creates and edits all work in their clients, reviews it and marks it Live.", color: "#047857" },
   Contributor: { summary: "Creates work and edits what they own, then sends it for review. Cannot approve.", color: "#0E7490" },
   Reviewer: { summary: "Reads, comments, approves or sends back. Changes nothing themselves.", color: "#B45309" },

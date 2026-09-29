@@ -6,21 +6,20 @@ import { useState } from "react";
 import { useStored } from "@/lib/stored";
 import type { Brand } from "@/db/schema";
 import {
-  Archive, ArchiveRestore, Building2, ChevronRight, FilePlus2, FolderOpen, House, LayoutTemplate, Layers, Library, Megaphone, MousePointerClick, Palette, Pencil, Plus, Share2, Target, Trash2,
+  Archive, ArchiveRestore, Building2, ChevronRight, Download, FilePlus2, FolderOpen, Layers, Library, Megaphone, Palette, Pencil, Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { hexA, readable, onColor } from "@/lib/color";
-import { kitScore } from "@/lib/kit";
 import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, OFFER_TYPES } from "@/lib/constants";
-import { BRAND_TABS, href, type BrandTab } from "@/lib/routes";
+import { href, type BrandTab } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, OfferCard, blocksFor } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { CtaButton } from "@/components/drawer/asset-drawer";
-import { ArchExpander, ArchivedNote, Avatar, Blocks, Btn, Card, H2, Mark, Page, Pills, SectionHead, Warn, cx } from "@/components/ui";
-import { EmptyArt, FOCUS, IconTabs, IconTile, LIFT } from "@/components/polish";
+import { ArchExpander, ArchivedNote, Blocks, Btn, Card, H2, Mark, Page, Pills, SectionHead, Warn, cx } from "@/components/ui";
+import { EmptyArt, FOCUS, IconTile, LIFT } from "@/components/polish";
 import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 import { BrandHealth } from "@/components/health";
@@ -36,93 +35,59 @@ export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?:
       case "services": return <Services b={b} />;
       case "offers": return <Offers b={b} />;
       case "assets": return <Assets key={type ?? "all"} b={b} initialType={type} />;
-      case "kit": return <BrandKit b={b} />;
+      // The CTA library sits at the foot of the Brand Kit.
+      case "kit": case "ctas": return <><BrandKit b={b} /><div id="kit-ctas" className="mt-12 scroll-mt-24"><Ctas b={b} /></div></>;
       case "strategy": return <Strategy b={b} />;
-      case "ctas": return <Ctas b={b} />;
       default: return <Home b={b} />;
     }
   })();
+  // The brand's sections are listed under it in the sidebar, so there is no
+  // second row of tabs here. Home gets the full welcome; every other section
+  // gets one line saying which brand you are in.
   return (
     <Page>
-      <BrandBar b={b} tab={tab} />
+      {tab === "home" ? <BrandHero b={b} /> : <BrandLine b={b} />}
       {body}
     </Page>
   );
 }
 
-const TAB_ICON: Record<BrandTab, LucideIcon> = {
-  home: House, services: Layers, offers: Megaphone, assets: FolderOpen, kit: Palette, strategy: Target, ctas: MousePointerClick,
-};
+/** One line at the top of a brand section: which brand, and whose. */
+function BrandLine({ b }: { b: Brand }) {
+  const { ws } = useApp();
+  const client = ws.client(b.clientId);
+  const parent = ws.brand(b.parentId);
+  return (
+    <div className="-mt-2 mb-6 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-[14.5px] text-mute-2 sm:-mt-4">
+      <Link href={href.brand(b.id)} className={cx("flex min-w-0 items-center gap-2 rounded-md font-semibold text-ink hover:underline", FOCUS)}>
+        <Mark mark={b.mark} color={b.primary} size={26} radius={7} className="text-[11px]" />
+        <span className="truncate">{b.name}</span>
+      </Link>
+      {parent && <><span aria-hidden className="text-mute-4">/</span><span>Sub-brand of <Link href={href.brand(parent.id)} className="font-medium hover:text-ink hover:underline">{parent.name}</Link></span></>}
+      {client && client.name !== b.name && <><span aria-hidden className="text-mute-4">·</span><Link href={href.client(client.id)} className="truncate hover:text-ink hover:underline">{client.name}</Link></>}
+      {b.archived && <span className="rounded-md bg-chip px-2 py-0.5 text-[12.5px] font-semibold text-mute-2">Archived</span>}
+    </div>
+  );
+}
 
-/**
- * The brand's header band. It always shows the brand's own colours, even
- * with the theme takeover off: the mark, a soft tint and a thin colour strip.
- */
-function BrandBar({ b, tab }: { b: Brand; tab: BrandTab }) {
-  const { ws, open } = useApp();
+/** The brand's welcome, on its Home only. It shows the brand's own colours even with the theme takeover off. */
+function BrandHero({ b }: { b: Brand }) {
+  const { ws } = useApp();
   const parent = ws.brand(b.parentId);
   const client = ws.client(b.clientId);
-  const owner = b.ownerId ? ws.user(b.ownerId) : null;
-  const kit = kitScore(b, ws.d.assets);
-  const kitTone = kit.pct >= 80 ? "#277A53" : kit.pct >= 50 ? "#8A6A12" : "#B42318";
-  const assets = ws.assetsOf(b.id);
-  const counts: Partial<Record<BrandTab, number>> = {
-    offers: live(ws.offersOf(b.id)).length,
-    assets: live(assets.filter((a) => ws.catOf(a) === "campaign")).length,
-    services: live(ws.servicesOf(b.id)).length,
-    ctas: ws.ctasOf(b.id).length,
-  };
-  const canEdit = ws.can("edit");
-  const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: "All segments", status: "Ideation" } });
-  const newAsset = () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 });
-
   return (
-    <div className="head-band -mt-8 mb-8 pt-7 sm:-mt-10 sm:pt-8">
+    <div className="head-band -mt-8 mb-7 pb-8 pt-9 text-center sm:-mt-10 sm:pt-10">
       {/* Full-bleed brand tint and colour strip, painted over the band's white. */}
-      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(100deg, ${hexA(b.primary, 0.1)} 0%, ${hexA(b.primary, 0.1)} 27%, ${hexA(b.secondary, 0.07)} 45%, rgba(255,255,255,0) 66%)` }} />
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(180deg, ${hexA(b.primary, 0.1)}, ${hexA(b.secondary, 0.04)} 70%, rgba(255,255,255,0))` }} />
       <span aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-[1] h-[3px] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(90deg, ${b.primary}, ${b.secondary})` }} />
-
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-        <div className="flex min-w-0 flex-1 basis-[320px] items-center gap-4">
-          <Mark mark={b.mark} color={b.primary} size={56} radius={14} className="text-[19px] shadow-[0_6px_16px_-8px_rgba(15,23,42,.45)]" />
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2.5">
-              <h1 className="m-0 truncate text-[26px] font-semibold leading-[1.2] tracking-[-0.02em]">{b.name}</h1>
-              {b.archived && <span className="flex-none rounded-md bg-chip px-2.5 py-1 text-[13px] font-semibold text-mute-2">Archived</span>}
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[14.5px] text-mute-2">
-              {client && (
-                <Link href={href.client(client.id)} className="inline-flex items-center gap-1.5 font-medium hover:text-ink hover:underline">
-                  <Building2 aria-hidden size={15} className="text-mute-4" />{client.name}
-                </Link>
-              )}
-              {parent && (
-                <>
-                  <span aria-hidden className="text-mute-4">/</span>
-                  <span>Sub-brand of <Link href={href.brand(parent.id)} className="font-medium hover:text-ink hover:underline">{parent.name}</Link></span>
-                </>
-              )}
-              {b.tagline && <><span aria-hidden className="text-mute-4">·</span><span className="min-w-0 truncate">{b.tagline}</span></>}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-none flex-wrap items-center gap-2">
-          <Link href={href.brand(b.id, "kit")} title={`${kit.done} of ${kit.total} Brand Kit sections filled in`} className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-semibold transition hover:brightness-95"
-            style={{ background: "#FFFFFF", borderColor: hexA(kitTone, 0.35), color: readable(kitTone, 0) }}>
-            <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: kitTone }} />Kit {kit.pct}%
-          </Link>
-          {owner && <span title={`Owner: ${owner.name}`} className="flex items-center"><Avatar initials={owner.initials} size={30} className="ring-2 ring-white" /><span className="sr-only">Owner: {owner.name}</span></span>}
-          {canEdit && tab !== "offers" && <Btn onClick={newOffer}><Plus aria-hidden size={16} />New offer</Btn>}
-          {canEdit && tab !== "assets" && <Btn variant="primary" onClick={newAsset}><Plus aria-hidden size={16} />Add asset</Btn>}
-        </div>
-      </div>
-
-      <IconTabs
-        label="Brand sections"
-        className="mt-6"
-        items={BRAND_TABS.map(([k, label]) => ({ key: k, label, icon: TAB_ICON[k], count: counts[k], href: href.brand(b.id, k), active: tab === k }))}
-      />
+      <Mark mark={b.mark} color={b.primary} size={64} radius={16} className="mx-auto mb-4 text-[21px] shadow-[0_8px_20px_-10px_rgba(15,23,42,.5)]" />
+      <h1 className="m-0 text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] sm:text-[32px]">Welcome to {b.name}</h1>
+      {b.tagline && <p className="mx-auto mb-0 mt-2 max-w-[56ch] text-[16px] text-mute-2 text-pretty">{b.tagline}</p>}
+      <p className="m-0 mt-2 flex flex-wrap items-center justify-center gap-x-2 text-[14px] text-mute-3">
+        {client && <Link href={href.client(client.id)} className="inline-flex items-center gap-1.5 hover:text-ink hover:underline"><Building2 aria-hidden size={14} />{client.name}</Link>}
+        {parent && <><span aria-hidden>·</span><span>Sub-brand of <Link href={href.brand(parent.id)} className="font-medium hover:text-ink hover:underline">{parent.name}</Link></span></>}
+        {b.archived && <><span aria-hidden>·</span><span className="font-semibold">Archived</span></>}
+      </p>
     </div>
   );
 }
@@ -142,12 +107,16 @@ function Home({ b }: { b: Brand }) {
   const subs = live(ws.subBrands(b.id));
   const canEdit = ws.can("edit");
 
+  // Everyone who can open this brand, the same rule the server uses.
+  const team = ws.d.users.filter((u) => u.allClients || u.clientIds.includes(b.clientId) || u.brandIds.includes(b.id) || (b.parentId && u.brandIds.includes(b.parentId))
+    || u.groupIds.some((g) => ws.group(g)?.clientIds.includes(b.clientId) || ws.group(g)?.brandIds.includes(b.id))).length;
   const stats = [
-    { label: "Offers", value: offers.length, tab: "offers" as BrandTab, icon: Megaphone },
-    { label: "Services", value: services.length, tab: "services" as BrandTab, icon: Layers },
-    { label: "Assets", value: camp.length, tab: "assets" as BrandTab, icon: FolderOpen },
-    { label: "CTAs", value: ctas.length, tab: "ctas" as BrandTab, icon: MousePointerClick },
-    { label: "Templates", value: templates.length, tab: "kit" as BrandTab, icon: LayoutTemplate },
+    { label: "Offers", value: offers.length, to: href.brand(b.id, "offers") },
+    { label: "Services", value: services.length, to: href.brand(b.id, "services") },
+    { label: "Assets", value: camp.length, to: href.brand(b.id, "assets") },
+    { label: "CTAs", value: ctas.length, to: `${href.brand(b.id, "kit")}#kit-ctas` },
+    { label: "Templates", value: templates.length, to: `${href.brand(b.id, "kit")}#kit-files` },
+    { label: "Team", value: team, to: null },
   ];
 
   const typeMap = new Map<string, typeof camp>();
@@ -166,17 +135,21 @@ function Home({ b }: { b: Brand }) {
 
   return (
     <div className="animate-fade">
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {stats.map((st) => (
-          <Link key={st.label} href={href.brand(b.id, st.tab)} className={cx("group flex items-center gap-3.5 rounded-xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,.04)]", LIFT, FOCUS)}>
-            <IconTile icon={st.icon} size={40} />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[26px] font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
-              <span className="mt-0.5 flex items-center gap-1 text-[13.5px] font-medium text-mute-3 group-hover:text-ink">{st.label}<ChevronRight aria-hidden size={14} className="opacity-0 transition group-hover:opacity-100" /></span>
-            </span>
-          </Link>
-        ))}
-      </div>
+      {/* One strip, as in the prototype: the numbers are the way in. */}
+      <Card className="mb-5 grid grid-cols-3 overflow-hidden sm:grid-cols-6">
+        {stats.map((st) => {
+          const body = (
+            <>
+              <span className="block text-[24px] font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
+              <span className="mt-1 block text-[13.5px] font-medium text-mute-3">{st.label}</span>
+            </>
+          );
+          const cls = "block border-b border-r border-divider px-4 py-4 text-center [&:nth-child(3n)]:border-r-0 sm:border-b-0 sm:[&:nth-child(3n)]:border-r sm:last:border-r-0";
+          return st.to
+            ? <Link key={st.label} href={st.to} className={cx(cls, "transition-colors hover:bg-wash", FOCUS)}>{body}</Link>
+            : <div key={st.label} className={cls} title="People who can open this brand">{body}</div>;
+        })}
+      </Card>
 
       <div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -259,11 +232,13 @@ function Home({ b }: { b: Brand }) {
 
         <div className="mt-11 flex flex-wrap items-center gap-2.5 border-t border-line pt-5">
           {ws.can("structure") && <Btn onClick={() => open({ kind: "brand", draft: b })}><Pencil aria-hidden size={16} />Edit brand identity</Btn>}
-          {ws.can("share") && <Btn onClick={() => open({ kind: "share", brandId: b.id })}><Share2 aria-hidden size={16} />Share with the client{ws.d.shareLinks.some((l) => l.brandId === b.id) ? ` · ${ws.d.shareLinks.filter((l) => l.brandId === b.id).length} live` : ""}</Btn>}
-          {ws.can("archive") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
+          {/* BrandOS is internal: the kit leaves as a PDF, not as a client login or link. */}
+          <a href={`/guidelines/${b.id}`} target="_blank" rel="noreferrer" className={cx("inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 hover:border-line-strong hover:bg-wash", FOCUS)}><Download aria-hidden size={16} />Export brand kit</a>
+          {/* Archiving or deleting a whole brand is for admins only. */}
+          {ws.can("del") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
           {ws.can("del") && <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "brand", id: b.id, label: b.name, back: href.client(b.clientId) })}><Trash2 aria-hidden size={16} />Delete brand</Btn>}
           <span className="flex-1" />
-          <span className="text-[14px] text-mute-3 md:max-w-[52ch]">Archiving hides a brand and everything in it. Nothing inside changes, and restoring brings it all back as it was.</span>
+          {ws.can("del") && <span className="text-[14px] text-mute-3 md:max-w-[52ch]">Archiving hides a brand and everything in it. Nothing inside changes, and restoring brings it all back as it was.</span>}
         </div>
       </div>
     </div>
@@ -400,15 +375,19 @@ function Offers({ b }: { b: Brand }) {
   const filtered = all.filter((o) => (seg === "All" || o.segment === seg) && (stat === "All" || o.status === stat) && (!t || `${o.name} ${o.short} ${o.positioning} ${o.tags.join(" ")}`.toLowerCase().includes(t)));
   const shown = live(filtered);
   const segsPresent = ["All", ...b.segments.map((s) => s.name).filter((n) => all.some((o) => o.segment === n))];
+  const statusesPresent = Object.keys(OFFER_STATUS).filter((st) => all.some((o) => o.status === st));
+  const liveAll = live(all);
   const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: seg !== "All" ? seg : "All segments", status: "Ideation" } });
   return (
     <>
       <SectionHead eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
         sub={<>Each offer holds one piece of positioning and everything that supports it. Assets can sit in several at once.</>}
       />
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter offers" aria-label="Filter offers" className="field mb-3 max-w-[280px] text-[15px]" />
-      <Pills className="mb-2.5" value={seg} onChange={setSeg} label="Segment" options={segsPresent.map((s) => ({ value: s, label: s, count: s === "All" ? live(all).length : live(all).filter((o) => o.segment === s).length }))} />
-      <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...Object.keys(OFFER_STATUS)].map((s) => ({ value: s, label: s }))} />
+      {/* Filters only earn their place when there is something to choose between. */}
+      {liveAll.length > 1 && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter offers" aria-label="Filter offers" className="field mb-3 max-w-[280px] text-[15px]" />}
+      {segsPresent.length > 2 && <Pills className="mb-2.5" value={seg} onChange={setSeg} label="Segment" options={segsPresent.map((s) => ({ value: s, label: s, count: s === "All" ? liveAll.length : liveAll.filter((o) => o.segment === s).length }))} />}
+      {statusesPresent.length > 1 && <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...statusesPresent].map((s) => ({ value: s, label: s }))} />}
+      {!(segsPresent.length > 2 || statusesPresent.length > 1) && <div className="mb-4" />}
       <div className="grid gap-4 md:grid-cols-2">{shown.map((o) => <OfferCard key={o.id} o={o} />)}</div>
       <ArchExpander items={archivedOnly(filtered)} noun="offer" onOpen={(o) => router.push(href.offer(o.id))} />
       {!shown.length && (
@@ -438,6 +417,7 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
     (!t || `${a.name} ${a.short} ${a.tags.join(" ")}`.toLowerCase().includes(t)));
   const shown = live(filtered);
   const types = ["All", ...Object.keys(ASSET_TYPES).filter((k) => camp.some((a) => a.type === k))];
+  const assetStatuses = Object.keys(ASSET_STATUS).filter((st) => camp.some((a) => a.status === st));
   const newAsset = () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 });
   const sel = useSelection();
   // In select mode archived ones join the grid, so they can be restored in bulk too.
@@ -461,9 +441,10 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
           </Warn>
         </button>
       )}
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name or tag" aria-label="Filter by name or tag" className="field mb-3 max-w-[280px] text-[15px]" />
-      <Pills className="mb-2" value={type} onChange={setType} label="Type" options={types.map((s) => ({ value: s, label: s }))} />
-      <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...Object.keys(ASSET_STATUS)].map((s) => ({ value: s, label: s }))} />
+      {liveCamp.length > 1 && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name or tag" aria-label="Filter by name or tag" className="field mb-3 max-w-[280px] text-[15px]" />}
+      {types.length > 2 && <Pills className="mb-2" value={type} onChange={setType} label="Type" options={types.map((s) => ({ value: s, label: s }))} />}
+      {assetStatuses.length > 1 && <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...assetStatuses].map((s) => ({ value: s, label: s }))} />}
+      {!(types.length > 2 || assetStatuses.length > 1) && <div className="mb-4" />}
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
         {grid.map((a) => <AssetCard key={a.id} a={a} selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} />)}
       </div>
@@ -548,8 +529,8 @@ function Ctas({ b }: { b: Brand }) {
   const newCta = () => open({ kind: "cta", draft: { brandId: b.id, bg: b.primary, fg: onColor(b.primary), style: "solid" } });
   return (
     <>
-      <SectionHead eyebrow="Buttons and calls to action" title="CTA Library" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>+ New CTA</Btn>}
-        sub={<>Written once, used everywhere. These render in their real colours so you can see what a reader sees.</>}
+      <SectionHead eyebrow="Buttons and calls to action" title="CTAs" actions={ws.can("edit") && <Btn onClick={newCta}>+ New CTA</Btn>}
+        sub={<>Written once, used everywhere, in their real colours. You can also create one straight from an offer&apos;s CTA list.</>}
       />
       <div className="grid gap-3.5 md:grid-cols-2">
         {ctas.map((c) => {

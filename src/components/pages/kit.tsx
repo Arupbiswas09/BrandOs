@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, type ReactNode } from "react";
-import { Check, CheckCircle2, Circle, Copy, Download, FileText, Pencil, Printer, Share2, X } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, Download, FileText, Pencil, Printer, X } from "lucide-react";
 import type { Brand, BrandColour } from "@/db/schema";
 import { cmykText, onColor, rgbText, wcag } from "@/lib/color";
 import { defaultScale, kitScore } from "@/lib/kit";
@@ -70,8 +70,7 @@ export function BrandKit({ b }: { b: Brand }) {
             </div>
             <div className="flex flex-wrap gap-2">
               {canEdit && <Btn variant="primary" onClick={() => open({ kind: "kit", brandId: b.id })}><Pencil className="h-4 w-4" />Edit kit</Btn>}
-              <a href={`/guidelines/${b.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 hover:bg-wash"><Printer className="h-4 w-4" />Guidelines PDF</a>
-              {ws.can("share") && <Btn onClick={() => open({ kind: "share", brandId: b.id })}><Share2 className="h-4 w-4" />Share</Btn>}
+              <a href={`/guidelines/${b.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 hover:bg-wash"><Printer className="h-4 w-4" />Export brand kit</a>
             </div>
           </div>
           {!!k.values?.length && (

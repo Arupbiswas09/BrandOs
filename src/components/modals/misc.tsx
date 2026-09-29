@@ -85,7 +85,7 @@ const KEYS: [string, string][] = [
   ["G then S", "Go to Dashboard"],
   ["G then L", "Go to the Global Library"],
   ["G then T", "Go to the Team"],
-  ["G then C", "Calendar"],
+  ["G then C", "Launches"],
   ["G then P", "Your settings"],
   ["Esc", "Close whatever is on top"],
   ["⌘ ↵", "Post a note"],

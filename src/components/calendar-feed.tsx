@@ -35,9 +35,9 @@ export function CalendarFeedCard({ className }: { className?: string }) {
     <Card className={cx("mb-8 p-6", className)}>
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-[240px] flex-1">
-          <div className="mb-1 text-[15px] font-semibold">Calendar feed</div>
+          <div className="mb-1 text-[15px] font-semibold">Launch calendar feed</div>
           <p className="m-0 text-[15px] text-mute-1">
-            See asset due dates and offer launches in Google Calendar, Apple Calendar or Outlook, with a reminder the day before.
+            See offer launch dates in Google Calendar, Apple Calendar or Outlook, with a reminder the day before.
             It shows only what you can see here, and updates on its own.
           </p>
           <p className="m-0 mt-2 text-[14px] text-mute-3" role="status">

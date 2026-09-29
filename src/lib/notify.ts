@@ -9,7 +9,6 @@ export const NOTIFY_EVENTS: { event: NotifyEvent; label: string; note: string }[
   { event: "changes", label: "Changes requested", note: "Your work is sent back with a note." },
   { event: "approved", label: "Approved", note: "Your work is approved." },
   { event: "mention", label: "Mentioned", note: "Someone @mentions you in a discussion." },
-  { event: "due", label: "Due soon or overdue", note: "Your work is due in the next two days, or is late. Checked each morning." },
 ];
 
 export const NOTIFY_MODES: { mode: NotifyMode; label: string }[] = [

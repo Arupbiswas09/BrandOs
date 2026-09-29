@@ -49,20 +49,7 @@ export async function feedFor(token: string): Promise<string | null> {
   const vis = makeVisibility(all, scopeFor(all, me.id));
   const brandName = (id: string | null) => (id ? all.brands.find((b) => b.id === id)?.name ?? "Brand" : "Global Library");
   const events: IcsEvent[] = [];
-  for (const a of all.assets) {
-    if (!a.dueAt || a.archived || !vis.asset(a.id)) continue;
-    const brand = brandName(a.brandId);
-    const url = itemUrl("asset", a.id);
-    events.push({
-      uid: `asset-${a.id}@brandos`,
-      date: toDateInput(a.dueAt),
-      summary: `[${brand}] ${a.name} — Due`,
-      description: `${a.type} · ${a.status}${a.review !== "None" ? ` · ${a.review}` : ""}\n${url}`,
-      url,
-      stamp: a.updatedAt,
-      alarm: a.status === "Live" ? undefined : `${a.name} is due tomorrow`,
-    });
-  }
+  // Launch dates only: asset deadlines belong to ClickUp or Asana.
   for (const o of all.offers) {
     if (!o.dueAt || o.archived || !vis.offer(o.id)) continue;
     const brand = brandName(o.brandId);

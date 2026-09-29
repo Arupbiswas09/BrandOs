@@ -13,8 +13,9 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, GoalChips } from "@/components/cards";
 import { CommentText, Thread } from "@/components/discussion";
 import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
-import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, DueBadge, Eyebrow, Page } from "@/components/ui";
-import { ActionRule, EmptyArt, EntityHeader, IconTile, MetaItem } from "@/components/polish";
+import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, Eyebrow, Page } from "@/components/ui";
+import { EmptyArt, EntityHeader, IconTile, MetaItem } from "@/components/polish";
+import { MoreMenu } from "@/components/more-menu";
 import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 
@@ -72,12 +73,8 @@ export function OfferPage({ id }: { id: string }) {
             }}><Split aria-hidden size={16} />Adapt for another segment</Btn>}
             {ws.can("archive") && <Btn onClick={() => run(setArchived, "offer", o.id, !o.archived)}>{o.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{o.archived ? "Restore" : "Archive"}</Btn>}
             {canEdit && <Btn variant="primary" onClick={() => open({ kind: "offer", draft: o })}><Pencil aria-hidden size={16} />Edit</Btn>}
-            {ws.can("del") && (
-              <>
-                {(canEdit || ws.can("archive")) && <ActionRule />}
-                <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "offer", id: o.id, label: o.name, back: href.brand(o.brandId, "offers") })}><Trash2 aria-hidden size={15} />Delete</Btn>
-              </>
-            )}
+            {/* Deleting is admin-only and kept out of the way of the everyday buttons. */}
+            <MoreMenu label="More offer actions" items={ws.can("del") ? [{ label: "Delete offer", icon: <Trash2 aria-hidden size={16} />, danger: true, onSelect: () => open({ kind: "confirm", item: "offer", id: o.id, label: o.name, back: href.brand(o.brandId, "offers") }) }] : []} />
           </>
         )}
       />
@@ -114,7 +111,6 @@ export function OfferPage({ id }: { id: string }) {
               ) : (
                 <span className="inline-flex items-center gap-1.5 text-[15px] text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? new Date(o.dueAt).toDateString() : "Not scheduled"}</span>
               )}
-              <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />
             </div>
           </div>
         </div>

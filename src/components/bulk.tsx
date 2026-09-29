@@ -71,7 +71,7 @@ export function useBulk(onDone: (keep: string[]) => void) {
   return [go, pending] as const;
 }
 
-type Panel = null | "status" | "due" | "tag";
+type Panel = null | "status" | "tag";
 
 /**
  * The bar that follows you down the page in select mode: how many are ticked,
@@ -83,7 +83,6 @@ export function BulkBar({ s, shown, library = false }: { s: Selection; shown: As
   const ids = picked.map((a) => a.id);
   const [go, pending] = useBulk((keep) => s.set(keep));
   const [panel, setPanel] = useState<Panel>(null);
-  const [date, setDate] = useState("");
   const [tag, setTag] = useState("");
   const p = bulkPerms(ws, library);
   const none = !ids.length || pending;
@@ -101,7 +100,6 @@ export function BulkBar({ s, shown, library = false }: { s: Selection; shown: As
         <span className="hidden flex-1 sm:block" />
         <div className="flex flex-wrap items-center gap-1.5">
           {p.edit && <Btn size="sm" disabled={none} aria-expanded={panel === "status"} onClick={() => flip("status")}>Status ▾</Btn>}
-          {p.edit && <Btn size="sm" disabled={none} aria-expanded={panel === "due"} onClick={() => flip("due")}>Due date</Btn>}
           {p.edit && <Btn size="sm" disabled={none} onClick={() => open({ kind: "bulkReview", ids, onDone: (keep) => s.set(keep) })}>Send for review</Btn>}
           {p.edit && <Btn size="sm" disabled={none} aria-expanded={panel === "tag"} onClick={() => flip("tag")}>Add tag</Btn>}
           {p.share && <Btn size="sm" disabled={none} onClick={() => run("clear")}>Cleared to send</Btn>}
@@ -125,13 +123,6 @@ export function BulkBar({ s, shown, library = false }: { s: Selection; shown: As
               ))}
               {!p.publish && <span className="text-[13.5px] text-mute-3">Marking Live needs a role that can publish.</span>}
             </>
-          )}
-          {panel === "due" && (
-            <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (date) void run("due", { date }); }}>
-              <input type="date" aria-label="Due date for the selected assets" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[14px]" />
-              <Btn size="sm" type="submit" variant="primary" disabled={pending || !date}>Set date</Btn>
-              <Btn size="sm" disabled={pending} onClick={() => run("due", { date: null })}>Clear dates</Btn>
-            </form>
           )}
           {panel === "tag" && (
             <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (tag.trim()) void run("tag", { tag: tag.trim() }).then(() => setTag("")); }}>

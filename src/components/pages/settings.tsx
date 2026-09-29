@@ -113,7 +113,7 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
       <NotificationsCard last={!ws.can("access")} />
       {ws.can("access") && <SlackCard />}
 
-      <H2 icon={<CalendarDays />}>Calendar</H2>
+      <H2 icon={<CalendarDays />}>Launch calendar feed</H2>
       <CalendarFeedCard />
 
       <H2 icon={<Smartphone />}>App</H2>

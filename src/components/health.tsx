@@ -22,7 +22,6 @@ function inspect(ws: ReturnType<typeof useApp>["ws"], b: Brand): Check[] {
   const offers = live(ws.offersOf(b.id)).filter((o) => o.status !== "Archived");
   const assets = live(ws.assetsOf(b.id)).filter((a) => ws.catOf(a) === "campaign");
   const now = ws.d.now;
-  const start = new Date(new Date(now).toDateString()).getTime();
   const asO = (o: { id: string; name: string }): Item => ({ id: o.id, name: o.name, kind: "offer" });
   const asA = (a: { id: string; name: string }): Item => ({ id: a.id, name: a.name, kind: "asset" });
 
@@ -40,10 +39,6 @@ function inspect(ws: ReturnType<typeof useApp>["ws"], b: Brand): Check[] {
     { key: "goal", ok: "Every offer chases a goal", bad: (n) => `${n} offer${n === 1 ? " chases" : "s chase"} no goal`, items: offers.filter((o) => !o.goals.length).map(asO) },
     { key: "linked", ok: "Every campaign asset supports an offer", bad: (n) => `${n} asset${n === 1 ? " is" : "s are"} not linked to any offer`, items: assets.filter((a) => !ws.linkedOfferIds(a.id).length).map(asA) },
     { key: "coverage", ok: "Every service is written for every segment", bad: (n) => `${n} service and segment combination${n === 1 ? " is" : "s are"} unwritten`, items: gaps },
-    { key: "overdue", ok: "Nothing is overdue", bad: (n) => `${n} item${n === 1 ? " is" : "s are"} overdue`, items: [
-      ...offers.filter((o) => o.dueAt && o.status !== "Active" && +new Date(o.dueAt) < start).map(asO),
-      ...assets.filter((a) => a.dueAt && a.status !== "Live" && +new Date(a.dueAt) < start).map(asA),
-    ] },
     { key: "stuck", ok: "No review has waited more than five days", bad: (n) => `${n} review${n === 1 ? " has" : "s have"} waited more than five days`, items: [
       ...offers.filter((o) => o.review === "In review" && now - +new Date(o.updatedAt) > 5 * DAY).map(asO),
       ...assets.filter((a) => a.review === "In review" && now - +new Date(a.updatedAt) > 5 * DAY).map(asA),

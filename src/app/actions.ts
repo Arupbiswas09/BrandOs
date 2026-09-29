@@ -870,6 +870,8 @@ type Kind = "client" | "brand" | "service" | "offer" | "asset" | "cta" | "person
 export async function setArchived(kind: "client" | "brand" | "service" | "offer" | "asset", id: string, on: boolean) {
   return run(async () => {
     const { me, vis, db, all } = await context("archive");
+    // Putting away a whole client or brand is as serious as deleting it: admins only.
+    if (kind === "client" || kind === "brand") need(can(me, "del"), "Only admins can archive a whole client or brand.");
     const table = { client: s.clients, brand: s.brands, service: s.services, offer: s.offers, asset: s.assets }[kind];
     const seen = { client: vis.client, brand: vis.brand, service: vis.service, offer: vis.offer, asset: vis.asset }[kind];
     need(seen(id));
@@ -1191,6 +1193,7 @@ export async function removeFile(assetId: string, fileName: string) {
 export async function createShareLink(brandId: string, label: string) {
   return run(async () => {
     const { me, vis, db, all } = await context("share");
+    need(process.env.BRANDOS_CLIENT_LINKS === "on", "Client links are switched off: BrandOS is internal only. Use Export brand kit instead.");
     need(vis.brand(brandId));
     const { randomBytes } = await import("node:crypto");
     const token = randomBytes(18).toString("base64url");

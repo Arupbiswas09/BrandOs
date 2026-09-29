@@ -2,36 +2,39 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlarmClock, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Rss, TriangleAlert } from "lucide-react";
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, History, Rocket, Rss } from "lucide-react";
 import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
+import { plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
-import { Btn, Card, DueBadge, H2, Page, PageHead, Pills, cx } from "@/components/ui";
+import { Btn, Card, H2, Page, PageHead, Pills, cx } from "@/components/ui";
 import { CalendarFeedCard } from "@/components/calendar-feed";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const DAY = 86_400_000;
 const key = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 
+/*
+ * Launches: when offers go live, across every brand you can see. This is
+ * deliberately not a task calendar — ClickUp and Asana own deadlines — so
+ * nothing here is "overdue". A launch date is a marketing fact.
+ */
 export function Calendar() {
-  const { ws, openAsset } = useApp();
+  const { ws } = useApp();
   const router = useRouter();
   const today = new Date(ws.d.now);
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const [brand, setBrand] = useState("all");
   const [selected, setSelected] = useState<string | null>(null);
 
-  const items = useMemo(() => ws.dated().filter((x) => {
-    if (brand === "all") return true;
-    const b = x.kind === "asset" ? ws.asset(x.id)?.brandId : ws.offer(x.id)?.brandId;
-    return b === brand;
-  }), [ws, brand]);
+  const all = useMemo(() => ws.launches(), [ws]);
+  const items = useMemo(() => all.filter((x) => brand === "all" || ws.offer(x.id)?.brandId === brand), [all, ws, brand]);
   const byDay = useMemo(() => {
     const m = new Map<string, typeof items>();
-    items.forEach((x) => m.set(key(x.dueAt), [...(m.get(key(x.dueAt)) ?? []), x]));
+    items.forEach((x) => m.set(key(x.at), [...(m.get(key(x.at)) ?? []), x]));
     return m;
   }, [items]);
-
-  const open = (x: (typeof items)[number]) => (x.kind === "asset" ? openAsset(x.id) : router.push(href.offer(x.id)));
 
   // Weeks start on Monday.
   const first = new Date(month);
@@ -40,44 +43,54 @@ export function Calendar() {
   const cells = Array.from({ length: 42 }, (_, i) => new Date(start.getFullYear(), start.getMonth(), start.getDate() + i));
   const weeks = cells.slice(35).every((d) => d.getMonth() !== month.getMonth()) ? cells.slice(0, 35) : cells;
 
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const overdue = items.filter((x) => !x.done && x.dueAt < startOfToday);
-  const soon = items.filter((x) => !x.done && x.dueAt >= startOfToday && +x.dueAt - +startOfToday < 14 * 86400000);
+  const upcoming = items.filter((x) => x.at >= startOfToday && +x.at - +startOfToday < 30 * DAY);
+  const recent = items.filter((x) => x.at < startOfToday && +startOfToday - +x.at <= 30 * DAY).reverse();
   const dayItems = selected ? byDay.get(selected) ?? [] : null;
 
-  const brandOptions = [{ value: "all", label: "Every brand" }, ...ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name }))];
+  // Only brands that actually have a launch date are worth filtering by.
+  const brandIds = [...new Set(all.map((x) => ws.offer(x.id)?.brandId).filter(Boolean))] as string[];
+  const brandOptions = [{ value: "all", label: "Every brand" }, ...brandIds.map((id) => ({ value: id, label: ws.brand(id)?.name ?? "" }))];
+
+  const when = (at: Date) => {
+    const days = Math.round((+new Date(at.getFullYear(), at.getMonth(), at.getDate()) - +startOfToday) / DAY);
+    const date = at.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    if (days === 0) return "Launches today";
+    if (days === 1) return "Launches tomorrow";
+    if (days > 1) return days <= 14 ? `Launches in ${plural(days, "day")}` : `Launches ${date}`;
+    return `Launched ${date}`;
+  };
 
   const Row = ({ x }: { x: (typeof items)[number] }) => (
-    <button type="button" onClick={() => open(x)} className="focus-inset flex w-full items-center gap-3 border-t border-divider px-5 py-3 text-left transition-colors first:border-t-0 hover:bg-wash">
+    <button type="button" onClick={() => router.push(href.offer(x.id))} className="focus-inset flex w-full items-center gap-3 border-t border-divider px-5 py-3 text-left transition-colors first:border-t-0 hover:bg-wash">
       <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: x.color }} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-medium">{x.name}</span>
         <span className="block truncate text-[13.5px] text-mute-2">{x.sub}</span>
       </span>
-      <DueBadge at={x.dueAt} now={ws.d.now} done={x.done} />
+      <span className="flex-none text-[13.5px] font-medium text-mute-1" suppressHydrationWarning>{when(x.at)}</span>
     </button>
   );
 
   return (
     <Page>
-      <PageHead eyebrow="What is due" title="Calendar"
-        sub={<>Asset deadlines and offer launches across every brand you can see. Set a date from any asset or offer.</>}
+      <PageHead eyebrow="When offers go live" title="Launches"
+        sub={<>Offer launch dates across every brand you can see. Set one under More detail on any offer. Tasks and deadlines stay in ClickUp.</>}
       />
-      <Pills className="mb-5" tone="dark" value={brand} onChange={(v) => { setBrand(v); setSelected(null); }} options={brandOptions} label="Brand" />
+      {brandOptions.length > 2 && <Pills className="mb-5" tone="dark" value={brand} onChange={(v) => { setBrand(v); setSelected(null); }} options={brandOptions} label="Brand" />}
 
       <div className="mb-7 grid gap-5 md:grid-cols-2">
         <div>
-          <H2 icon={<TriangleAlert />}>Overdue <Count n={overdue.length} bad={overdue.length > 0} /></H2>
+          <H2 icon={<Rocket />}>Next 30 days <Count n={upcoming.length} /></H2>
           <Card className="max-h-[320px] overflow-y-auto">
-            {overdue.map((x) => <Row key={x.kind + x.id} x={x} />)}
-            {!overdue.length && <Quiet>Nothing is late.</Quiet>}
+            {upcoming.map((x) => <Row key={x.id} x={x} />)}
+            {!upcoming.length && <Quiet>No launches in the next month.</Quiet>}
           </Card>
         </div>
         <div>
-          <H2 icon={<AlarmClock />}>Next two weeks <Count n={soon.length} /></H2>
+          <H2 icon={<History />}>Launched recently <Count n={recent.length} /></H2>
           <Card className="max-h-[320px] overflow-y-auto">
-            {soon.map((x) => <Row key={x.kind + x.id} x={x} />)}
-            {!soon.length && <Quiet>Nothing due soon.</Quiet>}
+            {recent.map((x) => <Row key={x.id} x={x} />)}
+            {!recent.length && <Quiet>Nothing launched in the last month.</Quiet>}
           </Card>
         </div>
       </div>
@@ -99,17 +112,17 @@ export function Calendar() {
             const inMonth = d.getMonth() === month.getMonth();
             const isToday = k === key(today);
             return (
-              <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-label={`${d.toDateString()}, ${list.length} due`}
+              <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-label={`${d.toDateString()}, ${plural(list.length, "launch", "launches")}`}
                 className={cx("focus-inset flex min-h-[60px] flex-col items-stretch gap-1 border-b border-r border-divider p-1.5 text-left transition-colors hover:bg-wash sm:min-h-[96px]", !inMonth && "bg-wash-2", selected === k && "bg-soft outline-2 -outline-offset-2 outline-accent")}>
                 <span className={cx("self-start rounded-full px-1.5 text-[13px]", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-5")}>{d.getDate()}</span>
                 <span className="hidden flex-col gap-1 sm:flex">
                   {list.slice(0, 3).map((x) => (
-                    <span key={x.kind + x.id} className="truncate rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ background: hexA(x.color, 0.12), color: readable(x.color, 0.3), textDecoration: x.done ? "line-through" : undefined }}>{x.name}</span>
+                    <span key={x.id} className="truncate rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ background: hexA(x.color, 0.12), color: readable(x.color, 0.3) }}>{x.name}</span>
                   ))}
                   {list.length > 3 && <span className="px-1 text-[12px] text-mute-3">+{list.length - 3} more</span>}
                 </span>
                 {list.length > 0 && (
-                  <span className="flex gap-0.5 sm:hidden">{list.slice(0, 4).map((x) => <span key={x.kind + x.id} className="h-1.5 w-1.5 rounded-full" style={{ background: x.color }} />)}</span>
+                  <span className="flex gap-0.5 sm:hidden">{list.slice(0, 4).map((x) => <span key={x.id} className="h-1.5 w-1.5 rounded-full" style={{ background: x.color }} />)}</span>
                 )}
               </button>
             );
@@ -120,8 +133,8 @@ export function Calendar() {
         <div className="mt-5">
           <H2 icon={<CalendarDays />}>{new Date(weeks.find((d) => key(d) === selected)!).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</H2>
           <Card className="overflow-hidden">
-            {dayItems.map((x) => <Row key={x.kind + x.id} x={x} />)}
-            {!dayItems.length && <Quiet>Nothing due that day.</Quiet>}
+            {dayItems.map((x) => <Row key={x.id} x={x} />)}
+            {!dayItems.length && <Quiet>No launches that day.</Quiet>}
           </Card>
         </div>
       )}
@@ -131,14 +144,10 @@ export function Calendar() {
   );
 }
 
-function Count({ n, bad }: { n: number; bad?: boolean }) {
-  return <span className={cx("rounded-full px-2 py-px text-[12.5px] font-semibold", bad ? "bg-[#FEE4E2] text-[#B42318]" : "bg-chip text-mute-2")}>{n}</span>;
+function Count({ n }: { n: number }) {
+  return <span className="rounded-full bg-chip px-2 py-px text-[12.5px] font-semibold text-mute-2">{n}</span>;
 }
 
 function Quiet({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center justify-center gap-2 px-5 py-6 text-center text-[14.5px] text-mute-3"><CheckDot />{children}</div>;
-}
-
-function CheckDot() {
-  return <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />;
+  return <div className="px-5 py-6 text-center text-[14.5px] text-mute-3">{children}</div>;
 }

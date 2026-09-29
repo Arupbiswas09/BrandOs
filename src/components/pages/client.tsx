@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Building2, CalendarDays, ChevronRight, FolderOpen, GitBranch, Megaphone, Palette, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Building2, ChevronRight, FolderOpen, GitBranch, Megaphone, Pencil, Trash2 } from "lucide-react";
 import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { ArchExpander, ArchivedNote, Avatar, Btn, Card, H2, Mark, Page, cx } from "@/components/ui";
-import { ActionRule, EmptyArt, EntityHeader, FOCUS, IconTile, LIFT, MetaItem } from "@/components/polish";
+import { EmptyArt, EntityHeader, FOCUS, IconTile, LIFT, MetaItem } from "@/components/polish";
+import { MoreMenu } from "@/components/more-menu";
+import { ActivityRow } from "@/components/activity-row";
 import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 
@@ -36,11 +38,17 @@ export function ClientPage({ id }: { id: string }) {
   }).slice(0, 6);
 
   const stats = [
-    { label: "Brands", value: live(bs).length, icon: Palette },
-    { label: "Offers", value: live(os).length, icon: Megaphone },
-    { label: "Assets", value: live(as).length, icon: FolderOpen },
+    { label: "Brands", value: String(live(bs).length) },
+    { label: "Offers", value: String(live(os).length) },
+    { label: "Assets", value: String(live(as).length) },
+    { label: "Client since", value: c.since || "—" },
   ];
-  const contact = ws.user(c.contactId);
+  const contact = c.contactId ? ws.user(c.contactId) : null;
+  // Archiving or deleting a whole client is for admins only, and sits out of the way.
+  const more = ws.can("del") ? [
+    { label: c.archived ? "Restore client" : "Archive client", icon: c.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />, onSelect: () => void run(setArchived, "client", c.id, !c.archived) },
+    { label: "Delete client", icon: <Trash2 aria-hidden size={16} />, danger: true, onSelect: () => open({ kind: "confirm", item: "client", id: c.id, label: c.name, back: "/" }) },
+  ] : [];
 
   return (
     <Page>
@@ -49,41 +57,39 @@ export function ClientPage({ id }: { id: string }) {
         lead={<IconTile icon={Building2} size={48} className="rounded-[13px]" />}
         title={c.name}
         sub={c.kind}
-        meta={
+        meta={c.archived ? <span className="rounded-md bg-chip px-2 py-[2px] text-[13px] font-semibold text-mute-2">Archived</span> : undefined}
+        actions={(ws.can("structure") || more.length > 0) && (
           <>
-            {c.archived && <span className="rounded-md bg-chip px-2 py-[2px] text-[13px] font-semibold text-mute-2">Archived</span>}
-            <MetaItem icon={CalendarDays}>Client since {c.since}</MetaItem>
-            <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
-            <MetaItem><Avatar initials={contact.initials} size={20} />{contact.name}<span className="text-mute-3">· primary contact</span></MetaItem>
-          </>
-        }
-        actions={(ws.can("structure") || ws.can("archive") || ws.can("del")) && (
-          <>
-            {ws.can("archive") && <Btn onClick={() => run(setArchived, "client", c.id, !c.archived)}>{c.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{c.archived ? "Restore client" : "Archive client"}</Btn>}
             {ws.can("structure") && <Btn variant="primary" onClick={() => open({ kind: "client", draft: c })}><Pencil aria-hidden size={16} />Edit</Btn>}
-            {ws.can("del") && (
-              <>
-                {(ws.can("structure") || ws.can("archive")) && <ActionRule />}
-                <Btn variant="danger" onClick={() => open({ kind: "confirm", item: "client", id: c.id, label: c.name, back: "/" })}><Trash2 aria-hidden size={16} />Delete</Btn>
-              </>
-            )}
+            <MoreMenu items={more} label="More client actions" />
           </>
         )}
       />
       {c.archived && <ArchivedNote className="mb-5">Archived. Hidden from the street and from search unless you go looking.</ArchivedNote>}
       {c.note && <p className="m-0 mb-7 max-w-[64ch] text-[15px] leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {/* One strip, as in the prototype, ending with who looks after this client. */}
+      <Card className="flex flex-wrap items-stretch overflow-hidden">
         {stats.map((st) => (
-          <Card key={st.label} className="flex items-center gap-3.5 p-4">
-            <IconTile icon={st.icon} size={40} />
-            <span className="min-w-0">
-              <span className="block text-[26px] font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
-              <span className="mt-0.5 block text-[13.5px] font-medium text-mute-3">{st.label}</span>
-            </span>
-          </Card>
+          <div key={st.label} className="min-w-[110px] flex-1 border-b border-r border-divider px-5 py-4 sm:border-b-0">
+            <span className="block text-[24px] font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
+            <span className="mt-1 block text-[13.5px] font-medium text-mute-3">{st.label}</span>
+          </div>
         ))}
-      </div>
+        <div className="flex min-w-[200px] flex-[1.4] items-center gap-3 px-5 py-4">
+          {contact ? (
+            <>
+              <Avatar initials={contact.initials} size={36} />
+              <span className="min-w-0">
+                <span className="block truncate text-[16px] font-semibold text-ink">{contact.name}</span>
+                <span className="block text-[13.5px] font-medium text-mute-3">Primary contact</span>
+              </span>
+            </>
+          ) : (
+            <span className="text-[14px] text-mute-3">No primary contact yet{ws.can("structure") ? " — set one with Edit." : "."}</span>
+          )}
+        </div>
+      </Card>
 
       <div className="mt-10">
         <H2 right={ws.can("structure") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add brand</button>}>Brands</H2>
@@ -148,12 +154,7 @@ export function ClientPage({ id }: { id: string }) {
           <H2>Activity</H2>
           <Card className="px-[18px] py-1">
             {acts.map((a) => (
-              <button key={a.id} type="button" onClick={() => (a.type === "asset" ? openAsset(a.itemId) : a.type === "offer" ? router.push(href.offer(a.itemId)) : a.type === "brand" ? router.push(href.brand(a.itemId)) : undefined)}
-                className="-mx-2 flex w-[calc(100%+16px)] items-center gap-2.5 rounded-[8px] border-t border-divider px-2 py-2.5 text-left first:border-t-0 hover:bg-wash">
-                <Avatar initials={ws.user(a.userId).initials} size={20} />
-                <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-3">{ws.first(a.userId)} {a.action} {a.label}{a.field ? ` — ${a.field}` : ""}</span>
-                <span className="flex-none text-[13.5px] text-[#526077]">{ws.ago(a.createdAt)}</span>
-              </button>
+              <ActivityRow key={a.id} a={a} onOpen={a.type === "asset" ? () => openAsset(a.itemId) : a.type === "offer" ? () => router.push(href.offer(a.itemId)) : a.type === "brand" ? () => router.push(href.brand(a.itemId)) : undefined} />
             ))}
             {!acts.length && <div className="flex flex-col items-center py-5 text-center"><SpotArt kind="inbox" className="mb-2" /><span className="text-[15px] text-mute-3">Quiet so far.</span></div>}
           </Card>

@@ -159,12 +159,10 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
   const [run] = useAction();
   const [, setNavMode] = useNavMode();
   const [tipNode, tip, hideTip] = useMiniTip(mini);
-  const overdueCount = useMemo(() => {
-    const t = new Date(ws.d.now); const start = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-    return ws.dated().filter((x) => !x.done && x.dueAt < start).length;
-  }, [ws]);
 
   const activeBrandId = p.view === "brand" ? p.id : p.view === "offer" ? ws.offer(p.id)?.brandId : p.view === "service" ? ws.service(p.id)?.brandId : undefined;
+  // Which section of the brand you are in; offers and services belong to their lists.
+  const activeSection = p.view === "brand" ? (p.tab === "ctas" ? "kit" : p.tab ?? "home") : p.view === "offer" ? "offers" : p.view === "service" ? "services" : undefined;
   const brands = live(ws.d.brands);
   const clients = live(ws.d.clients).map((c) => ({ c, tops: brands.filter((b) => b.clientId === c.id && !b.parentId) }));
   const ic = "h-[18px] w-[18px] flex-none";
@@ -178,13 +176,27 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
       {b.mark}<span className="sr-only"> {b.name}</span>
     </Link>
   ) : (
-    <Link key={b.id} href={href.brand(b.id)} className={cx(itemCls(activeBrandId === b.id), "py-1.5")} style={{ paddingLeft: 12 + depth * 14 }} aria-current={activeBrandId === b.id ? "page" : undefined}>
-      <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: b.primary }} />
-      <span className="min-w-0 flex-1 truncate">{b.name}</span>
-    </Link>
+    <div key={b.id}>
+      {/* When the brand is open its sections below carry the highlight; the brand itself just goes bold. */}
+      <Link href={href.brand(b.id)} className={cx(itemCls(false), "py-1.5", activeBrandId === b.id && "font-semibold text-ink")} style={{ paddingLeft: 12 + depth * 14 }}>
+        <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: b.primary }} />
+        <span className="min-w-0 flex-1 truncate">{b.name}</span>
+      </Link>
+      {/* The brand you are in shows its sections underneath, as in the prototype. */}
+      {activeBrandId === b.id && (
+        <div className="my-0.5 flex flex-col gap-px" role="group" aria-label={`${b.name} sections`}>
+          {BRAND_TABS.map(([k, label]) => (
+            <Link key={k} href={href.brand(b.id, k)} aria-current={activeSection === k ? "page" : undefined}
+              className={cx("block rounded-md py-[5px] pr-3 text-[14px] transition-colors", activeSection === k ? "bg-hl font-semibold text-hl-ink" : "text-mute-2 hover:bg-hover hover:text-ink")}
+              style={{ paddingLeft: 32 + depth * 14 }}>
+              {label}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
   );
 
-  const overdue = overdueCount > 0 && <span className="rounded-full bg-[#FEE4E2] px-1.5 text-[11.5px] font-semibold leading-[18px] text-[#B42318]" title={`${overdueCount} overdue`}>{overdueCount}</span>;
 
   return (
     <aside className={cx("safe-top flex h-full flex-col border-r border-line bg-white transition-[width] duration-200", mini ? "w-[72px]" : "w-[264px]")}>
@@ -207,9 +219,10 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
       <nav data-scroll onScroll={hideTip} className={cx("flex-1 overflow-y-auto py-3", mini ? "px-3" : "px-2")} aria-label="Main">
         <div className="flex flex-col gap-0.5">
           <NavItem mini={mini} tip={tip} href="/" icon={<LayoutDashboard className={ic} />} label="Dashboard" active={p.view === "street"} />
-          <NavItem mini={mini} tip={tip} href="/calendar" icon={<CalendarDays className={ic} />} label="Calendar" active={p.view === "calendar"} badge={overdue || undefined} />
+          {/* Launch dates only: ClickUp and Asana own tasks and deadlines. */}
+          <NavItem mini={mini} tip={tip} href="/calendar" icon={<CalendarDays className={ic} />} label="Launches" active={p.view === "calendar"} />
           {!ws.isGuest && <NavItem mini={mini} tip={tip} href="/library" icon={<BookOpen className={ic} />} label="Global Library" active={p.view === "library"} />}
-          {!ws.isGuest && <NavItem mini={mini} tip={tip} href="/team" icon={<Users className={ic} />} label="Team and access" active={p.view === "team"} badge={mini ? undefined : <span className="text-[12.5px] text-mute-4">{ws.d.users.length}</span>} />}
+          {ws.can("access") && <NavItem mini={mini} tip={tip} href="/team" icon={<Users className={ic} />} label="Team and access" active={p.view === "team"} badge={mini ? undefined : <span className="text-[12.5px] text-mute-4">{ws.d.users.length}</span>} />}
         </div>
 
         {mini ? <div aria-hidden className="mx-2 my-3 border-t border-line" /> : <div className="eyebrow mb-1 mt-5 px-3">Clients</div>}
@@ -275,7 +288,7 @@ function MobileNav() {
           <span className={pill(p.view === "street")}><LayoutDashboard className={ic} /></span>Dashboard
         </Link>
         <Link href="/calendar" className={item(p.view === "calendar")} aria-current={p.view === "calendar" ? "page" : undefined}>
-          <span className={pill(p.view === "calendar")}><CalendarDays className={ic} /></span>Calendar
+          <span className={pill(p.view === "calendar")}><CalendarDays className={ic} /></span>Launches
         </Link>
         <button type="button" onClick={() => setCmdk(true)} aria-haspopup="dialog" className={item(cmdk)}>
           <span className={pill(cmdk)}><Search className={ic} /></span>Search
@@ -452,7 +465,7 @@ function useCrumbs() {
       case "library": out.push(street, { label: "Global Library" }); break;
       case "team": out.push(street, { label: "Team and access" }); break;
       case "settings": out.push(street, { label: "Settings" }); break;
-      case "calendar": out.push(street, { label: "Calendar" }); break;
+      case "calendar": out.push(street, { label: "Launches" }); break;
       case "trash": out.push(street, { label: "Recycle bin" }); break;
       case "audit": out.push(street, { label: "Audit log" }); break;
       case "client": out.push(street, { label: ws.client(p.id)?.name ?? "Client" }); break;

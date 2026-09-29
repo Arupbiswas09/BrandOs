@@ -1,5 +1,11 @@
 export type BrandTab = "home" | "services" | "offers" | "assets" | "kit" | "strategy" | "ctas";
 
+/**
+ * The sections of a brand, listed under it in the sidebar. CTAs have no
+ * section of their own any more: they live in the Brand Kit and can be
+ * created straight from the offer form. "ctas" stays a valid tab so old
+ * links land on the Brand Kit.
+ */
 export const BRAND_TABS: [BrandTab, string][] = [
   ["home", "Home"],
   ["services", "Services"],
@@ -7,7 +13,6 @@ export const BRAND_TABS: [BrandTab, string][] = [
   ["assets", "Assets"],
   ["kit", "Brand Kit"],
   ["strategy", "Strategy"],
-  ["ctas", "CTAs"],
 ];
 
 export const href = {

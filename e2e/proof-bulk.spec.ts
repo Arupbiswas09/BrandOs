@@ -91,9 +91,9 @@ test("a contributor's bulk change skips work they do not own", async ({ page }) 
   await expect(bar.getByRole("button", { name: "Delete" })).toHaveCount(0);
   await expect(bar.getByRole("button", { name: "Archive" })).toHaveCount(0);
   await page.getByRole("checkbox").first().click();
-  await bar.getByRole("button", { name: "Due date" }).click();
-  await bar.getByLabel("Due date for the selected assets").fill("2026-12-01");
-  await bar.getByRole("button", { name: "Set date" }).click();
+  await bar.getByRole("button", { name: "Add tag" }).first().click();
+  await bar.getByLabel("Tag to add to the selected assets").fill("q4");
+  await bar.getByRole("button", { name: "Add tag" }).last().click();
   await expect(page.getByText(/skipped \(not yours\)/)).toBeVisible();
 });
 

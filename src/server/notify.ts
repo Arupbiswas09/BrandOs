@@ -5,9 +5,8 @@ import { getDb, schema as s } from "@/db";
 import type { NotifyEvent, QueuedNotification, User } from "@/db/schema";
 import { prefOf } from "@/lib/notify";
 import { dueLabel } from "@/lib/time";
-import { waitOn } from "@/lib/types";
 import { appUrl, mailEnabled, sendMail, type Mail, type MailItem, type MailSection } from "@/server/mail";
-import { makeVisibility, readAll, scopeFor, type All } from "@/server/data";
+import { readAll, type All } from "@/server/data";
 
 /*
  * Who gets emailed about what, and when.
@@ -76,22 +75,13 @@ const QUEUE_TITLES: Record<NotifyEvent, string> = {
 
 type DueItem = { kind: "asset" | "offer"; id: string; name: string; brand: string; dueAt: Date };
 
-/** Work this person owns or has to act on, due in the next two days or already late. */
-export function dueFor(all: All, u: User, now: Date): DueItem[] {
-  const vis = makeVisibility(all, scopeFor(all, u.id));
-  const horizon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 3);
-  const brandName = (id: string | null) => (id ? all.brands.find((b) => b.id === id)?.name ?? "" : "Global Library");
-  const mine = (x: { ownerId: string | null; review: s.Review; reviewerId: string | null }) => x.ownerId === u.id || waitOn(x)?.who === u.id;
-  const out: DueItem[] = [];
-  for (const a of all.assets) {
-    if (!a.dueAt || a.archived || a.status === "Live" || a.dueAt >= horizon || !mine(a) || !vis.asset(a.id)) continue;
-    out.push({ kind: "asset", id: a.id, name: a.name, brand: brandName(a.brandId), dueAt: a.dueAt });
-  }
-  for (const o of all.offers) {
-    if (!o.dueAt || o.archived || o.status === "Active" || o.dueAt >= horizon || !mine(o) || !vis.offer(o.id)) continue;
-    out.push({ kind: "offer", id: o.id, name: o.name, brand: brandName(o.brandId), dueAt: o.dueAt });
-  }
-  return out.sort((x, y) => +x.dueAt - +y.dueAt);
+/**
+ * Deadline reminders are switched off: ClickUp and Asana own time, and a
+ * second place nagging about due dates is exactly what the team ruled out.
+ * The digest carries queued reviews, changes, approvals and mentions only.
+ */
+export function dueFor(_all: All, _u: User, _now: Date): DueItem[] {
+  return [];
 }
 
 function dueSections(items: DueItem[], now: Date): MailSection[] {
