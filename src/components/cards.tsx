@@ -7,8 +7,8 @@ import { href } from "@/lib/routes";
 import type { WS } from "@/lib/ws";
 import { plural } from "@/lib/ws";
 import { useApp } from "./app/provider";
-import { Link2, MessageSquare, Unlink } from "lucide-react";
-import { Avatar, Blocks, Chip, CodeTile, DueBadge, Tick, cx } from "./ui";
+import { CalendarDays, Download, Link2, MessageSquare, Pencil, Unlink } from "lucide-react";
+import { Avatar, Blocks, Chip, CodeTile, Tick, cx } from "./ui";
 import { FOCUS, LIFT } from "./polish";
 
 /** One square per asset, coloured by where it stands in review. Live assets get a ring. */
@@ -41,62 +41,111 @@ function linkLabel(n: number) {
 
 type AssetVariant = "full" | "recent" | "library" | "kit" | "font";
 
-/** `selecting` turns the card into a checkbox for bulk changes instead of opening the asset. */
+/** Where a download of the whole asset points: the file itself when there is one, a zip of them all when there are several. */
+export function assetDownload(a: Asset): { href: string; title: string } | null {
+  const stored = (a.files ?? []).filter((f) => f.key);
+  if (!stored.length) return null;
+  if (stored.length === 1) return { href: stored[0].url ?? `/api/files/${stored[0].key}`, title: `Download ${stored[0].name}` };
+  return { href: `/api/assets/${a.id}/download`, title: `Download all ${stored.length} files as a zip` };
+}
+
+const CARD_ACTION = cx(
+  "flex h-8 w-8 items-center justify-center rounded-[8px] border border-line bg-white/95 text-ink-3 shadow-[0_1px_3px_rgba(16,22,20,.14)] transition-colors hover:border-accent hover:text-accent",
+  FOCUS,
+);
+
+/**
+ * `selecting` turns the card into a checkbox for bulk changes instead of opening the asset.
+ * The card body is one button; download and edit sit beside it (never inside it), so each
+ * is its own keyboard stop and the card keeps the accessible name it always had.
+ */
 export function AssetCard({ a, variant = "full", selecting, selected, onToggle }: { a: Asset; variant?: AssetVariant; selecting?: boolean; selected?: boolean; onToggle?: () => void }) {
-  const { ws, openAsset } = useApp();
+  const { ws, openAsset, open: openModal } = useApp();
   const color = ws.colorOf(a);
   const n = ws.linkedOfferIds(a.id).length;
   const open = ws.openCount("asset", a.id);
   const tileH = variant === "recent" ? 78 : variant === "kit" || variant === "font" ? 88 : 84;
+  const download = assetDownload(a);
+  const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
+  const edit = () => openModal({ kind: "asset", draft: { ...a, offerIds: ws.linkedOfferIds(a.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 });
   return (
-    <button
-      type="button"
-      onClick={() => (selecting ? onToggle?.() : openAsset(a.id))}
-      {...(selecting && { role: "checkbox", "aria-checked": !!selected })}
+    <div
       className={cx(
-        "group relative flex flex-col overflow-hidden rounded-[13px] border border-line bg-white p-0 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]",
+        "group relative flex flex-col rounded-[13px] border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)]",
         variant === "kit" || variant === "font" ? "transition hover:border-line-strong" : LIFT,
-        FOCUS,
         a.archived && !selected && "opacity-55",
         selected && "border-accent ring-2 ring-accent",
       )}
     >
-      {selecting && <span className="absolute left-2 top-2 z-[1] rounded-[6px] bg-white p-[2px] shadow-[0_1px_4px_rgba(16,22,20,.25)]"><Tick on={!!selected} size={19} /></span>}
-      {ws.previewOf(a) ? (
-        // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; next/image would proxy it through the optimizer
-        <img src={ws.previewOf(a)!} alt="" loading="lazy" className="w-full border-b border-divider bg-wash object-cover" style={{ height: tileH }} />
-      ) : (
-        <CodeTile code={ws.codeOf(a)} color={color} height={tileH} className="w-full border-b border-divider" style={{ fontSize: variant === "recent" ? 14 : 15 }} />
-      )}
-      <span className={cx("block", variant === "kit" || variant === "font" ? "px-3.5 py-[13px]" : variant === "recent" ? "px-3.5 pb-3.5 pt-[13px]" : "p-3.5")}>
-        {variant === "full" && <span className="mb-1 block text-[12.5px] font-medium text-mute-4">{a.type}</span>}
-        <span className={cx("block text-[15px] font-semibold leading-[1.35] text-ink", variant !== "kit" && variant !== "font" && "mb-2")}>{a.name}</span>
-        {variant === "kit" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.short}</span>}
-        {variant === "font" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.type}</span>}
-        {variant === "library" && (
-          <>
-            <span className="mb-2 flex items-center gap-[7px]">
-              <span className="text-[13.5px] text-mute-4">{a.type}</span>
-              {a.type === "Checklist" && <span className="font-mono text-[13px] text-mute-2">{(a.items ?? []).length} checks</span>}
-              {a.type === "Prompt" && <span className="font-mono text-[13px] text-mute-2">{a.promptFor}</span>}
-            </span>
-            <span className="block text-[14.5px] text-mute-2">{a.short}</span>
-          </>
+      <button
+        type="button"
+        onClick={() => (selecting ? onToggle?.() : openAsset(a.id))}
+        {...(selecting && { role: "checkbox", "aria-checked": !!selected })}
+        className={cx("relative flex w-full flex-1 flex-col overflow-hidden rounded-[12px] p-0 text-left", FOCUS)}
+      >
+        {selecting && <span className="absolute left-2 top-2 z-[1] rounded-[6px] bg-white p-[2px] shadow-[0_1px_4px_rgba(16,22,20,.25)]"><Tick on={!!selected} size={19} /></span>}
+        {ws.previewOf(a) ? (
+          // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; next/image would proxy it through the optimizer
+          <img src={ws.previewOf(a)!} alt="" loading="lazy" className="w-full border-b border-divider bg-wash object-cover" style={{ height: tileH }} />
+        ) : (
+          <CodeTile code={ws.codeOf(a)} color={color} height={tileH} className="w-full border-b border-divider" style={{ fontSize: variant === "recent" ? 14 : 15 }} />
         )}
-        {(variant === "full" || variant === "recent") && (
-          <>
-            <StatusChips a={a} />
-            {a.dueAt && a.status !== "Live" && a.status !== "Archived" && <DueBadge at={a.dueAt} now={ws.d.now} className="mb-2" />}
-            <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-divider pt-2 text-[13px] font-medium">
-              <span className="inline-flex items-center gap-1" style={{ color: n === 0 ? "#8A6A12" : "#475569" }}>
-                {n === 0 ? <Unlink aria-hidden size={13} /> : <Link2 aria-hidden size={13} />}{linkLabel(n)}
+        <span className={cx("block", variant === "kit" || variant === "font" ? "px-3.5 py-[13px]" : variant === "recent" ? "px-3.5 pb-3.5 pt-[13px]" : "p-3.5")}>
+          {variant === "full" && <span className="mb-1 block text-[12.5px] font-medium text-mute-4">{a.type}</span>}
+          <span className={cx("block text-[15px] font-semibold leading-[1.35] text-ink", variant !== "kit" && variant !== "font" && "mb-2")}>{a.name}</span>
+          {variant === "kit" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.short}</span>}
+          {variant === "font" && <span className="mt-[3px] block text-[14.5px] text-mute-2">{a.type}</span>}
+          {variant === "library" && (
+            <>
+              <span className="mb-2 flex items-center gap-[7px]">
+                <span className="text-[13.5px] text-mute-4">{a.type}</span>
+                {a.type === "Checklist" && <span className="font-mono text-[13px] text-mute-2">{(a.items ?? []).length} checks</span>}
+                {a.type === "Prompt" && <span className="font-mono text-[13px] text-mute-2">{a.promptFor}</span>}
               </span>
-              {open > 0 && <span className="inline-flex items-center gap-1 text-mute-2"><MessageSquare aria-hidden size={13} />{plural(open, "open note")}</span>}
-            </span>
-          </>
-        )}
-      </span>
-    </button>
+              <span className="block text-[14.5px] text-mute-2">{a.short}</span>
+            </>
+          )}
+          {(variant === "full" || variant === "recent") && (
+            <>
+              <StatusChips a={a} />
+              <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-divider pt-2 text-[13px] font-medium">
+                <span className="inline-flex items-center gap-1" style={{ color: n === 0 ? "#8A6A12" : "#475569" }}>
+                  {n === 0 ? <Unlink aria-hidden size={13} /> : <Link2 aria-hidden size={13} />}{linkLabel(n)}
+                </span>
+                {open > 0 && <span className="inline-flex items-center gap-1 text-mute-2"><MessageSquare aria-hidden size={13} />{plural(open, "open note")}</span>}
+              </span>
+            </>
+          )}
+        </span>
+      </button>
+      {!selecting && (download || canEdit) && (
+        <span className="absolute right-2 top-2 z-[1] flex gap-1.5">
+          {download && (
+            <a href={download.href} download aria-label={`Download ${a.name}`} title={download.title} onClick={(e) => e.stopPropagation()} className={CARD_ACTION}>
+              <Download aria-hidden size={15} />
+            </a>
+          )}
+          {canEdit && (
+            <button type="button" aria-label={`Edit ${a.name}`} title="Edit details and add files" onClick={(e) => { e.stopPropagation(); edit(); }} className={CARD_ACTION}>
+              <Pencil aria-hidden size={14} />
+            </button>
+          )}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** "Launches 14 Oct" / "Launched 3 Mar 2025". A marketing fact rather than a deadline, so no overdue colours. */
+function LaunchDate({ at, now }: { at: Date | string; now: number }) {
+  const d = new Date(at);
+  const today = new Date(now);
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const when = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(d.getFullYear() !== today.getFullYear() && { year: "numeric" }) });
+  return (
+    <span suppressHydrationWarning className="inline-flex flex-none items-center gap-1 text-[13px] font-medium text-mute-2">
+      <CalendarDays aria-hidden size={13} className="text-mute-4" />{day(d) < day(today) ? "Launched" : "Launches"} {when}
+    </span>
   );
 }
 
@@ -146,7 +195,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
         <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
         {variant === "full" && <Chip color={segColor}>{o.segment}</Chip>}
         {o.review !== "None" && <Chip color={REVIEW_COLOR[o.review]}>{o.review}</Chip>}
-        {o.dueAt && o.status !== "Archived" && <DueBadge at={o.dueAt} now={ws.d.now} done={o.status === "Active"} />}
+        {o.dueAt && o.status !== "Archived" && <LaunchDate at={o.dueAt} now={ws.d.now} />}
       </span>
       {variant === "full" ? (
         <span className="block">
