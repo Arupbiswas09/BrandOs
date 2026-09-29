@@ -146,6 +146,8 @@ export const brands = pgTable("brands", {
   boilerplate: text("boilerplate").notNull().default(""),
   segments: jsonb("segments").$type<Segment[]>().notNull().default([]),
   goals: jsonb("goals").$type<Goal[]>().notNull().default([]),
+  /** What an offer can physically be. Starts as OFFER_TYPES in src/lib/constants.ts — keep the two lists in step. */
+  offerTypes: text("offer_types").array().notNull().default(["Audit", "Free consultation", "Lead magnet", "Content series", "Paid engagement", "Campaign"]),
   fonts: jsonb("fonts").$type<BrandFont[]>().notNull().default([]),
   colours: jsonb("colours").$type<BrandColour[]>().notNull().default([]),
   guidelines: jsonb("guidelines").$type<FileRef[]>().notNull().default([]),

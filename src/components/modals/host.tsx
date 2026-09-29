@@ -6,6 +6,7 @@ import { BrandModal, ClientModal, CtaModal, GoalModal, GoalOffersModal, MergeGoa
 import { KitModal } from "./kit";
 import { ConfirmModal, InstallModal, NewModal, ShortcutsModal } from "./misc";
 import { OfferModal } from "./offer";
+import { OfferTypesModal } from "./offer-types";
 import { ShareModal } from "./share";
 import { BulkDeleteModal, BulkReviewModal } from "./bulk";
 import { GroupModal, PersonModal, ReqChangesModal, SendReviewModal } from "./people";
@@ -28,6 +29,7 @@ export function ModalHost() {
     case "goal": return <GoalModal {...m} />;
     case "mergeGoal": return <MergeGoalModal {...m} />;
     case "goalOffers": return <GoalOffersModal {...m} />;
+    case "offerTypes": return <OfferTypesModal brandId={m.brandId} edit={m.edit} add={m.add} />;
     case "person": return <PersonModal draft={m.draft} />;
     case "group": return <GroupModal draft={m.draft} />;
     case "sendReview": return <SendReviewModal item={m.item} id={m.id} />;

@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { hexA, readable, onColor } from "@/lib/color";
 import { kitScore } from "@/lib/kit";
-import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, OFFER_TYPES } from "@/lib/constants";
+import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, offerTypesOf } from "@/lib/constants";
 import { BRAND_TABS, href, type BrandTab } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
@@ -25,6 +25,7 @@ import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 import { BrandHealth } from "@/components/health";
 import { BrandKit } from "./kit";
+import { RemoveOfferType } from "@/components/modals/offer-types";
 
 export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?: string }) {
   const { ws } = useApp();
@@ -281,12 +282,17 @@ function useGridBy(bid: string): [GridBy, (g: GridBy) => void] {
 function Services({ b }: { b: Brand }) {
   const { ws, open } = useApp();
   const router = useRouter();
-  const [gridBy, setGridBy] = useGridBy(b.id);
+  const [storedBy, setGridBy] = useGridBy(b.id);
   const all = ws.servicesOf(b.id);
   const svcs = live(all);
   const stand = live(ws.standaloneOffers(b.id));
   const canEdit = ws.can("edit");
-  const cols = gridBy === "goal" ? b.goals.map((g) => g.name) : gridBy === "type" ? OFFER_TYPES : b.segments.map((s) => s.name);
+  const canEditTypes = ws.can("structure") || ws.can("kit");
+  const colsBy: Record<GridBy, string[]> = { goal: b.goals.map((g) => g.name), type: offerTypesOf(b), segment: b.segments.map((s) => s.name) };
+  // Only offer comparisons that have columns; a lone option is no choice, so the row hides.
+  const byOptions = ([["goal", "Goal"], ["type", "Offer type"], ["segment", "Segment"]] as const).filter(([k]) => colsBy[k].length > 0).map(([value, label]) => ({ value, label }));
+  const gridBy: GridBy = byOptions.some((o) => o.value === storedBy) ? storedBy : byOptions[0]?.value ?? "type";
+  const cols = colsBy[gridBy];
   const matches = (o: { goals: string[]; offerType: string; segment: string }, col: string) =>
     gridBy === "goal" ? o.goals.includes(col) : gridBy === "type" ? o.offerType === col : o.segment === col;
   const prefill = (col: string) => (gridBy === "goal" ? { goals: [col] } : gridBy === "type" ? { offerType: col } : { segment: col });
@@ -306,7 +312,12 @@ function Services({ b }: { b: Brand }) {
         <div className="mb-9">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="m-0 flex-none text-[17px] font-semibold">Coverage</h2>
-            <Pills className="flex-1" tone="dark" value={gridBy} onChange={setGridBy} label="Compare services by" options={[{ value: "goal", label: "Goal" }, { value: "type", label: "Offer type" }, { value: "segment", label: "Segment" }]} />
+            {byOptions.length > 1 ? <Pills className="flex-1" tone="dark" value={gridBy} onChange={setGridBy} label="Compare services by" options={byOptions} /> : <span className="flex-1" />}
+            {gridBy === "type" && canEditTypes && (
+              <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id })} className="inline-flex flex-none items-center gap-1.5 text-[14.5px] font-medium text-mute-2 hover:text-ink hover:underline">
+                <Pencil aria-hidden size={14} />Edit offer types
+              </button>
+            )}
             <span className="flex-none text-[14.5px] font-semibold text-[#8A6A12]">{plural(gaps, "combination")} not written yet</span>
           </div>
           <Card className="overflow-x-auto">
@@ -511,15 +522,21 @@ function Strategy({ b }: { b: Brand }) {
         })}
       </div>
 
-      <h2 className="m-0 mb-[5px] text-[17px] font-semibold">Offer types</h2>
-      <p className="mb-[13px] mt-0 max-w-[62ch] text-[15px] text-mute-2">What the offer physically is. An audit and a paid engagement can both chase the same goal.</p>
+      <H2 className="mb-[5px]" right={canEdit && <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, add: true })} className="text-[14.5px] text-mute-2 hover:text-ink">+ New type</button>}>Offer types</H2>
+      <p className="mb-[13px] mt-0 max-w-[62ch] text-[15px] text-mute-2">What the offer physically is. An audit and a paid engagement can both chase the same goal. Renaming a type moves its offers with it.</p>
       <div className="mb-[38px] flex flex-wrap gap-2.5">
-        {OFFER_TYPES.map((t) => {
+        {offerTypesOf(b).map((t) => {
           const n = offers.filter((o) => o.offerType === t).length;
           return (
             <div key={t} className="flex items-center gap-2.5 rounded-[11px] border border-line bg-white px-[15px] py-[11px]">
               <span className="text-[15px] font-semibold">{t}</span>
               <span className="text-[14px] font-medium" style={{ color: n ? "#475569" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
+              {canEdit && (
+                <span className="ml-0.5 flex items-center gap-2.5 border-l border-line pl-2.5">
+                  <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, edit: t })} className="text-[14px] text-mute-2 hover:text-ink">Edit<span className="sr-only"> {t}</span></button>
+                  <RemoveOfferType brandId={b.id} type={t} />
+                </span>
+              )}
             </div>
           );
         })}
