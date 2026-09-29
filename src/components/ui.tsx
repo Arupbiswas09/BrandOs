@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { hexA, onColor, readable } from "@/lib/color";
-import { DUE_COLOR, dueLabel } from "@/lib/time";
 import { SpotArt, type ArtKind } from "@/components/art";
 
 export function cx(...c: (string | false | null | undefined)[]) {
@@ -327,14 +326,3 @@ export function ArchExpander<T extends { id: string; name: string }>({ items, no
   );
 }
 
-/** "Due in 3 days" / "Overdue 2 days", coloured by urgency. */
-export function DueBadge({ at, now, className, done }: { at: Date | string | null | undefined; now: number; className?: string; done?: boolean }) {
-  if (!at) return null;
-  const { label, tone } = dueLabel(at, now);
-  const c = done ? "#475569" : DUE_COLOR[tone];
-  return (
-    <span suppressHydrationWarning title={new Date(at).toDateString()} className={cx("inline-flex flex-none items-center gap-1 rounded-[5px] px-1.5 py-[2px] text-[12px] font-semibold", className)} style={{ background: hexA(c, 0.1), color: readable(c, 0.1) }}>
-      <span aria-hidden>◷</span>{done ? `Was ${label.replace(/^Due /, "due ").replace(/^Overdue.*/, "due earlier")}` : label}
-    </span>
-  );
-}

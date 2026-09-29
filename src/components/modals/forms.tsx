@@ -111,9 +111,6 @@ export function ServiceModal({ draft }: { draft: Partial<Service> & { brandId: s
   };
   return (
     <Modal title={draft.id ? "Edit service" : "New service"} sub={`In ${ws.brand(d.brandId)?.name}. A capability you sell — offers hang off it, one per segment.`} onSubmit={save} footer={<Footer saveLabel="Save service" pending={pending} disabled={!d.name.trim()} />}>
-      {!draft.id && (
-        <Field label="Brand" required><Select value={d.brandId} onChange={(v) => setD({ ...d, brandId: v })} options={ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name }))} /></Field>
-      )}
       <Field label="Service name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
       <Field label="One line"><input className="field" value={d.short} onChange={(e) => setD({ ...d, short: e.target.value })} placeholder="Ten thousand a month, actually spent" /></Field>
       <Field label="What it is"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="The capability itself, before it is aimed at anyone." /></Field>

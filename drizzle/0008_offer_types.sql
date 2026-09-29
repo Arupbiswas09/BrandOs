@@ -1,0 +1,1 @@
+ALTER TABLE "brands" ADD COLUMN "offer_types" text[] DEFAULT '{"Audit","Free consultation","Lead magnet","Content series","Paid engagement","Campaign"}' NOT NULL;

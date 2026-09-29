@@ -283,7 +283,8 @@ function Services({ b }: { b: Brand }) {
         sub={<>A service is what you sell. An offer is that service argued at one segment. Keeping them apart is what makes a missing version visible.</>}
       />
 
-      {cols.length > 0 && svcs.length > 0 && (
+      {/* Coverage only means something once there is an offer to compare; a grid of nothing but gaps is noise. */}
+      {cols.length > 0 && svcs.length > 0 && rows.some((r) => r.list.length > 0) && (
         <div className="mb-9">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h2 className="m-0 flex-none text-[17px] font-semibold">Coverage</h2>
