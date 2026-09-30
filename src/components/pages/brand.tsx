@@ -80,8 +80,8 @@ function BrandHero({ b }: { b: Brand }) {
       {/* Full-bleed: a flat soft tint of the brand colour over the band's white, under a solid rule in it. */}
       <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: hexA(b.primary, 0.06) }} />
       <span aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-[1] h-[3px] w-[200vw] -translate-x-1/2" style={{ background: b.primary }} />
-      <Mark mark={b.mark} color={b.primary} size={64} radius={16} className="mx-auto mb-4 text-[21px] shadow-[0_8px_20px_-10px_rgba(15,23,42,.5)]" />
-      <h1 className="m-0 text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] sm:text-[32px]">Welcome to {b.name}</h1>
+      <Mark mark={b.mark} color={b.primary} size={64} radius={16} className="mx-auto mb-4 text-[21px] shadow-[0_8px_20px_-10px_rgba(16, 22, 20,.5)]" />
+      <h1 className="display m-0 text-[36px] sm:text-[42px]">Welcome to {b.name}</h1>
       {b.tagline && <p className="mx-auto mb-0 mt-2 max-w-[56ch] text-[16px] text-mute-2 text-pretty">{b.tagline}</p>}
       <p className="m-0 mt-2 flex flex-wrap items-center justify-center gap-x-2 text-[14px] text-mute-3">
         {client && <Link href={href.client(client.id)} className="inline-flex items-center gap-1.5 hover:text-ink hover:underline"><Building2 aria-hidden size={14} />{client.name}</Link>}
@@ -204,7 +204,7 @@ function Home({ b }: { b: Brand }) {
                 </Link>
               ))}
               <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-line bg-wash-2 px-5 py-3">
-                {[["Approved", rc.Approved, "#2F8F62"], ["In review", rc["In review"], "#C99A2E"], ["Changes requested", rc["Changes requested"], "#C2410C"], ["Not reviewed", rc.None, "#CBD5E1"]].map(([l, n, c]) => (
+                {[["Approved", rc.Approved, "#2F8F62"], ["In review", rc["In review"], "#C99A2E"], ["Changes requested", rc["Changes requested"], "#C2410C"], ["Not reviewed", rc.None, "#C9D3CE"]].map(([l, n, c]) => (
                   <span key={l as string} className="flex items-center gap-[7px] text-[14px] text-mute-2">
                     <span aria-hidden className="h-[11px] w-[11px] rounded-[3px]" style={{ background: c as string }} />{l}
                     <span className="font-semibold tabular-nums text-ink">{n}</span>
@@ -315,7 +315,7 @@ function Services({ b }: { b: Brand }) {
                         disabled={!n && !canEdit}
                         onClick={() => (n ? (n === 1 ? router.push(href.offer(hits[0].id)) : router.push(r.sid ? href.service(r.sid) : href.brand(b.id, "offers"))) : open({ kind: "offer", draft: { brandId: b.id, serviceId: r.sid, segment: "All segments", status: "Ideation", ...prefill(col) } }))}
                         className="min-h-[46px] flex-1 border-l border-line text-[15px] font-semibold transition hover:brightness-95 disabled:cursor-default"
-                        style={{ background: n ? hexA(b.primary, 0.1 + Math.min(n, 4) * 0.05) : "#FFFFFF", color: n ? readable(b.primary) : "#526077" }}
+                        style={{ background: n ? hexA(b.primary, 0.1 + Math.min(n, 4) * 0.05) : "#FFFFFF", color: n ? readable(b.primary) : "#5A6862" }}
                       >
                         {n ? n : canEdit ? "+" : "·"}
                       </button>
@@ -339,7 +339,7 @@ function Services({ b }: { b: Brand }) {
           const hasGap = !segs.has("All segments") && missing.length > 0 && so.length > 0;
           const assets = live(ws.assetsOfService(v.id));
           return (
-            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]", LIFT, FOCUS)}>
+            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]", LIFT, FOCUS)}>
               <span className="flex items-start gap-3.5">
                 <IconTile icon={Layers} color={b.primary} size={40} />
                 <span className="min-w-0 flex-1"><span className="block text-[19px] font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{v.name}</span>{v.short && <span className="mt-[3px] block text-[15px] text-mute-2">{v.short}</span>}</span>
@@ -494,7 +494,7 @@ function Strategy({ b }: { b: Brand }) {
               <div className="mb-[7px] flex items-center gap-[9px]"><span className="h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: c }} /><span className="flex-1 text-[15px] font-semibold">{g.name}</span></div>
               <div className="mb-[11px] min-h-8 text-[14.5px] leading-[1.5] text-mute-1 text-pretty">{g.description}</div>
               <div className="flex items-center gap-2 border-t border-divider pt-2.5">
-                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 text-left text-[14px] font-medium hover:underline" style={{ color: n ? "#475569" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</button>
+                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 text-left text-[14px] font-medium hover:underline" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</button>
                 {canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id, name: g.name, description: g.description, original: g.name })} className="text-[14px] text-mute-2 hover:text-ink">Edit</button>}
                 {canEdit && b.goals.length > 1 && <button type="button" onClick={() => open({ kind: "mergeGoal", brandId: b.id, from: g.name })} className="text-[14px] text-mute-2 hover:text-ink">Merge</button>}
               </div>
@@ -511,7 +511,7 @@ function Strategy({ b }: { b: Brand }) {
           return (
             <div key={t} className="flex items-center gap-2.5 rounded-[11px] border border-line bg-white px-[15px] py-[11px]">
               <span className="text-[15px] font-semibold">{t}</span>
-              <span className="text-[14px] font-medium" style={{ color: n ? "#475569" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
+              <span className="text-[14px] font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
               {canEdit && (
                 <span className="ml-0.5 flex items-center gap-2.5 border-l border-line pl-2.5">
                   <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, edit: t })} className="text-[14px] text-mute-2 hover:text-ink">Edit<span className="sr-only"> {t}</span></button>
@@ -560,14 +560,14 @@ function Ctas({ b }: { b: Brand }) {
               <div className="flex items-center justify-center rounded-[9px] bg-wash-2 p-[18px]"><CtaButton id={c.id} size="lg" /></div>
               <div>
                 <div className="mb-[3px] break-all text-[15px] text-mute-2">{c.url || "No destination set"}</div>
-                <div className="text-[14px] font-medium" style={{ color: used.length ? "#475569" : "#8A6A12" }}>{used.length ? `Used in ${plural(used.length, "place")}` : "Not used yet"}</div>
-                {used.length > 0 && <div className="mt-0.5 text-[14px] text-[#526077]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
+                <div className="text-[14px] font-medium" style={{ color: used.length ? "#46534D" : "#8A6A12" }}>{used.length ? `Used in ${plural(used.length, "place")}` : "Not used yet"}</div>
+                {used.length > 0 && <div className="mt-0.5 text-[14px] text-[#5A6862]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
               </div>
               <div className="flex gap-[7px] border-t border-divider pt-3">
                 {ws.canChange({ ownerId: null }) && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
                 {ws.can("del") && <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "cta", id: c.id, label: c.text })}>Delete</Btn>}
                 <span className="flex-1" />
-                <span className="self-center text-[13.5px] text-[#526077]">{c.style}</span>
+                <span className="self-center text-[13.5px] text-[#5A6862]">{c.style}</span>
               </div>
             </Card>
           );

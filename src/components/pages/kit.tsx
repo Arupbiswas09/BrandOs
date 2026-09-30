@@ -108,7 +108,7 @@ export function BrandKit({ b }: { b: Brand }) {
             {[
               { bg: "#FFFFFF", label: "On white", ring: true },
               { bg: b.primary, label: "On primary" },
-              { bg: "#0F172A", label: "On dark" },
+              { bg: "#101614", label: "On dark" },
             ].map((t) => (
               <div key={t.label}>
                 <div className={cx("flex aspect-[4/3] items-center justify-center rounded-xl", t.ring && "border border-line")} style={{ background: t.bg }}>
@@ -294,9 +294,9 @@ function Ring({ pct }: { pct: number }) {
   const r = 26, c = 2 * Math.PI * r;
   return (
     <svg width="68" height="68" viewBox="0 0 68 68" role="img" aria-label={`${pct}% complete`} className="flex-none">
-      <circle cx="34" cy="34" r={r} fill="none" stroke="#E2E8F0" strokeWidth="7" />
+      <circle cx="34" cy="34" r={r} fill="none" stroke="#E1E7E4" strokeWidth="7" />
       <circle cx="34" cy="34" r={r} fill="none" stroke="var(--bos-accent)" strokeWidth="7" strokeLinecap="round" strokeDasharray={`${(pct / 100) * c} ${c}`} transform="rotate(-90 34 34)" />
-      <text x="34" y="39" textAnchor="middle" fontSize="15" fontWeight="700" fill="#0F172A">{pct}%</text>
+      <text x="34" y="39" textAnchor="middle" fontSize="15" fontWeight="700" fill="#101614">{pct}%</text>
     </svg>
   );
 }
@@ -304,11 +304,11 @@ function Ring({ pct }: { pct: number }) {
 function LogoMark({ b, bg }: { b: Brand; bg: string }) {
   const onPrimary = bg === b.primary;
   const fill = bg === "#FFFFFF" ? b.primary : onPrimary ? onColor(b.primary) : "#FFFFFF";
-  const text = bg === "#FFFFFF" ? onColor(b.primary) : onPrimary ? b.primary : "#0F172A";
+  const text = bg === "#FFFFFF" ? onColor(b.primary) : onPrimary ? b.primary : "#101614";
   return (
     <span className="flex items-center gap-2">
       <span className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[15px] font-bold" style={{ background: fill, color: text }}>{b.mark}</span>
-      <span className="text-[15px] font-semibold max-sm:hidden" style={{ color: bg === "#FFFFFF" ? "#0F172A" : fill }}>{b.name}</span>
+      <span className="text-[15px] font-semibold max-sm:hidden" style={{ color: bg === "#FFFFFF" ? "#101614" : fill }}>{b.name}</span>
     </span>
   );
 }
@@ -316,12 +316,12 @@ function LogoMark({ b, bg }: { b: Brand; bg: string }) {
 function ClearSpace({ b }: { b: Brand }) {
   return (
     <svg viewBox="0 0 240 120" className="w-full" role="img" aria-label="Clear space diagram">
-      <rect x="1" y="1" width="238" height="118" rx="10" fill="#F8FAFC" stroke="#E2E8F0" />
-      <rect x="50" y="22" width="140" height="76" rx="6" fill="none" stroke="#94A3B8" strokeDasharray="4 4" />
+      <rect x="1" y="1" width="238" height="118" rx="10" fill="#F7F9F8" stroke="#E1E7E4" />
+      <rect x="50" y="22" width="140" height="76" rx="6" fill="none" stroke="#93A09A" strokeDasharray="4 4" />
       <rect x="80" y="42" width="80" height="36" rx="6" fill={b.primary} />
       <text x="120" y="66" textAnchor="middle" fontSize="15" fontWeight="700" fill={onColor(b.primary)}>{b.mark}</text>
-      {[[65, 60, "x"], [175, 60, "x"], [120, 34, "x"], [120, 92, "x"]].map(([x, y, t], i) => <text key={i} x={x} y={Number(y) + 4} textAnchor="middle" fontSize="11" fontStyle="italic" fill="#64748B">{t}</text>)}
-      <text x="120" y="114" textAnchor="middle" fontSize="9.5" fill="#64748B">x = minimum clear space on every side</text>
+      {[[65, 60, "x"], [175, 60, "x"], [120, 34, "x"], [120, 92, "x"]].map(([x, y, t], i) => <text key={i} x={x} y={Number(y) + 4} textAnchor="middle" fontSize="11" fontStyle="italic" fill="#5E6C66">{t}</text>)}
+      <text x="120" y="114" textAnchor="middle" fontSize="9.5" fill="#5E6C66">x = minimum clear space on every side</text>
     </svg>
   );
 }
@@ -330,7 +330,7 @@ function Swatch({ c, copy }: { c: BrandColour; copy: (v: string, what?: string) 
   // Surfaces are judged by the text that sits on them; everything else as text itself.
   const surface = c.role === "Background" || c.role === "Neutral";
   const grades: [string, ReturnType<typeof wcag>][] = surface
-    ? [["dark text", wcag("#0F172A", c.hex)], ["white text", wcag("#FFFFFF", c.hex)]]
+    ? [["dark text", wcag("#101614", c.hex)], ["white text", wcag("#FFFFFF", c.hex)]]
     : [["on white", wcag(c.hex, "#FFFFFF")], ["on black", wcag(c.hex, "#000000")]];
   const rows: [string, string][] = [["HEX", c.hex.toUpperCase()], ["RGB", rgbText(c.hex)], ["CMYK", c.cmyk || cmykText(c.hex)], ["Pantone", c.pantone || ""]];
   return (
@@ -391,7 +391,7 @@ function ContrastGrid({ colours }: { colours: BrandColour[] }) {
                   if (fg.hex.toLowerCase() === bg.hex.toLowerCase()) return <td key={bg.hex + bg.name} className="h-11 w-[84px] rounded-md bg-wash" />;
                   const g = wcag(fg.hex, bg.hex);
                   return (
-                    <td key={bg.hex + bg.name} data-contrast-sample className="h-11 w-[84px] rounded-md text-center" style={{ background: bg.hex, color: fg.hex, boxShadow: "inset 0 0 0 1px #E2E8F0" }} title={`${g.ratio.toFixed(2)}:1`}>
+                    <td key={bg.hex + bg.name} data-contrast-sample className="h-11 w-[84px] rounded-md text-center" style={{ background: bg.hex, color: fg.hex, boxShadow: "inset 0 0 0 1px #E1E7E4" }} title={`${g.ratio.toFixed(2)}:1`}>
                       <span className="block text-[13px] font-bold leading-none">Aa</span>
                       <span className="mt-0.5 block text-[10.5px] font-semibold leading-none" style={{ color: onColor(bg.hex) }}>{g.grade === "Fail" ? "✕ " : ""}{g.ratio.toFixed(1)}</span>
                     </td>

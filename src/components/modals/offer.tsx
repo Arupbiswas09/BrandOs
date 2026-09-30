@@ -214,7 +214,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
               {/* Full width, so the label the card would use in its place has room to show. */}
               <Field
                 label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
-                hint={<span aria-hidden className="font-code text-[13px] font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#526077" }}>{shortLen}/30</span>}
+                hint={<span aria-hidden className="font-code text-[13px] font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#5A6862" }}>{shortLen}/30</span>}
               >
                 <input className="field text-[15px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card, under the name" />
               </Field>
@@ -244,7 +244,7 @@ function NewCta({ brand, slot, onDone }: { brand: Brand; slot: CtaSlot; onDone: 
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [bg, setBg] = useState(brand.primary);
-  const swatches = [brand.primary, brand.secondary, ...brand.colours.map((c) => c.hex), "#0F172A"].filter((x, i, a) => !!x && a.indexOf(x) === i).slice(0, 7);
+  const swatches = [brand.primary, brand.secondary, ...brand.colours.map((c) => c.hex), "#101614"].filter((x, i, a) => !!x && a.indexOf(x) === i).slice(0, 7);
 
   const add = async () => {
     const t = text.trim();

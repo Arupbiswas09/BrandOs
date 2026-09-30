@@ -355,7 +355,7 @@ export async function saveKit(input: z.input<typeof kitDraft>) {
 
 function withAllSegments(list: { name: string; color: string }[]) {
   const rest = list.filter((x) => x.name !== "All segments");
-  return [...rest, { name: "All segments", color: "#475569" }];
+  return [...rest, { name: "All segments", color: "#46534D" }];
 }
 
 /* ================================================================ services */

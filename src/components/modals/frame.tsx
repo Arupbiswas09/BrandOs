@@ -47,13 +47,13 @@ export function Modal({
   const Inner = onSubmit ? "form" : "div";
   return (
     <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-[72px]">
-      <div className="fixed inset-0 animate-fade bg-[rgba(15,23,42,.38)] backdrop-blur-[2px]" onClick={close} />
+      <div className="fixed inset-0 animate-fade bg-[rgba(16, 22, 20,.38)] backdrop-blur-[2px]" onClick={close} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={label ?? (typeof title === "string" ? title : undefined)}
-        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_64px_rgba(15,23,42,.22)]"
+        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_64px_rgba(16, 22, 20,.22)]"
         style={{ maxWidth: width }}
       >
         <Inner

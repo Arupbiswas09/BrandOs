@@ -34,11 +34,13 @@ export function themeVars(brand: { primary: string; secondary: string } | null, 
     "--bos-border": p.border,
   };
   if (!brand || mode === "off") return base as CSSProperties;
+  // Accent is text and buttons, so a light brand colour is darkened (same hue) until it reads at 4.6:1 on the page and its tints.
+  const accent = readable(brand.primary, 0.08);
   return {
     ...base,
-    "--bos-accent": brand.primary,
+    "--bos-accent": accent,
     "--bos-accent2": brand.secondary,
-    "--bos-on": onColor(brand.primary),
+    "--bos-on": onColor(accent),
     "--bos-soft": hexA(brand.primary, 0.08),
     "--bos-hl": hexA(brand.primary, 0.16),
     "--bos-hl-ink": readable(brand.primary, 0.16),

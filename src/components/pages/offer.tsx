@@ -95,7 +95,7 @@ export function OfferPage({ id }: { id: string }) {
                 const on = o.status === k; const c = OFFER_STATUS[k];
                 return (
                   <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-[5px] text-[14px] font-medium transition hover:border-line-strong"
-                    style={{ borderColor: on ? hexA(c, 0.45) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#4B5A6E" }}>
+                    style={{ borderColor: on ? hexA(c, 0.45) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#56645E" }}>
                     <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c }} />{k}
                   </button>
                 );
@@ -199,7 +199,7 @@ export function OfferPage({ id }: { id: string }) {
           Decisions about this offer live here, not in a thread somebody has to go find. Type <span className="font-mono text-mute-1">#</span> to tag another offer, <span className="font-mono text-mute-1">@</span> to pull someone in.
         </p>
         {mentions.length > 0 && (
-          <div className="mb-3.5 rounded-xl border border-line bg-[#F8FAFC] px-4 py-3.5">
+          <div className="mb-3.5 rounded-xl border border-line bg-[#F7F9F8] px-4 py-3.5">
             <div className="eyebrow mb-2.5 text-[12px]">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
             <div className="flex flex-col gap-2">
               {mentions.map((m) => {

@@ -28,6 +28,8 @@ export const PAGES: [string, string][] = [
   ["brand-assets", "/brands/br1/assets"],
   ["brand-kit", "/brands/br1/kit"],
   ["brand-strategy", "/brands/br1/strategy"],
+  // A light brand colour (St Aidan Youth's orange): its accent must still read as text.
+  ["light-brand", "/brands/br3/offers"],
   ["guidelines", "/guidelines/br1"],
   ["service", "/services/sv1"],
   ["offer", "/offers/of1"],

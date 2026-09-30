@@ -100,7 +100,7 @@ export function KitModal({ brandId }: { brandId: string }) {
               </div>
             </div>
           ))}
-          <Btn size="sm" className="self-start" onClick={() => setColours((l) => [...l, keyed<BrandColour>({ name: "", hex: "#0F172A", usage: "" })])}>+ Add colour</Btn>
+          <Btn size="sm" className="self-start" onClick={() => setColours((l) => [...l, keyed<BrandColour>({ name: "", hex: "#101614", usage: "" })])}>+ Add colour</Btn>
         </section>
       )}
 
@@ -212,7 +212,7 @@ export function KitModal({ brandId }: { brandId: string }) {
               <button type="button" aria-label="Remove segment" disabled={!!s.orig && counts(s.orig) > 0} title={s.orig && counts(s.orig) > 0 ? "Offers still use this segment" : "Remove"} onClick={() => setSegments((l) => l.filter((x) => x.key !== s.key))} className="px-1.5 text-mute-5 hover:text-danger disabled:opacity-30">✕</button>
             </div>
           ))}
-          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#475569">All segments</Chip> is always there for offers that speak to everyone.</div>
+          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#46534D">All segments</Chip> is always there for offers that speak to everyone.</div>
           <Btn size="sm" className="self-start" onClick={() => setSegments((l) => [...l, keyed({ name: "", color: SEGMENT_PALETTE[l.length % SEGMENT_PALETTE.length], orig: "" })])}>+ Add segment</Btn>
         </section>
       )}

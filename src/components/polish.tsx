@@ -12,7 +12,7 @@ import { cx } from "./ui";
  */
 
 /** The hover lift every clickable card shares. */
-export const LIFT = "transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_10px_24px_-12px_rgba(15,23,42,.18)] motion-reduce:hover:translate-y-0";
+export const LIFT = "transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_10px_24px_-12px_rgba(16, 22, 20,.18)] motion-reduce:hover:translate-y-0";
 
 /** A visible focus ring for cards and tiles (the base outline would square their corners off). */
 export const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
@@ -79,7 +79,7 @@ export function EntityHeader({ eyebrow, lead, title, sub, meta, actions, decor, 
           {lead}
           <div className="min-w-0 flex-1">
             {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
-            <h1 className="m-0 text-[26px] font-semibold leading-[1.2] tracking-[-0.02em] text-ink sm:text-[28px]">{title}</h1>
+            <h1 className="display m-0 text-[32px] text-ink sm:text-[36px]">{title}</h1>
             {sub && <p className="m-0 mt-1 max-w-[70ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
             {meta && <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">{meta}</div>}
           </div>

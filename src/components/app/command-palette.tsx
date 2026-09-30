@@ -114,8 +114,8 @@ function Palette({ onClose }: { onClose: () => void }) {
   let i = -1;
   return (
     <div className="fixed inset-0 z-[80] flex items-start justify-center px-3 pt-[10vh] sm:px-4 sm:pt-24" role="dialog" aria-modal="true" aria-label="Search">
-      <div className="absolute inset-0 animate-fade bg-[rgba(15,23,42,.36)] backdrop-blur-[2px]" onClick={onClose} />
-      <div className="relative flex max-h-[78vh] w-[640px] max-w-full animate-pop flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_64px_rgba(15,23,42,.24)]">
+      <div className="absolute inset-0 animate-fade bg-[rgba(16, 22, 20,.36)] backdrop-blur-[2px]" onClick={onClose} />
+      <div className="relative flex max-h-[78vh] w-[640px] max-w-full animate-pop flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_64px_rgba(16, 22, 20,.24)]">
         <div className="flex items-center gap-3 border-b border-line px-5 py-3.5">
           <Search className="h-5 w-5 flex-none text-mute-4" />
           <input

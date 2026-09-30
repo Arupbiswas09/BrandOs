@@ -53,7 +53,7 @@ export function useTakeover(): [Takeover, (t: Takeover) => void] {
 }
 
 export function usePalette(): [Palette, (p: Palette) => void] {
-  return useStored<Palette>("bos.palette", "azure", PALETTE_KEYS);
+  return useStored<Palette>("bos.palette", "petrol", PALETTE_KEYS);
 }
 
 /** What the bell, the sidebar queue and the phone's Inbox count: the inbox's "On you", item for item. */
@@ -104,8 +104,8 @@ function Sidebar({ mini }: { mini: boolean }) {
       <div className="fixed inset-y-0 left-0 z-40 hidden lg:block"><SidebarBody mini={mini} /></div>
       {nav && (
         <div className="fixed inset-0 z-[65] lg:hidden">
-          <div className="absolute inset-0 animate-fade bg-[rgba(15,23,42,.35)]" onClick={() => setNav(false)} />
-          <div className="absolute inset-y-0 left-0 max-w-[88vw] animate-slide-left shadow-[16px_0_44px_rgba(15,23,42,.16)]"><SidebarBody mini={false} drawer /></div>
+          <div className="absolute inset-0 animate-fade bg-[rgba(16, 22, 20,.35)]" onClick={() => setNav(false)} />
+          <div className="absolute inset-y-0 left-0 max-w-[88vw] animate-slide-left shadow-[16px_0_44px_rgba(16, 22, 20,.16)]"><SidebarBody mini={false} drawer /></div>
         </div>
       )}
     </>
@@ -135,7 +135,7 @@ function useMiniTip(on: boolean): [ReactNode, TipBind, () => void] {
     return { onMouseEnter: (e) => show(e.currentTarget), onMouseLeave: hide, onFocus: (e) => show(e.currentTarget), onBlur: hide };
   }, [on, hide]);
   const node = on && tip ? (
-    <span aria-hidden className="pointer-events-none fixed z-[70] -translate-y-1/2 animate-fade whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-[13px] font-medium text-white shadow-[0_8px_20px_rgba(15,23,42,.2)]" style={{ top: tip.top, left: tip.left }}>
+    <span aria-hidden className="pointer-events-none fixed z-[70] -translate-y-1/2 animate-fade whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-[13px] font-medium text-white shadow-[0_8px_20px_rgba(16, 22, 20,.2)]" style={{ top: tip.top, left: tip.left }}>
       {tip.label}
     </span>
   ) : null;
@@ -306,7 +306,7 @@ function MobileNav() {
   const pill = (active: boolean) => cx("relative flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150", active && "bg-hl text-hl-ink");
   const ic = "h-5 w-5";
   return (
-    <nav aria-label="Quick navigation" className="h-mobile-nav safe-bottom fixed inset-x-0 bottom-0 z-[34] border-t border-line bg-white/95 shadow-[0_-4px_16px_rgba(15,23,42,.05)] backdrop-blur-[10px] lg:hidden">
+    <nav aria-label="Quick navigation" className="h-mobile-nav safe-bottom fixed inset-x-0 bottom-0 z-[34] border-t border-line bg-white/95 shadow-[0_-4px_16px_rgba(16, 22, 20,.05)] backdrop-blur-[10px] lg:hidden">
       <div className="mx-auto flex h-16 max-w-[560px] items-stretch gap-1 px-2 py-1.5">
         <Link href="/" className={item(p.view === "street")} aria-current={p.view === "street" ? "page" : undefined}>
           <span className={pill(p.view === "street")}><LayoutDashboard className={ic} /></span>Dashboard
@@ -412,7 +412,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div ref={box} role="menu" className="absolute right-0 top-[calc(100%+8px)] z-50 w-[300px] animate-pop rounded-lg border border-line bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,.14)]">
+      <div ref={box} role="menu" className="absolute right-0 top-[calc(100%+8px)] z-50 w-[300px] animate-pop rounded-lg border border-line bg-white p-1.5 shadow-[0_16px_40px_rgba(16, 22, 20,.14)]">
         <div className="flex items-center gap-3 px-3 pb-3 pt-2">
           <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-accent text-[14px] font-semibold text-on-accent">{me.initials}</span>
           <span className="min-w-0">

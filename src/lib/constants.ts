@@ -41,7 +41,7 @@ export const CHANNELS = [
 ] as const;
 
 export const CHANNEL_COLOR: Record<string, string> = {
-  Owned: "#475569",
+  Owned: "#46534D",
   Google: "#2D6FA8",
   Meta: "#4B62C4",
   LinkedIn: "#1D6FA3",
@@ -49,7 +49,7 @@ export const CHANNEL_COLOR: Record<string, string> = {
   "Onboarding flow": "#0E7490",
   Email: "#2F8F62",
   "Organic social": "#C2740C",
-  Print: "#64748B",
+  Print: "#5E6C66",
 };
 
 export const ACCESS_LEVELS: Access[] = ROLES;
@@ -79,7 +79,7 @@ export function offerTypesOf(b: { offerTypes?: string[] | null } | null | undefi
 export const DELIVERY = ["Designed page", "Doc link", "File download", "Email sequence", "None"];
 
 export const REVIEW_COLOR: Record<Review, string> = {
-  None: "#94A3B8",
+  None: "#93A09A",
   "In review": "#C99A2E",
   "Changes requested": "#C2410C",
   Approved: "#2F8F62",
@@ -89,14 +89,14 @@ export const OFFER_STATUS: Record<OfferStatus, string> = {
   Ideation: "#7C6AC4",
   Active: "#2F8F62",
   Paused: "#C99A2E",
-  Archived: "#94A3B8",
+  Archived: "#93A09A",
 };
 
 export const ASSET_STATUS: Record<AssetStatus, string> = {
-  Draft: "#94A3B8",
+  Draft: "#93A09A",
   Ready: "#2D6FA8",
   Live: "#1F7A55",
-  Archived: "#CBD5E1",
+  Archived: "#C9D3CE",
 };
 
 export const ROLE_OPTIONS = [
@@ -136,5 +136,5 @@ export function freshBrandPair(brands: { primary: string; archived?: boolean }[]
 
 export const SEGMENT_PALETTE = ["#7C6AC4", "#2D6FA8", "#C2740C", "#2F8F62", "#C2410C", "#0E7490", "#B4553A", "#4B62C4"];
 
-export const NEUTRAL = "#64748B";
-export const GLOBAL_ACCENT = "#0F2A5F";
+export const NEUTRAL = "#5E6C66";
+export const GLOBAL_ACCENT = "#2D4A5C";

@@ -100,7 +100,7 @@ export function TwoFactorCard({ info }: { info: SecurityInfo }) {
           <a href={setup.uri} aria-label="Open in an authenticator app on this device" className="block w-[184px] flex-none rounded-lg border border-line bg-white p-2">
             <svg viewBox={`0 0 ${setup.qr.size} ${setup.qr.size}`} role="img" aria-label="QR code for your authenticator app" className="block h-auto w-full" shapeRendering="crispEdges">
               <rect width={setup.qr.size} height={setup.qr.size} fill="#fff" />
-              <path d={setup.qr.d} fill="#0F172A" />
+              <path d={setup.qr.d} fill="#101614" />
             </svg>
           </a>
           <div className="flex min-w-0 flex-col gap-3">

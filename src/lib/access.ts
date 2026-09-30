@@ -79,7 +79,7 @@ export const ROLE_INFO: Record<Access, { summary: string; color: string; guest?:
   Editor: { summary: "Creates and edits all work in their clients, reviews it and marks it Live.", color: "#047857" },
   Contributor: { summary: "Creates work and edits what they own, then sends it for review. Cannot approve.", color: "#0E7490" },
   Reviewer: { summary: "Reads, comments, approves or sends back. Changes nothing themselves.", color: "#B45309" },
-  Viewer: { summary: "Reads only. For people who need to find things, not change them.", color: "#475569" },
+  Viewer: { summary: "Reads only. For people who need to find things, not change them.", color: "#46534D" },
   Client: { summary: "An outside guest. Sees only work marked visible to the client, and can comment and approve it.", color: "#BE185D", guest: true },
 };
 

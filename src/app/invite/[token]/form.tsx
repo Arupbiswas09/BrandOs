@@ -17,10 +17,10 @@ export function InviteForm({ token, email, reset }: { token: string; email: stri
       <label className="block">
         <Req>{reset ? "New password" : "Choose a password"}</Req>
         <PasswordInput name="password" autoComplete="new-password" minLength={10} required className="text-[16px]" autoFocus />
-        <span className="mt-1.5 block text-[14px] text-[#526077]">At least ten characters.</span>
+        <span className="mt-1.5 block text-[14px] text-[#5A6862]">At least ten characters.</span>
       </label>
       {state?.error && <div role="alert" className="rounded-[9px] bg-[rgba(194,65,18,.07)] px-3 py-2 text-[15px] text-[#A63A12]">{state.error}</div>}
-      <button type="submit" disabled={pending} className="rounded-[9px] bg-[#0F2A5F] px-4 py-2.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
+      <button type="submit" disabled={pending} className="rounded-[9px] bg-[#2D4A5C] px-4 py-2.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
         {pending ? "Saving…" : reset ? "Save and sign in" : "Join the team"}
       </button>
     </form>

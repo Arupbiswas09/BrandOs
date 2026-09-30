@@ -109,7 +109,7 @@ export function Street() {
     <Page>
       <div className="head-band -mt-8 mb-6 pb-6 pt-8 sm:-mt-10 sm:pt-10">
         <Eyebrow className="mb-2">Dashboard</Eyebrow>
-        <h1 className="m-0 mb-1.5 text-[26px] font-semibold leading-[1.15] tracking-[-0.02em] sm:text-[28px]">{greeting}</h1>
+        <h1 className="display m-0 mb-1.5 text-[34px] sm:text-[38px]">{greeting}</h1>
         <p className="m-0 max-w-[62ch] text-[15.5px] text-mute-2 text-pretty">{summary}</p>
       </div>
 

@@ -99,7 +99,7 @@ export class WS {
     const f = a.files.find((x) => x.url && /^image\/(png|jpe?g|gif|webp|avif)$/.test(x.type ?? ""));
     return f?.url ? `${f.url}?inline=1` : null;
   }
-  colorOf(a: Asset) { return this.brand(a.brandId)?.primary ?? "#64748B"; }
+  colorOf(a: Asset) { return this.brand(a.brandId)?.primary ?? "#5E6C66"; }
 
   /* ---------- segments and goals ---------- */
   segColor(name: string, brandId?: string) {

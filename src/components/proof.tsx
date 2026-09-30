@@ -189,7 +189,7 @@ function Stage({ src, name, pins, number, active, hover, canPin, draft, onPlace,
               onBlur={() => onHover(null)}
               className={cx(
                 "absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-mono text-[13px] font-bold shadow-[0_2px_8px_rgba(16,22,20,.35)] transition",
-                c.resolved ? "bg-[#94A3B8] text-white opacity-75" : "bg-accent text-on-accent",
+                c.resolved ? "bg-[#93A09A] text-white opacity-75" : "bg-accent text-on-accent",
                 on && "z-[2] scale-125 opacity-100 ring-4 ring-accent/30",
               )}
               style={{ left: `${c.pinX}%`, top: `${c.pinY}%` }}
@@ -264,11 +264,11 @@ function PinNote({ c, n, on, onPick, onHover }: { c: PinnedComment; n: number; o
       id={`note-${c.id}`}
       onMouseEnter={() => onHover(c.id)}
       onMouseLeave={() => onHover(null)}
-      className={cx("rounded-xl border px-3.5 py-3 transition", on ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-white", c.resolved && !on && "bg-[#F8FAFC] opacity-70")}
+      className={cx("rounded-xl border px-3.5 py-3 transition", on ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-white", c.resolved && !on && "bg-[#F7F9F8] opacity-70")}
     >
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
         <button type="button" onClick={onPick} aria-pressed={on} aria-label={`Show note ${n} on the image`}
-          className={cx("flex h-6 w-6 flex-none items-center justify-center rounded-full font-mono text-[12.5px] font-bold", c.resolved ? "bg-[#94A3B8] text-white" : "bg-accent text-on-accent")}>
+          className={cx("flex h-6 w-6 flex-none items-center justify-center rounded-full font-mono text-[12.5px] font-bold", c.resolved ? "bg-[#93A09A] text-white" : "bg-accent text-on-accent")}>
           {n}
         </button>
         <Avatar initials={ws.user(c.userId).initials} size={22} mono />

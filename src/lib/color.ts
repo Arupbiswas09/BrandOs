@@ -16,7 +16,7 @@ export function hexA(hex: string, a: number): string {
 export function onColor(hex: string): string {
   // White keeps saturated brands looking like themselves; ink, then black, when white cannot reach 4.5:1.
   if (contrast("#FFFFFF", hex) >= 4.5) return "#FFFFFF";
-  if (contrast("#0F172A", hex) >= 4.5) return "#0F172A";
+  if (contrast("#101614", hex) >= 4.5) return "#101614";
   return contrast("#000000", hex) > contrast("#FFFFFF", hex) ? "#000000" : "#FFFFFF";
 }
 

@@ -114,7 +114,7 @@ export function OfferTypesModal({ brandId, edit, add }: { brandId: string; edit?
               ) : (
                 <>
                   <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{t}</span>
-                  <span className="flex-none text-[14px] font-medium" style={{ color: n ? "#475569" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
+                  <span className="flex-none text-[14px] font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
                   <button
                     type="button"
                     ref={(el) => { if (el) editBtns.current.set(t, el); else editBtns.current.delete(t); }}

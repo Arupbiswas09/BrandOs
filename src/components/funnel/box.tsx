@@ -16,8 +16,8 @@ import { CodeBadge, OpenLink, type Resolved } from "./linked";
 export const DEFAULT_TEXT: Record<FunnelBox["kind"], string> = { step: "New step", stage: "New stage", note: "New note" };
 
 const SHELL: Record<FunnelBox["kind"], string> = {
-  step: "rounded-[10px] border border-line bg-white px-3 py-2.5 text-left text-ink shadow-[0_1px_2px_rgba(15,23,42,.05)]",
-  stage: "rounded-full border border-transparent bg-accent px-5 py-3 text-center text-on-accent shadow-[0_1px_3px_rgba(15,23,42,.14)] theme-fade",
+  step: "rounded-[10px] border border-line bg-white px-3 py-2.5 text-left text-ink shadow-[0_1px_2px_rgba(16, 22, 20,.05)]",
+  stage: "rounded-full border border-transparent bg-accent px-5 py-3 text-center text-on-accent shadow-[0_1px_3px_rgba(16, 22, 20,.14)] theme-fade",
   note: "rounded-[6px] border border-[#FDE68A] bg-[#FEF3C7] px-3 py-2.5 text-left text-[#713F12] shadow-[0_2px_6px_rgba(120,53,15,.10)]",
 };
 
@@ -124,7 +124,7 @@ export function BoxView({ box, r, editable, selected, drawing, lifted, measure, 
               selected && (box.kind === "stage" ? "ring-2 ring-accent ring-offset-2" : "ring-2 ring-accent"),
               drawing === "source" && "ring-2 ring-accent ring-offset-2",
               drawing === "target" && "cursor-crosshair outline-2 outline-offset-2 outline-dashed outline-accent/50 hover:outline-accent",
-              !drawing && (lifted ? "cursor-grabbing shadow-[0_12px_28px_-8px_rgba(15,23,42,.3)]" : "cursor-grab"),
+              !drawing && (lifted ? "cursor-grabbing shadow-[0_12px_28px_-8px_rgba(16, 22, 20,.3)]" : "cursor-grab"),
             )}
             {...handlers}
           >

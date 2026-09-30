@@ -5,7 +5,7 @@ import { codeSignIn, type CodeState } from "@/app/auth-actions";
 import { Req } from "@/components/auth-shell";
 
 const alert = "rounded-[9px] bg-[rgba(194,65,18,.07)] px-3 py-2 text-[15px] text-[#A63A12]";
-const primary = "rounded-[9px] bg-[#0F2A5F] px-4 py-3 text-[15.5px] font-semibold text-white hover:brightness-110 disabled:opacity-60";
+const primary = "rounded-[9px] bg-[#2D4A5C] px-4 py-3 text-[15.5px] font-semibold text-white hover:brightness-110 disabled:opacity-60";
 
 /** Step one asks for the email; once a code is on its way, step two asks for the code. */
 export function CodeForm() {

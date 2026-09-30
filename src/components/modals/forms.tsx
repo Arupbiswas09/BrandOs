@@ -142,7 +142,7 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
     const r = await run(saveCta, { id: draft.id, brandId: draft.brandId, text: d.text, url: d.url, style: d.style, bg: outline ? "transparent" : d.bg, fg: outline ? d.bg : d.fg });
     if (r.ok) close();
   };
-  const swatches = [b?.primary, b?.secondary, ...(b?.colours.map((c) => c.hex) ?? []), "#0F172A", "#FFFFFF"].filter((x, i, a): x is string => !!x && a.indexOf(x) === i).slice(0, 8);
+  const swatches = [b?.primary, b?.secondary, ...(b?.colours.map((c) => c.hex) ?? []), "#101614", "#FFFFFF"].filter((x, i, a): x is string => !!x && a.indexOf(x) === i).slice(0, 8);
   return (
     <Modal title={draft.id ? "Edit CTA" : "New CTA"} width={480} onSubmit={save} footer={<Footer saveLabel="Save CTA" pending={pending} disabled={!d.text.trim()} />}>
       <div className="flex items-center justify-center rounded-[11px] bg-wash-2 p-6">

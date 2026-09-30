@@ -23,7 +23,7 @@ export function PageHead({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {eyebrow && <Eyebrow className="mb-2">{eyebrow}</Eyebrow>}
-          <h1 className="m-0 font-semibold leading-[1.2] tracking-[-0.02em] text-ink" style={{ fontSize: size }}>{title}</h1>
+          <h1 className="display m-0 text-ink" style={{ fontSize: Math.round(size * 1.3) }}>{title}</h1>
           {sub && <p className="mb-0 mt-2 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
         </div>
         {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
@@ -176,7 +176,7 @@ export function Blocks({ blocks, size = 12, gap = 3 }: { blocks: { id: string; c
 /* ---------------------------------------------------------------- surfaces */
 
 export function Card({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
-  return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)] theme-fade", className)} style={style}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(16, 22, 20,.04)] theme-fade", className)} style={style}>{children}</div>;
 }
 
 /**
@@ -221,7 +221,7 @@ export function Warn({ children, className }: { children: ReactNode; className?:
 }
 
 export function Hint({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-[11px] bg-wash px-[15px] py-[13px] text-[15px] leading-[1.55] text-[#475569] text-pretty", className)}>{children}</div>;
+  return <div className={cx("rounded-[11px] bg-wash px-[15px] py-[13px] text-[15px] leading-[1.55] text-[#46534D] text-pretty", className)}>{children}</div>;
 }
 
 /* ---------------------------------------------------------------- toggles */
@@ -258,7 +258,7 @@ export function Tick({ on, size = 17 }: { on: boolean; size?: number }) {
     <span
       aria-hidden
       className="flex flex-none items-center justify-center font-bold text-white transition"
-      style={{ width: size, height: size, borderRadius: 5, border: `1.5px solid ${on ? "var(--bos-accent)" : "#CBD5E1"}`, background: on ? "var(--bos-accent)" : "#FFFFFF", fontSize: size * 0.6 }}
+      style={{ width: size, height: size, borderRadius: 5, border: `1.5px solid ${on ? "var(--bos-accent)" : "#C9D3CE"}`, background: on ? "var(--bos-accent)" : "#FFFFFF", fontSize: size * 0.6 }}
     >
       {on ? "✓" : ""}
     </span>

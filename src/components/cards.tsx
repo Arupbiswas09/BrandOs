@@ -15,7 +15,7 @@ import { FOCUS, LIFT } from "./polish";
 export function blocksFor(list: Asset[], limit = 28) {
   return list.slice(0, limit).map((a) => {
     const rv = a.review ?? "None";
-    const color = rv === "Approved" ? "#2F8F62" : rv === "In review" ? "#C99A2E" : rv === "Changes requested" ? "#C2410C" : "#CBD5E1";
+    const color = rv === "Approved" ? "#2F8F62" : rv === "In review" ? "#C99A2E" : rv === "Changes requested" ? "#C2410C" : "#C9D3CE";
     return {
       id: a.id,
       color,
@@ -28,7 +28,7 @@ export function blocksFor(list: Asset[], limit = 28) {
 export function StatusChips({ a }: { a: Asset }) {
   return (
     <span className="mb-2 flex flex-wrap items-center gap-[5px]">
-      <Chip color={ASSET_STATUS[a.status] ?? "#94A3B8"} size="xs">{a.status}</Chip>
+      <Chip color={ASSET_STATUS[a.status] ?? "#93A09A"} size="xs">{a.status}</Chip>
       {a.review !== "None" && <Chip color={REVIEW_COLOR[a.review]} size="xs">{a.review}</Chip>}
       <span className="font-mono text-[12.5px] text-mute-4">v{a.version}</span>
     </span>
@@ -71,7 +71,7 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle }
   return (
     <div
       className={cx(
-        "group relative flex flex-col rounded-[13px] border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)]",
+        "group relative flex flex-col rounded-[13px] border border-line bg-white shadow-[0_1px_2px_rgba(16, 22, 20,.04)]",
         variant === "kit" || variant === "font" ? "transition hover:border-line-strong" : LIFT,
         a.archived && !selected && "opacity-55",
         selected && "border-accent ring-2 ring-accent",
@@ -109,7 +109,7 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle }
             <>
               <StatusChips a={a} />
               <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-divider pt-2 text-[13px] font-medium">
-                <span className="inline-flex items-center gap-1" style={{ color: n === 0 ? "#8A6A12" : "#475569" }}>
+                <span className="inline-flex items-center gap-1" style={{ color: n === 0 ? "#8A6A12" : "#46534D" }}>
                   {n === 0 ? <Unlink aria-hidden size={13} /> : <Link2 aria-hidden size={13} />}{linkLabel(n)}
                 </span>
                 {open > 0 && <span className="inline-flex items-center gap-1 text-mute-2"><MessageSquare aria-hidden size={13} />{plural(open, "open note")}</span>}
@@ -171,14 +171,14 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
 
   if (variant === "standalone") {
     return (
-      <Link href={href.offer(o.id)} className={cx("flex flex-col gap-2.5 rounded-[13px] border border-line bg-white px-5 py-[18px] text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]", LIFT, FOCUS, o.archived && "opacity-55")}>
+      <Link href={href.offer(o.id)} className={cx("flex flex-col gap-2.5 rounded-[13px] border border-line bg-white px-5 py-[18px] text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]", LIFT, FOCUS, o.archived && "opacity-55")}>
         <span className="flex flex-wrap items-center gap-1.5">
           <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
           <Chip color={segColor}>{o.segment}</Chip>
         </span>
         <span className="block text-[16.5px] font-semibold leading-[1.3] tracking-[-0.012em] text-ink">{o.name}</span>
         {o.positioning && <span className="block text-[15px] leading-[1.5] text-mute-1 text-pretty">{o.positioning}</span>}
-        <span className="mt-auto block w-full border-t border-divider pt-2.5 text-[14px] font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#475569" }}>{assetLabel}</span>
+        <span className="mt-auto block w-full border-t border-divider pt-2.5 text-[14px] font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#46534D" }}>{assetLabel}</span>
       </Link>
     );
   }
@@ -187,7 +187,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
     <Link
       href={href.offer(o.id)}
       className={cx(
-        "flex flex-col rounded-[14px] border border-line bg-white text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]",
+        "flex flex-col rounded-[14px] border border-line bg-white text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]",
         LIFT, FOCUS,
         variant === "full" ? "gap-3 px-[22px] py-5" : "gap-2.5 p-5",
         o.archived && "opacity-55",
@@ -212,7 +212,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
       <GoalChips ws={ws} o={o} />
       {ac > 0 && <span className="mb-0.5"><Blocks blocks={blocksFor(assets)} /></span>}
       <span className="mt-auto flex w-full items-center gap-3 border-t border-divider pt-3 text-[14px]">
-        <span className="font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#475569" }}>{assetLabel}</span>
+        <span className="font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#46534D" }}>{assetLabel}</span>
         {open > 0 && <span className="inline-flex items-center gap-1 text-mute-2"><MessageSquare aria-hidden size={14} />{plural(open, "note")}</span>}
         <span className="flex-1" />
         <span className="text-mute-5">{ws.ago(o.updatedAt)}</span>

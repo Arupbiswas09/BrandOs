@@ -382,7 +382,7 @@ export function LinkModal({ offerId }: { offerId: string }) {
     if (shown === "linked" && !linked.has(a.id)) return false;
     return !t || `${a.name} ${a.short} ${a.type} ${a.tags.join(" ")}`.toLowerCase().includes(t);
   });
-  const color = ws.brand(o.brandId)?.primary ?? "#64748B";
+  const color = ws.brand(o.brandId)?.primary ?? "#5E6C66";
   return (
     <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and appears in one more offer." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
       <input className="field text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
