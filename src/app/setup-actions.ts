@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { sql } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
-import { DEFAULT_GOALS } from "@/lib/constants";
+import { BRAND_PALETTES, DEFAULT_GOALS } from "@/lib/constants";
 import { isHex } from "@/lib/color";
 import { hashPassword } from "@/server/password";
 import { authMode, startSession } from "@/server/session";
@@ -19,7 +19,7 @@ export async function completeSetup(_: SetupState, form: FormData): Promise<Setu
   const name = String(form.get("name") ?? "").trim().slice(0, 120);
   const email = String(form.get("email") ?? "").trim().toLowerCase();
   const password = String(form.get("password") ?? "");
-  const color = String(form.get("color") ?? "#2D4A5C");
+  const color = String(form.get("color") ?? BRAND_PALETTES[0][0]);
   if (!agency) return { error: "Give the agency a name." };
   if (!name) return { error: "Tell us your name." };
   if (!/^\S+@\S+\.\S+$/.test(email)) return { error: "That email address does not look right." };
@@ -40,10 +40,12 @@ export async function completeSetup(_: SetupState, form: FormData): Promise<Setu
     });
     const clientId = id("cl");
     await tx.insert(s.clients).values({ id: clientId, name: agency, kind: "Our agency", contactId: userId, since: String(new Date().getFullYear()), note: "Everything we sell lives here." });
-    const primary = isHex(color) ? color : "#2D4A5C";
+    const primary = isHex(color) ? color : BRAND_PALETTES[0][0];
+    // A colour picked from the palettes brings its own partner.
+    const secondary = BRAND_PALETTES.find(([p]) => p.toUpperCase() === primary.toUpperCase())?.[1] ?? BRAND_PALETTES[0][1];
     await tx.insert(s.brands).values({
       id: id("br"), clientId, name: agency, mark: agency.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "AG",
-      tagline: "", primary, secondary: "#E8B44A", ownerId: userId,
+      tagline: "", primary, secondary, ownerId: userId,
       goals: DEFAULT_GOALS.map((g) => ({ ...g })), segments: [{ name: "All segments", color: "#64748B" }],
       colours: [{ name: "Primary", hex: primary, usage: "Buttons, links, headings." }],
     });

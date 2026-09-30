@@ -1,14 +1,17 @@
 "use client";
 
-import { useId, useState, type KeyboardEvent } from "react";
+import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Brand, Offer } from "@/db/schema";
+import { cardLabel } from "@/lib/card-label";
 import { onColor } from "@/lib/color";
 import { offerTypesOf } from "@/lib/constants";
 import { href, parsePath } from "@/lib/routes";
+import { addTags, tagPool } from "@/lib/tags";
 import { saveCta, saveOffer } from "@/app/actions";
 import { toDateInput } from "@/lib/time";
 import { useAction, useApp } from "@/components/app/provider";
+import { TagInput } from "@/components/tag-input";
 import { Btn, Field, Select, cx } from "@/components/ui";
 import { Footer, Modal } from "./frame";
 
@@ -43,9 +46,12 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
     status: draft.status ?? "Ideation",
     primaryCtaId: draft.primaryCtaId ?? "",
     secondaryCtaId: draft.secondaryCtaId ?? "",
-    tags: (draft.tags ?? []).join(", "),
+    tags: draft.tags ?? [],
     dueAt: toDateInput(draft.dueAt),
   });
+  // A tag half typed in the box; saving adds it too.
+  const [tagText, setTagText] = useState("");
+  const tagsInUse = useMemo(() => tagPool(ws.d.offers), [ws.d.offers]);
   // Open straight away when anything behind "More detail" already has a value, so nothing is hidden.
   const [more, setMore] = useState(() => !!(draft.promise || draft.proof || draft.primaryCtaId || draft.secondaryCtaId || draft.offerType || draft.short || draft.dueAt || draft.tags?.length));
   const [ctaFor, setCtaFor] = useState<CtaSlot | null>(null);
@@ -93,7 +99,11 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
   };
 
   const shortLen = d.short.length;
+  const autoLabel = cardLabel({ positioning: d.positioning });
   const moreId = `${uid}-more`;
+  // How much is already filled in behind "More detail", said on the closed toggle.
+  const filled = [d.promise, d.proof, d.primaryCtaId, d.secondaryCtaId, d.offerType, d.short, d.dueAt].filter((x) => x.trim()).length
+    + (d.tags.length || tagText.trim() ? 1 : 0);
 
   const save = async () => {
     const r = await run(saveOffer, {
@@ -101,7 +111,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
       serviceId: d.serviceId || null,
       primaryCtaId: d.primaryCtaId || null,
       secondaryCtaId: d.secondaryCtaId || null,
-      tags: d.tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
+      tags: addTags(d.tags, tagText, tagsInUse),
       dueAt: d.dueAt || null,
     });
     if (r.ok) { close(); if (!draft.id && r.id) router.push(href.offer(r.id)); }
@@ -171,7 +181,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
           <span aria-hidden className="w-3 flex-none text-center text-[17px] leading-none text-mute-3">{more ? "−" : "+"}</span>
           <span className="min-w-0 flex-1 text-[15px] text-ink-3">
             <span className="font-semibold text-ink group-hover:underline">{more ? "Less detail" : "More detail"}</span>
-            {!more && <span className="font-medium"> — promise, proof, CTAs, type</span>}
+            {!more && <span className="font-medium"> — {filled ? `${filled} filled` : "promise, proof, CTAs, type"}</span>}
           </span>
           <span className="flex-none font-code text-[13px] text-mute-3">optional</span>
         </button>
@@ -201,19 +211,17 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
               {ctaFor && b && <NewCta key={ctaFor} brand={b} slot={ctaFor} onDone={(cta) => doneCta(ctaFor, cta)} />}
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Offer type"><Select value={d.offerType} onChange={(v) => set("offerType", v)} options={typeOptions} /></Field>
-                <Field
-                  label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
-                  hint={<span aria-hidden className="font-code text-[13px] font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#526077" }}>{shortLen}/30</span>}
-                >
-                  <input className="field text-[15px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card" />
-                </Field>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Launch date"><input type="date" className="field" value={d.dueAt} onChange={(e) => set("dueAt", e.target.value)} /></Field>
-                <Field label="Tags" hint={<span className="font-normal text-mute-4">comma separated</span>}>
-                  <input className="field" value={d.tags} onChange={(e) => set("tags", e.target.value)} placeholder="grant, church, search" />
-                </Field>
               </div>
+              {/* Full width, so the label the card would use in its place has room to show. */}
+              <Field
+                label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
+                hint={<span aria-hidden className="font-code text-[13px] font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#526077" }}>{shortLen}/30</span>}
+              >
+                <input className="field text-[15px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder={autoLabel ? `Leave empty to use: ${autoLabel}` : "Shown on the offer card"} />
+              </Field>
+              {/* The last field, inside a clipped panel: suggestions open upwards. */}
+              <TagInput above value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="grant, church, search" />
             </div>
           </div>
         </div>

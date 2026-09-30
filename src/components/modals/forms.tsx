@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Brand, Client, Cta, Service } from "@/db/schema";
 import { hexA, isHex, onColor } from "@/lib/color";
-import { BRAND_PALETTES, OFFER_STATUS } from "@/lib/constants";
+import { BRAND_PALETTES, OFFER_STATUS, freshBrandPair } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { deleteGoal, mergeGoal, saveBrand, saveClient, saveCta, saveGoal, saveService } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
@@ -51,10 +51,13 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
   const { ws, close } = useApp();
   const router = useRouter();
   const [run, pending] = useAction();
-  const [d, setD] = useState({
-    name: draft.name ?? "", tagline: draft.tagline ?? "", mark: draft.mark ?? "", clientId: draft.clientId,
-    primary: draft.primary ?? "#2D4A5C", secondary: draft.secondary ?? "#7BA0A8",
-    description: draft.description ?? "", voice: draft.voice ?? "",
+  const [d, setD] = useState(() => {
+    // A new brand (sub-brands too) starts on a pair no other brand wears yet, never a shared default.
+    const [primary, secondary] = draft.primary ? [draft.primary, draft.secondary ?? draft.primary] : freshBrandPair(ws.d.brands);
+    return {
+      name: draft.name ?? "", tagline: draft.tagline ?? "", mark: draft.mark ?? "", clientId: draft.clientId,
+      primary, secondary, description: draft.description ?? "", voice: draft.voice ?? "",
+    };
   });
   const parent = ws.brand(draft.parentId);
   const mark = (d.mark || d.name.slice(0, 2) || "?").toUpperCase();

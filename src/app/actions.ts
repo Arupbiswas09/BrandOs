@@ -8,7 +8,7 @@ import { getDb, schema as s } from "@/db";
 import type { DB } from "@/db";
 import { seed } from "@/db/seed";
 import { can, canChange, cleanOverrides, type Perm } from "@/lib/access";
-import { DEFAULT_GOALS, ASSET_TYPES, offerTypesOf } from "@/lib/constants";
+import { DEFAULT_GOALS, ASSET_TYPES, freshBrandPair, offerTypesOf } from "@/lib/constants";
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
@@ -229,8 +229,9 @@ const brandDraft = z.object({
   name: name("brand"),
   tagline: str(200).default(""),
   mark: str(3).optional(),
-  primary: z.string().refine(isHex, "Pick a primary colour.").default("#2D4A5C"),
-  secondary: z.string().refine(isHex, "Pick a secondary colour.").default("#7BA0A8"),
+  /** Left out, an existing brand keeps its colours and a new one gets a pair no other brand wears yet. */
+  primary: z.string().refine(isHex, "Pick a primary colour.").optional(),
+  secondary: z.string().refine(isHex, "Pick a secondary colour.").optional(),
   description: str().default(""),
   voice: str().default(""),
   boilerplate: str().optional(),
@@ -253,8 +254,10 @@ export async function saveBrand(input: z.input<typeof brandDraft>) {
     need(vis.client(d.clientId), "You cannot add brands to that client.");
     if (d.parentId) need(vis.brand(d.parentId));
     const mark = (d.mark || d.name.slice(0, 2)).toUpperCase();
+    const current = d.id ? all.brands.find((b) => b.id === d.id) : undefined;
+    const [primary, secondary] = current ? [current.primary, current.secondary] : freshBrandPair(all.brands);
     const patch = {
-      name: d.name, tagline: d.tagline, mark, primary: d.primary, secondary: d.secondary,
+      name: d.name, tagline: d.tagline, mark, primary: d.primary ?? primary, secondary: d.secondary ?? secondary,
       description: d.description, voice: d.voice, clientId: d.clientId,
       ...(d.boilerplate !== undefined && { boilerplate: d.boilerplate }),
       ...(d.segments && { segments: withAllSegments(d.segments) }),
@@ -301,8 +304,8 @@ export async function saveBrand(input: z.input<typeof brandDraft>) {
         goals: DEFAULT_GOALS.map((g) => ({ ...g })),
         segments: withAllSegments(d.segments ?? []),
         colours: d.colours ?? [
-          { name: "Primary", hex: d.primary, usage: "Buttons, links, headings." },
-          { name: "Secondary", hex: d.secondary, usage: "Emphasis only." },
+          { name: "Primary", hex: patch.primary, usage: "Buttons, links, headings." },
+          { name: "Secondary", hex: patch.secondary, usage: "Emphasis only." },
         ],
       });
       await log(db, me.id, "created", "brand", id, d.name);
