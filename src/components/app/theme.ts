@@ -2,24 +2,27 @@ import type { CSSProperties } from "react";
 import { hexA, onColor, readable } from "@/lib/color";
 
 export type Takeover = "bold" | "moderate" | "off";
-export type Palette = "azure" | "cobalt" | "ocean" | "indigo";
+export type Palette = "petrol" | "azure" | "cobalt" | "ocean" | "indigo";
 
 /**
- * The house colours. Each pairs a deep action colour (buttons, links,
- * focus) with a bright highlight for "you are here" (the active nav pill).
+ * The house colours. Each is one action colour (buttons, links, focus) and
+ * tints of it for "you are here", so nothing competes with the accent.
+ * Petrol and its green-grey page are the Claude Design prototype's; the blue
+ * ones are kept for people who prefer them (Settings → Appearance).
  */
-export const PALETTES: Record<Palette, { name: string; note: string; accent: string; hl: string; hlInk: string; soft: string }> = {
-  azure: { name: "Azure", note: "Midnight navy with a sky highlight", accent: "#0F2A5F", hl: "#7DD3FC", hlInk: "#0B1B3A", soft: "#E0F2FE" },
-  cobalt: { name: "Cobalt", note: "Royal blue with an ice highlight", accent: "#1D4ED8", hl: "#BFDBFE", hlInk: "#1E3A8A", soft: "#EFF6FF" },
-  ocean: { name: "Ocean", note: "Deep sea with an aqua highlight", accent: "#0B4F6C", hl: "#67E8F9", hlInk: "#083344", soft: "#ECFEFF" },
-  indigo: { name: "Indigo", note: "Night indigo with a periwinkle highlight", accent: "#312E81", hl: "#C7D2FE", hlInk: "#1E1B4B", soft: "#EEF2FF" },
+export const PALETTES: Record<Palette, { name: string; note: string; accent: string; hl: string; hlInk: string; soft: string; tint: string; border: string }> = {
+  petrol: { name: "Petrol", note: "The house colour: petrol blue on soft green-grey", accent: "#2D4A5C", hl: "#DFE6E9", hlInk: "#1F3542", soft: "#EDF2F0", tint: "#F7F9F8", border: "#E1E7E4" },
+  azure: { name: "Azure", note: "Midnight navy", accent: "#0F2A5F", hl: "#DDE1E9", hlInk: "#0B1B3A", soft: "#EEF0F4", tint: "#F8FAFC", border: "#E2E8F0" },
+  cobalt: { name: "Cobalt", note: "Royal blue", accent: "#1D4ED8", hl: "#DFE6FA", hlInk: "#1E3A8A", soft: "#EFF3FC", tint: "#F8FAFC", border: "#E2E8F0" },
+  ocean: { name: "Ocean", note: "Deep sea", accent: "#0B4F6C", hl: "#DDE6EA", hlInk: "#083344", soft: "#EEF3F5", tint: "#F8FAFC", border: "#E2E8F0" },
+  indigo: { name: "Indigo", note: "Night indigo", accent: "#312E81", hl: "#E2E2ED", hlInk: "#1E1B4B", soft: "#F1F0F6", tint: "#F8FAFC", border: "#E2E8F0" },
 };
 
 export const PALETTE_KEYS = Object.keys(PALETTES) as Palette[];
 
 /** CSS variables for the whole shell; inside a brand, that brand's colour leads. */
-export function themeVars(brand: { primary: string; secondary: string } | null, mode: Takeover = "moderate", palette: Palette = "azure"): CSSProperties {
-  const p = PALETTES[palette] ?? PALETTES.azure;
+export function themeVars(brand: { primary: string; secondary: string } | null, mode: Takeover = "moderate", palette: Palette = "petrol"): CSSProperties {
+  const p = PALETTES[palette] ?? PALETTES.petrol;
   const base = {
     "--bos-accent": p.accent,
     "--bos-accent2": p.hl,
@@ -27,8 +30,8 @@ export function themeVars(brand: { primary: string; secondary: string } | null, 
     "--bos-soft": p.soft,
     "--bos-hl": p.hl,
     "--bos-hl-ink": p.hlInk,
-    "--bos-tint": "#F8FAFC",
-    "--bos-border": "#E2E8F0",
+    "--bos-tint": p.tint,
+    "--bos-border": p.border,
   };
   if (!brand || mode === "off") return base as CSSProperties;
   return {

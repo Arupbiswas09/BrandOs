@@ -6,38 +6,39 @@
  * colours of the brand you are standing in.
  */
 :root {
-  --bos-accent: #0f2a5f;
-  --bos-accent2: #7dd3fc;
-  --bos-hl: #7dd3fc;
-  --bos-hl-ink: #0b1b3a;
-  --bos-tint: #f8fafc;
-  --bos-soft: #eef2f7;
-  --bos-border: #e2e8f0;
+  --bos-accent: #2d4a5c;
+  --bos-accent2: #7ba0a8;
+  --bos-hl: #dfe6e9;
+  --bos-hl-ink: #1f3542;
+  --bos-tint: #f7f9f8;
+  --bos-soft: #edf2f0;
+  --bos-border: #e1e7e4;
   --bos-on: #ffffff;
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  /* The kit is all Inter: headings and numbers share the UI face. */
-  --font-serif: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Three families, one job each: Asap to read, Instrument Serif for page titles, JetBrains Mono for labels, counts, codes and times. */
+  --font-sans: var(--font-asap), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: var(--font-instrument), Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
   --font-code: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 
-  --color-ink: #0F172A;
-  --color-ink-2: #1e293b;
-  --color-ink-3: #334155;
-  --color-mute-1: #475569;
-  --color-mute-2: #475569;
-  --color-mute-3: #4b5a6e;
-  --color-mute-4: #526077;
-  --color-mute-5: #5b6b80;
-  --color-line-strong: #cbd5e1;
-  --color-divider: #f1f5f9;
-  --color-wash: #f8fafc;
-  --color-wash-2: #f8fafc;
-  --color-chip: #f1f5f9;
-  --color-avatar: #eef2f7;
-  --color-hover: #f1f5f9;
+  /* Soft green-grey neutrals. The lightest text grey still clears 4.5:1 on white and on chips. */
+  --color-ink: #101614;
+  --color-ink-2: #2a3833;
+  --color-ink-3: #3e4a45;
+  --color-mute-1: #46534d;
+  --color-mute-2: #4e5b55;
+  --color-mute-3: #56645e;
+  --color-mute-4: #5a6862;
+  --color-mute-5: #5e6c66;
+  --color-line-strong: #c9d3ce;
+  --color-divider: #edf2f0;
+  --color-wash: #f7f9f8;
+  --color-wash-2: #f4f7f6;
+  --color-chip: #edf2f0;
+  --color-avatar: #edf2f0;
+  --color-hover: #f1f5f3;
   --color-danger: #b0554a;
   --color-warn: #c99a2e;
   --color-warn-ink: #7a5f14;
@@ -89,24 +90,23 @@ body {
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.5;
-  font-feature-settings: "cv11", "ss01";
-  color: #0F172A;
-  background: #f8fafc;
+  color: #101614;
+  background: #f7f9f8;
   -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; cursor: pointer; }
-input, textarea, select { font: inherit; color: #0F172A; }
+input, textarea, select { font: inherit; color: #101614; }
 textarea { resize: vertical; }
-::placeholder { color: #526077; }
+::placeholder { color: #5e6c66; }
 ::selection { background: var(--bos-soft); }
-/* One focus ring everywhere: the action colour leaning toward sky (resolved per element, so brands keep theirs). */
-:focus-visible { outline: 2px solid color-mix(in srgb, var(--bos-accent) 72%, #0284c7); outline-offset: 2px; }
+/* One focus ring everywhere, in the action colour (resolved per element, so brands keep theirs). */
+:focus-visible { outline: 2px solid var(--bos-accent); outline-offset: 2px; }
 /* Inside scrolling lists and tab strips the ring sits inside the control, so the edge never clips it. */
 .focus-inset:focus-visible, [role="tab"]:focus-visible, [data-scroll] :focus-visible { outline-offset: -2px; }
 input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !important; outline: none; }
 /* Grid columns may shrink below their content, so long truncated text never widens the page. */
 .grid > * { min-width: 0; }
-[data-scroll] { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+[data-scroll] { scrollbar-width: thin; scrollbar-color: #c9d3ce transparent; }
 
 }
 
@@ -135,13 +135,21 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
 .text-pretty { text-wrap: pretty; }
 
 @layer components {
+  /* Micro-labels: mono, upper case, spaced out. */
   .eyebrow {
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: #526077;
+    color: #56645e;
+  }
+  /* Page titles only: the display face, never bold (it has one weight). */
+  .display {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.08;
   }
   .field {
     width: 100%;
@@ -158,19 +166,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
   [data-invalid] .field:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, .15); }
   /* The kit's hover lift for clickable cards: one pixel up and a soft shadow. */
   .lift { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease; }
-  .lift:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(15, 23, 42, .07); border-color: #cbd5e1; }
+  .lift:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 22, 20, .07); border-color: #c9d3ce; }
   /* Skeleton blocks for loading screens. */
-  .skel { background: #e8edf3; border-radius: 8px; animation: var(--animate-shimmer); }
+  .skel { background: #e6ece9; border-radius: 8px; animation: var(--animate-shimmer); }
   .kbd {
     display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px;
-    border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 5px; background: #fff;
-    font-family: var(--font-sans); font-size: 12px; font-weight: 600; line-height: 1; color: #334155;
+    border: 1px solid #c9d3ce; border-bottom-width: 2px; border-radius: 5px; background: #fff;
+    font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; line-height: 1; color: #3e4a45;
   }
   .label {
     display: block;
     font-size: 14px;
     font-weight: 600;
-    color: #334155;
+    color: #3e4a45;
     margin-bottom: 6px;
   }
 }
