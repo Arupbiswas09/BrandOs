@@ -49,7 +49,7 @@ export type Workspace = {
   /** My email choices, and which outside services this install has switched on. */
   notify: {
     prefs: NotifyPrefs;
-    /** RESEND_API_KEY is set. */
+    /** Email can be sent: SMTP_HOST or RESEND_API_KEY is set. */
     mail: boolean;
     /** CRON_SECRET is set, so the morning digest can run. */
     digest: boolean;

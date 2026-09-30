@@ -347,6 +347,19 @@ export const loginAttempts = pgTable("login_attempts", {
   windowStart: timestamp("window_start", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * The six-digit code emailed for "Email me a sign-in code". One live code per
+ * person: asking again replaces it. Stored as a keyed hash, used once, and
+ * refused after ten minutes or five wrong guesses.
+ */
+export const signInCodes = pgTable("sign_in_codes", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  codeHash: text("code_hash").notNull(),
+  attempts: integer("attempts").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const invites = pgTable("invites", {
   token: text("token").primaryKey(),
   userId: text("user_id").notNull(),

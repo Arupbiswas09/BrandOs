@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // PGlite ships WASM and data files that must be loaded from node_modules at runtime.
-  serverExternalPackages: ["@electric-sql/pglite"],
+  serverExternalPackages: ["@electric-sql/pglite", "nodemailer"],
   poweredByHeader: false,
   // The Docker image runs the self-contained server (see Dockerfile).
   ...(process.env.BUILD_STANDALONE === "1" && { output: "standalone" as const }),

@@ -18,7 +18,7 @@ export async function enabledTwoFactor(userId: string) {
  * verification on go to the code screen; everyone else gets a session.
  * Returns where to send them next.
  */
-export async function afterFirstFactor(userId: string, method: "password" | "google" | "link" = "password"): Promise<"/" | "/sign-in/verify"> {
+export async function afterFirstFactor(userId: string, method: "password" | "google" | "link" | "email code" = "password"): Promise<"/" | "/sign-in/verify"> {
   if (await enabledTwoFactor(userId)) {
     await startPending(userId);
     return "/sign-in/verify";

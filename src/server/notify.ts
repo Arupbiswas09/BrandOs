@@ -119,7 +119,7 @@ export type DigestResult = { ok: boolean; mail: boolean; sent: number; alreadySe
  * calendar day (server time zone), and a failed send is retried next run.
  */
 export async function runDigest(now = new Date()): Promise<DigestResult> {
-  if (!mailEnabled()) return { ok: true, mail: false, sent: 0, alreadySent: 0, failed: 0, note: "Email is not set up (RESEND_API_KEY), so no digest was sent." };
+  if (!mailEnabled()) return { ok: true, mail: false, sent: 0, alreadySent: 0, failed: 0, note: "Email is not set up (SMTP_HOST or RESEND_API_KEY), so no digest was sent." };
   const db = await getDb();
   const all = await readAll();
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());

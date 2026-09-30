@@ -16,6 +16,8 @@ export const EV = {
   changedPassword: "changed their password",
   setPassword: "set a password",
   resetRequested: "asked for a password reset",
+  codeRequested: "asked for a sign-in code",
+  testEmail: "sent a test email",
   inviteLink: "created an invite link for",
   resetLink: "created a reset link for",
   setup: "set up the workspace",

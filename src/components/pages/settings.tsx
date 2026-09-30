@@ -1,13 +1,13 @@
 "use client";
 
-import { useActionState, useState, useSyncExternalStore } from "react";
+import { useActionState, useState, useSyncExternalStore, useTransition } from "react";
 import { Bell, CalendarDays, Database, Download, KeyRound, LogOut, Palette as PaletteIcon, ShieldCheck, Smartphone, UserRound } from "lucide-react";
 import { ROLE_OPTIONS } from "@/lib/constants";
 import { saveNotifyPrefs, sendSlackTest, signOut, updateProfile } from "@/app/actions";
 import type { NotifyEvent, NotifyMode } from "@/db/schema";
 import { NOTIFY_EVENTS, NOTIFY_MODES, fullPrefs } from "@/lib/notify";
 import { CalendarFeedCard } from "@/components/calendar-feed";
-import { changePassword } from "@/app/auth-actions";
+import { changePassword, sendTestEmail } from "@/app/auth-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { useInstall } from "@/components/app/pwa";
 import { usePalette, useTakeover } from "@/components/app/shell";
@@ -144,6 +144,25 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
   );
 }
 
+/** Admins prove the email settings work by sending themselves one. */
+function TestEmail() {
+  const { ws, toast } = useApp();
+  const [pending, start] = useTransition();
+  const [result, setResult] = useState<string | null>(null);
+  const send = () => start(async () => {
+    const r = await sendTestEmail();
+    if (r.ok) { setResult(null); toast(`Test email sent to ${r.to}`); }
+    else setResult(r.error);
+  });
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[10px] border border-line bg-wash-2 px-3.5 py-3">
+      <span className="min-w-[200px] flex-1 text-[14.5px] text-mute-1">Email is on. Send yourself one to check it arrives{ws.me.email ? ` at ${ws.me.email}` : ""}.</span>
+      <Btn size="sm" disabled={pending} onClick={send}>{pending ? "Sending…" : "Send a test email"}</Btn>
+      {result && <div role="alert" className="w-full text-[14px] font-medium text-[#B42318]">The mail server said: {result}</div>}
+    </div>
+  );
+}
+
 const noop = () => () => {};
 type Perm = NotificationPermission | "unsupported";
 
@@ -169,8 +188,9 @@ function EmailPrefsCard() {
         <strong className="font-semibold text-ink-3">Daily digest</strong> gathers it into one email each morning.
       </p>
       {!mail && (
-        <Warn className="mb-4">Email is not set up for this workspace yet, so nothing is sent. An admin adds RESEND_API_KEY on the server. Your choices are kept for when it is.</Warn>
+        <Warn className="mb-4">Email is not set up for this workspace yet, so nothing is sent. An admin adds the SMTP settings (or RESEND_API_KEY) on the server. Your choices are kept for when it is.</Warn>
       )}
+      {mail && ws.can("access") && <TestEmail />}
       {mail && !digest && (
         <Hint className="mb-4">The morning digest is not scheduled on this install (CRON_SECRET), so anything set to Daily digest is emailed straight away, and due-date reminders are not sent.</Hint>
       )}

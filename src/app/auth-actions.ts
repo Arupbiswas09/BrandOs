@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import { randomBytes } from "node:crypto";
@@ -11,7 +12,8 @@ import { authMode, clearPending, currentSessionId, endSession, getViewer, pendin
 import { clearFailures, clientIp, isThrottled, LIMITS, recordFailure, type Limit } from "@/server/throttle";
 import { hashRecoveryCode, isRecoveryShape, verifyTotp } from "@/server/totp";
 import { afterFirstFactor, enabledTwoFactor } from "@/server/two-factor";
-import { appUrl, mailEnabled, sendMail } from "@/server/mail";
+import { appUrl, deliver, mailEnabled, sendMail } from "@/server/mail";
+import { CODE_TTL_MS, issueCode, redeemCode } from "@/server/sign-in-code";
 import { recordSecurity } from "@/server/audit";
 import { BREACHED_MESSAGE, isBreachedPassword } from "@/server/pwned";
 import { EV } from "@/lib/audit";
@@ -85,6 +87,86 @@ export async function verifySecondStep(_: FormState, form: FormData): Promise<Fo
   redirect("/");
 }
 
+export type CodeState = { error?: string; email?: string; sent?: boolean; note?: string } | undefined;
+
+const looksLikeEmail = (v: string) => /^\S+@\S+\.\S+$/.test(v);
+
+/**
+ * "Email me a sign-in code". Answers the same way whether or not the address
+ * has an account, so it cannot be used to find out who works here.
+ */
+async function requestSignInCode(form: FormData): Promise<CodeState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!looksLikeEmail(email)) return { error: "That email address does not look right.", email };
+  if (!mailEnabled()) return { error: "Email is not set up on this BrandOS yet, so we cannot send a code. Sign in with your password.", email };
+  const ip = await clientIp();
+  const keys: Limit[] = [["codemail:" + email, LIMITS.codeMail], [ip && "codemail-ip:" + ip, LIMITS.ip]];
+  if (await isThrottled(keys)) return { error: "We have sent several codes already. Use the newest one, or wait fifteen minutes and ask again.", email, sent: true };
+  await recordFailure(keys.map(([k]) => k));
+  const db = await getDb();
+  const [u] = await db.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, email)).limit(1);
+  await recordSecurity({ userId: u?.id, action: EV.codeRequested, label: email.slice(0, 200), field: u ? "code emailed" : "no account with that email", withIp: true });
+  // After the answer is sent, so a known address takes no longer to answer than an unknown one.
+  if (u) after(async () => {
+    const code = await issueCode(u.id);
+    await sendMail({
+      to: email,
+      subject: "Your BrandOS sign-in code",
+      heading: "Your sign-in code",
+      body: `Enter this code on the sign-in page. It works once and for ${CODE_TTL_MS / 60000} minutes. If you did not ask for it, ignore this email: nobody can get in without the code.`,
+      code,
+      footer: "Never share this code. BrandOS will never ask you for it.",
+    });
+  });
+  return { email, sent: true };
+}
+
+/** The code from the email. People with two-step verification go on to the authenticator step. */
+async function verifySignInCode(form: FormData): Promise<CodeState> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  const code = String(form.get("code") ?? "").replace(/\D/g, "");
+  if (!looksLikeEmail(email)) return { error: "Start again and enter your email address.", sent: false };
+  if (code.length !== 6) return { error: "The code is six digits.", email, sent: true };
+  const ip = await clientIp();
+  const keys: Limit[] = [["codein:" + email, LIMITS.codeGuess], [ip && "ip:" + ip, LIMITS.ip]];
+  if (await isThrottled(keys)) return { error: "Too many wrong codes. Wait fifteen minutes and try again.", email, sent: true };
+  const db = await getDb();
+  const [u] = await db.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, email)).limit(1);
+  const result = u ? await redeemCode(u.id, code) : "wrong";
+  if (result !== "ok") {
+    await recordFailure(keys.map(([k]) => k));
+    await recordSecurity({ userId: u?.id, action: EV.signInFailed, label: email.slice(0, 200), field: !u ? "no account with that email" : result === "expired" ? "expired email code" : "wrong email code", withIp: true });
+    return {
+      error: result === "expired" ? "That code has expired or was used up. Send a new one." : "That code is not right. Check the newest email from BrandOS.",
+      email, sent: true,
+    };
+  }
+  await clearFailures(["codein:" + email, "codemail:" + email, "email:" + email]);
+  redirect(await afterFirstFactor(u!.id, "email code"));
+}
+
+/** One action for both steps of the code sign-in, so the form keeps a single state. */
+export async function codeSignIn(_: CodeState, form: FormData): Promise<CodeState> {
+  return form.get("intent") === "verify" ? verifySignInCode(form) : requestSignInCode(form);
+}
+
+/** Admins check the email settings by sending themselves one. */
+export async function sendTestEmail(): Promise<{ ok: true; to: string } | { ok: false; error: string }> {
+  const me = await getViewer();
+  if (!me || !can(me, "access")) return { ok: false, error: "Only admins can send a test email." };
+  if (!me.email) return { ok: false, error: "Your account has no email address." };
+  if (!mailEnabled()) return { ok: false, error: "Email is not set up on this server yet (SMTP_HOST or RESEND_API_KEY)." };
+  const r = await deliver({
+    to: me.email,
+    subject: "BrandOS test email",
+    heading: "Email works",
+    body: `This is the test you sent from Settings. Invites, password resets, sign-in codes and notifications will arrive the same way.`,
+    action: { label: "Open BrandOS", href: appUrl() },
+  });
+  await recordSecurity({ userId: me.id, action: EV.testEmail, label: me.email, field: r.ok ? "accepted" : "failed", withIp: true });
+  return r.ok ? { ok: true, to: me.email } : { ok: false, error: r.error };
+}
+
 /** Admins create a one-time link a teammate uses to set their password. */
 export async function createInvite(userId: string): Promise<{ ok: true; path: string; emailed: boolean } | { ok: false; error: string }> {
   const me = await getViewer();
@@ -125,7 +207,8 @@ export async function requestReset(_: FormState, form: FormData): Promise<FormSt
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1);
   await recordSecurity({ userId: u?.id, action: EV.resetRequested, label: email.slice(0, 200), field: u ? "link emailed" : "no account with that email", withIp: true });
-  if (u) {
+  // After the answer is sent, so a known address takes no longer to answer than an unknown one.
+  if (u) after(async () => {
     const token = randomBytes(24).toString("base64url");
     await db.insert(s.invites).values({ token, userId: u.id, purpose: "reset", expiresAt: new Date(Date.now() + 3600 * 1000) });
     await sendMail({
@@ -135,7 +218,7 @@ export async function requestReset(_: FormState, form: FormData): Promise<FormSt
       body: "Someone asked to reset the password for this address. If it was you, use the link below within an hour. If not, ignore this email and nothing changes.",
       action: { label: "Choose a new password", href: `${appUrl()}/invite/${token}` },
     });
-  }
+  });
   return { email: "sent" };
 }
 

@@ -23,6 +23,9 @@ function key(): Buffer {
 
 const mac = (body: string) => createHmac("sha256", key()).update(body).digest("base64url");
 
+/** A keyed hash, for secrets kept in the database (e.g. emailed sign-in codes) that must not be guessable from a copy of it. */
+export const keyedHash = (body: string) => mac("hash:" + body);
+
 /** Signs a JSON value that stops being accepted after `ttlMs`. */
 export function sign(value: Record<string, unknown>, ttlMs: number): string {
   const body = Buffer.from(JSON.stringify({ ...value, exp: Date.now() + ttlMs })).toString("base64url");

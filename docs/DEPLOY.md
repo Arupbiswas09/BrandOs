@@ -44,8 +44,13 @@ app starts.
    specific record overrides it for BrandOS only.
 6. **Auto-deploy** — GitHub → Arupbiswas09/BrandOs → Settings → Secrets → Actions:
    `COOLIFY_TOKEN` and `COOLIFY_APP_UUID` (printed by the setup script).
-7. **Email (optional)** — add `RESEND_API_KEY` and `MAIL_FROM` to
-   `~/.config/brandos/prod.env` and re-run the setup script, or set them in Coolify.
+7. **Email (optional)** — either SMTP (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`,
+   `SMTP_PASS`, `MAIL_FROM`; Brevo is `smtp-relay.brevo.com` on 587 with
+   STARTTLS) or `RESEND_API_KEY` and `MAIL_FROM`. Add them to
+   `~/.config/brandos/prod.env` and re-run the setup script, or set them in
+   Coolify → Environment Variables and redeploy. Then Settings → Email →
+   **Send a test email** proves it works. Email switches on "Forgot it?",
+   "Email me a sign-in code", invites by email and notifications.
 
 ## Daily digest, Slack and calendar feeds
 

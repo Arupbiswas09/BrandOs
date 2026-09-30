@@ -23,6 +23,10 @@ export const LIMITS = {
   code: 5,
   /** Password reset emails to one address. */
   reset: 5,
+  /** Sign-in code emails to one address. */
+  codeMail: 5,
+  /** Wrong emailed sign-in codes for one address. */
+  codeGuess: 10,
 } as const;
 
 export type Limit = [key: string, max: number];
