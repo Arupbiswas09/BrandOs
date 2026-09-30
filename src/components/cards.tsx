@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { Asset, Offer } from "@/db/schema";
 import { ASSET_STATUS, OFFER_STATUS, REVIEW_COLOR } from "@/lib/constants";
 import { href } from "@/lib/routes";
-import { cardLabel } from "@/lib/card-label";
 import type { WS } from "@/lib/ws";
 import { plural } from "@/lib/ws";
 import { useApp } from "./app/provider";
@@ -167,9 +166,8 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
   const segColor = ws.segColor(o.segment, o.brandId);
   const assetLabel = ac === 0 ? "No assets yet" : plural(ac, "asset");
   const serviceName = o.serviceId ? ws.service(o.serviceId)?.name ?? "" : "Standalone";
-  // With no typed card label the positioning's first phrase stands in, unless that phrase is all the positioning below says.
-  const label = cardLabel(o);
-  const showLabel = !!label && (!!o.short.trim() || label !== o.positioning.trim().replace(/[\s.,;:!?]+$/, ""));
+  // Only a label someone typed: the positioning is printed right below, so a derived one would repeat it.
+  const label = o.short.trim();
 
   if (variant === "standalone") {
     return (
@@ -205,7 +203,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
         <span className="block">
           <span className="eyebrow mb-1 block">{serviceName}</span>
           <span className="block text-[18px] font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{o.name}</span>
-          {showLabel && <span className="mt-1 block text-[15px] text-mute-2">{label}</span>}
+          {label && <span className="mt-1 block text-[15px] text-mute-2">{label}</span>}
         </span>
       ) : (
         <span className="block text-[17px] font-semibold leading-[1.25] tracking-[-0.014em] text-ink">{o.name}</span>

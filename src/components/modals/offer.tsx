@@ -3,7 +3,6 @@
 import { useId, useMemo, useState, type KeyboardEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Brand, Offer } from "@/db/schema";
-import { cardLabel } from "@/lib/card-label";
 import { onColor } from "@/lib/color";
 import { offerTypesOf } from "@/lib/constants";
 import { href, parsePath } from "@/lib/routes";
@@ -99,7 +98,6 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
   };
 
   const shortLen = d.short.length;
-  const autoLabel = cardLabel({ positioning: d.positioning });
   const moreId = `${uid}-more`;
   // How much is already filled in behind "More detail", said on the closed toggle.
   const filled = [d.promise, d.proof, d.primaryCtaId, d.secondaryCtaId, d.offerType, d.short, d.dueAt].filter((x) => x.trim()).length
@@ -218,7 +216,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
                 label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
                 hint={<span aria-hidden className="font-code text-[13px] font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#526077" }}>{shortLen}/30</span>}
               >
-                <input className="field text-[15px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder={autoLabel ? `Leave empty to use: ${autoLabel}` : "Shown on the offer card"} />
+                <input className="field text-[15px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card, under the name" />
               </Field>
               {/* The last field, inside a clipped panel: suggestions open upwards. */}
               <TagInput above value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="grant, church, search" />
