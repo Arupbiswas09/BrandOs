@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { hexA, onColor, readable } from "@/lib/color";
-import { SpotArt, type ArtKind } from "@/components/art";
 
 export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
@@ -180,12 +179,14 @@ export function Card({ children, className, style }: { children: ReactNode; clas
   return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(15,23,42,.04)] theme-fade", className)} style={style}>{children}</div>;
 }
 
-/** An empty state. `art` adds a spot illustration above the title. */
-export function Empty({ title, body, children, compact, art }: { title?: string; body?: ReactNode; children?: ReactNode; compact?: boolean; art?: ArtKind }) {
+/**
+ * An empty state: a short title if it needs one, one plain sentence saying
+ * what goes here, and at most one button. No illustration.
+ */
+export function Empty({ title, body, children, compact }: { title?: string; body?: ReactNode; children?: ReactNode; compact?: boolean }) {
   return (
-    <div className={cx("rounded-[14px] border border-dashed border-line-strong text-center", art && "bg-white/60", compact ? "p-7" : art ? "px-8 py-9 sm:px-[52px] sm:py-10" : "p-8 sm:p-[52px]")}>
-      {art && <SpotArt kind={art} className="mx-auto mb-3" />}
-      {title && <div className="mb-1.5 text-[16px] font-semibold">{title}</div>}
+    <div className={cx("rounded-[14px] border border-dashed border-line-strong bg-white/60 text-center", compact ? "px-6 py-7" : "px-6 py-10 sm:py-12")}>
+      {title && <div className="mb-1.5 text-[16px] font-semibold text-ink">{title}</div>}
       {body && <div className="mx-auto mb-5 max-w-[46ch] text-[15px] leading-[1.55] text-mute-2 text-pretty">{body}</div>}
       {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
     </div>

@@ -9,10 +9,11 @@ import { hexA, onColor, readable } from "@/lib/color";
 import { NEUTRAL } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { live, plural } from "@/lib/ws";
+import { markMentionsRead } from "@/app/actions";
 import { useApp } from "@/components/app/provider";
+import { noteWhere, useOnYou } from "@/components/app/inbox";
 import { ActivityRow } from "@/components/activity-row";
 import { Card, Eyebrow, IconTile, Page, cx } from "@/components/ui";
-import { SpotArt } from "@/components/art";
 
 const LIMIT = 6;
 const DAY = 86_400_000;
@@ -36,35 +37,37 @@ export function Street() {
   const now = ws.d.now;
 
   const queue = useMemo(() => ws.queue(), [ws]);
-  const mine = queue.filter((q) => q.who === me.id);
-  const others = queue.length - mine.length;
+  // Exactly the inbox's "On you", in the same order: the bell and this card never disagree.
+  const onYou = useOnYou();
+  const others = queue.filter((q) => q.who !== me.id).length;
+  const mentioned = onYou.some((x) => x.type === "mention");
 
   const clients = live(ws.d.clients);
   const brands = live(ws.d.brands);
   const ideation = live(ws.d.offers).filter((o) => o.status === "Ideation");
 
-  const waited = (updated: Date | string | undefined, act: "review" | "change") => {
-    const days = updated ? Math.max(0, Math.floor((now - +new Date(updated)) / DAY)) : 0;
+  const waited = (since: number, act: "review" | "change") => {
+    const days = Math.max(0, Math.floor((now - since) / DAY));
     const text = act === "review"
       ? (days === 0 ? "In review since today" : `In review for ${plural(days, "day")}`)
       : (days === 0 ? "Sent back today" : `Sent back ${plural(days, "day")} ago`);
     return { text, stuck: days >= STUCK_DAYS };
   };
 
-  const already = new Set(mine.map((q) => q.kind + q.id));
-  const rows: Row[] = [
-    ...mine.map((q) => {
-      const item = q.kind === "asset" ? ws.asset(q.id) : ws.offer(q.id);
-      const w = waited(item?.updatedAt, q.act);
+  const rows: Row[] = onYou.map((x) => {
+    if (x.type === "work") {
+      const q = x.q;
+      const w = waited(x.since, q.act);
       const tone = q.act === "review" ? "#B45309" : "#C2410C";
-      return { key: q.kind + q.id, label: q.name, sub: q.sub, badge: q.verb, tone, waited: w.text, stuck: w.stuck, go: () => (q.kind === "asset" ? openAsset(q.id) : router.push(href.offer(q.id))) };
-    }),
-    // Ideas nobody has picked up yet, as in the prototype.
-    ...ideation.filter((o) => !already.has("offer" + o.id) && o.ownerId === me.id).slice(0, 3).map((o) => ({
-      key: "i" + o.id, label: o.name, sub: `${ws.brand(o.brandId)?.name} · ${plural(ws.linkedAssetIds(o.id).length, "asset")}`,
-      badge: "Ideation", tone: "#6D5BD0", waited: `Idea since ${ws.ago(o.createdAt)}`, stuck: false, go: () => router.push(href.offer(o.id)),
-    })),
-  ];
+      return { key: x.key, label: q.name, sub: q.sub, badge: q.verb, tone, waited: w.text, stuck: w.stuck, go: () => (q.kind === "asset" ? openAsset(q.id) : router.push(href.offer(q.id))) };
+    }
+    // A note that @mentions you and that you have not read: opening it here counts as reading it.
+    const c = x.c;
+    return {
+      key: x.key, label: noteWhere(ws, c), sub: c.text, badge: "Mention", tone: "#1D4ED8", waited: `${ws.first(c.userId)} mentioned you ${ws.ago(c.createdAt)}`, stuck: false,
+      go: () => { void markMentionsRead([c.id]); if (c.kind === "asset") openAsset(c.itemId, "discussion"); else router.push(href.offer(c.itemId) + "#discussion"); },
+    };
+  });
 
   const continueItems = ws.d.recents.map((r) => {
     if (r.kind === "brand") { const b = ws.brand(r.itemId); return b && !b.archived && { key: "b" + b.id, title: b.name, sub: `Brand · ${ws.client(b.clientId)?.name}`, code: b.mark, color: b.primary, go: () => router.push(href.brand(b.id)) }; }
@@ -114,9 +117,9 @@ export function Street() {
         <Card className="px-5 pb-3 pt-4">
           <div className="mb-0.5 flex items-baseline justify-between gap-3">
             <h2 className="m-0 flex items-center gap-2.5 text-[16px] font-semibold"><IconTile><Inbox /></IconTile>Waiting on you</h2>
-            <span className="text-[14px] text-mute-3">{mine.length ? `${mine.length} on you` : "Clear"}</span>
+            <span className="text-[14px] text-mute-3">{rows.length ? `${rows.length} on you` : "Clear"}</span>
           </div>
-          <p className="m-0 mb-2 text-[14px] text-mute-3">{mine.length ? "Assigned to you by name" : "Nothing is assigned to you"}{others ? `. ${plural(others, "thing")} with other people.` : "."}</p>
+          <p className="m-0 mb-2 text-[14px] text-mute-3">{rows.length ? (mentioned ? "Assigned to you by name, or mentioning you" : "Assigned to you by name") : "Nothing is assigned to you"}{others ? `. ${plural(others, "thing")} with other people.` : "."}</p>
           {rows.slice(0, LIMIT).map((r) => (
             <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[8px] border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
               <span aria-hidden className="h-2 w-2 flex-none rounded-full" style={{ background: r.tone }} />
@@ -130,10 +133,9 @@ export function Street() {
             </button>
           ))}
           {!rows.length && (
-            <div className="flex flex-col items-center border-t border-divider py-6 text-center">
-              <SpotArt kind="inbox" />
-              <div className="mt-2 text-[15px] font-medium">You are all caught up</div>
-              <div className="text-[14px] text-mute-3">Anything sent to you for review or changes shows up here.</div>
+            <div className="border-t border-divider py-6 text-center">
+              <div className="text-[15px] font-medium">You are all caught up</div>
+              <div className="text-[14px] text-mute-3">Work sent to you for review or changes, and notes that @mention you, show up here.</div>
             </div>
           )}
           {rows.length > LIMIT && <MoreLink onClick={() => setInbox(true)}>See all {rows.length} in your inbox</MoreLink>}
@@ -209,9 +211,8 @@ export function Street() {
           })}
         </div>
         {!clients.length && (
-          <div className="flex flex-col items-center rounded-[14px] border border-dashed border-line-strong p-8 text-center">
-            <SpotArt kind="folder" />
-            <div className="mt-1 text-[15px] text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>
+          <div className="rounded-[14px] border border-dashed border-line-strong bg-white/60 p-8 text-center">
+            <div className="text-[15px] text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>
           </div>
         )}
       </div>

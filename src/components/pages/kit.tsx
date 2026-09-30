@@ -9,7 +9,6 @@ import { live } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
 import { AssetCard } from "@/components/cards";
 import { Btn, Card, cx } from "@/components/ui";
-import { SpotArt } from "@/components/art";
 
 const SECTIONS = [
   ["kit-logo", "Logo"],
@@ -156,7 +155,7 @@ export function BrandKit({ b }: { b: Brand }) {
           <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
             {b.colours.map((c) => <Swatch key={c.name + c.hex} c={c} copy={copy} />)}
           </div>
-        ) : <EmptyBlock art="kit" text="No colours recorded yet." />}
+        ) : <EmptyBlock text="No colours recorded yet." />}
         {b.colours.length > 1 && <ContrastGrid colours={b.colours.slice(0, 6)} />}
       </Section>
 
@@ -178,7 +177,7 @@ export function BrandKit({ b }: { b: Brand }) {
               </div>
             </Card>
           ))}
-          {!b.fonts.length && <EmptyBlock art="kit" text="No typefaces recorded yet." />}
+          {!b.fonts.length && <EmptyBlock text="No typefaces recorded yet." />}
         </div>
         <Card className="mt-4 overflow-hidden">
           <div className="flex items-center justify-between border-b border-divider bg-wash-2 px-5 py-2.5">
@@ -262,7 +261,7 @@ export function BrandKit({ b }: { b: Brand }) {
               {g.url && <a href={g.url} aria-label={`Download ${g.name}`} className="text-mute-3 hover:text-ink"><Download className="h-4 w-4" /></a>}
             </div>
           ))}
-          {!fontFiles.length && !templates.length && !b.guidelines.length && <div className="col-span-full"><EmptyBlock art="folder" text="No files yet. Add fonts, guideline PDFs or templates as master files." /></div>}
+          {!fontFiles.length && !templates.length && !b.guidelines.length && <div className="col-span-full"><EmptyBlock text="Fonts, guideline PDFs and templates added as master files show up here." /></div>}
         </div>
       </Section>
     </>
@@ -285,12 +284,9 @@ function Missing() {
   return <span className="text-mute-4">Not set yet</span>;
 }
 
-function EmptyBlock({ art, text }: { art: "kit" | "folder"; text: string }) {
+function EmptyBlock({ text }: { text: string }) {
   return (
-    <div className="col-span-full flex flex-col items-center rounded-[13px] border border-dashed border-line-strong px-6 py-6 text-center">
-      <SpotArt kind={art} />
-      <div className="mt-1 text-[14.5px] text-mute-2">{text}</div>
-    </div>
+    <div className="col-span-full rounded-[13px] border border-dashed border-line-strong px-6 py-6 text-center text-[14.5px] text-mute-2">{text}</div>
   );
 }
 

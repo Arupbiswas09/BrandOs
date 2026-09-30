@@ -7,9 +7,8 @@ import { live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { OfferCard } from "@/components/cards";
-import { ArchivedNote, Avatar, Btn, Chip, Page, cx } from "@/components/ui";
-import { EmptyArt, EntityHeader, FOCUS, IconTile, MetaItem } from "@/components/polish";
-import { SpotArt } from "@/components/art";
+import { ArchivedNote, Avatar, Btn, Chip, Empty, Page, cx } from "@/components/ui";
+import { EntityHeader, FOCUS, IconTile, MetaItem } from "@/components/polish";
 import { NotHere, useVisit } from "./common";
 
 export function ServicePage({ id }: { id: string }) {
@@ -56,9 +55,9 @@ export function ServicePage({ id }: { id: string }) {
       {v.description && <p className="m-0 mb-9 max-w-[64ch] text-[16px] leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
 
       {!groups.length && !orphans.length && (
-        <EmptyArt art={<SpotArt kind="offer" />} title="No offers for this service yet" body="An offer is this service argued at one segment. Write the first one and the gaps start to show.">
+        <Empty title="No offers for this service yet" body="An offer is this service argued at one segment.">
           {canEdit && <Btn variant="primary" size="lg" onClick={() => newOffer()}>Write the first offer</Btn>}
-        </EmptyArt>
+        </Empty>
       )}
 
       {groups.map((g) => (

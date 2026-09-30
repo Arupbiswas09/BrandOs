@@ -13,10 +13,9 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, GoalChips } from "@/components/cards";
 import { CommentText, Thread } from "@/components/discussion";
 import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
-import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, Eyebrow, Page } from "@/components/ui";
-import { EmptyArt, EntityHeader, IconTile, MetaItem } from "@/components/polish";
+import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, Empty, Eyebrow, Page } from "@/components/ui";
+import { EntityHeader, IconTile, MetaItem } from "@/components/polish";
 import { MoreMenu } from "@/components/more-menu";
-import { SpotArt } from "@/components/art";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
 import { NotHere, useVisit } from "./common";
 
@@ -186,10 +185,9 @@ export function OfferPage({ id }: { id: string }) {
       {assets.length > 0 ? (
         <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">{assets.map((a) => <AssetCard key={a.id} a={a} />)}</div>
       ) : (
-        <EmptyArt art={<SpotArt kind="folder" />} title="No assets in this offer yet" body="Something in the library probably already fits. Look before you build.">
-          {canEdit && <Btn variant="outline-accent" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link an existing asset</Btn>}
-          {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}>Make something new</Btn>}
-        </EmptyArt>
+        <Empty title="No assets in this offer yet" body="Something in the library probably already fits, so look there before you build.">
+          {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link an existing asset</Btn>}
+        </Empty>
       )}
 
       <div id="discussion" className="mt-11 max-w-[720px] scroll-mt-24">

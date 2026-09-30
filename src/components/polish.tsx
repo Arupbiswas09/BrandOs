@@ -105,15 +105,3 @@ export function MetaItem({ icon: Icon, children, className }: { icon?: LucideIco
 export function ActionRule() {
   return <span aria-hidden className="mx-1 hidden h-6 w-px bg-line sm:block" />;
 }
-
-/** The empty state with a spot illustration above it. */
-export function EmptyArt({ art, title, body, children, compact }: { art: ReactNode; title: string; body?: ReactNode; children?: ReactNode; compact?: boolean }) {
-  return (
-    <div className={cx("flex flex-col items-center rounded-[14px] border border-dashed border-line-strong bg-white/60 text-center", compact ? "px-6 py-7" : "px-6 py-10 sm:py-12")}>
-      <div className="mb-3">{art}</div>
-      <div className="mb-1.5 text-[16px] font-semibold text-ink">{title}</div>
-      {body && <div className="mx-auto mb-5 max-w-[46ch] text-[15px] leading-[1.55] text-mute-2 text-pretty">{body}</div>}
-      {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
-    </div>
-  );
-}

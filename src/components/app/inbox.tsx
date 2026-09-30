@@ -1,14 +1,43 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { AtSign, Bell, ChevronRight, UserRound, Users, X } from "lucide-react";
 import { hexA, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
+import type { QueueItem, WS } from "@/lib/ws";
 import { markMentionsRead } from "@/app/actions";
 import { useApp } from "./provider";
 import { Avatar, cx } from "@/components/ui";
-import { SpotArt } from "@/components/art";
+
+type Note = WS["d"]["comments"][number];
+
+/** One thing waiting on me: work assigned to me by name, or a note that @mentions me that I have not read. */
+export type OnYou =
+  | { type: "work"; key: string; since: number; q: QueueItem }
+  | { type: "mention"; key: string; since: number; c: Note };
+
+/**
+ * The one list of what is on me. The bell, the sidebar queue, the dashboard's
+ * "Waiting on you" and the inbox's "On you" all read it, so they never
+ * disagree. Whatever has waited longest comes first.
+ */
+export function onYou(ws: WS, unread: readonly string[] = ws.d.unreadMentions): OnYou[] {
+  const ids = new Set(unread);
+  const work: OnYou[] = ws.queue().filter((q) => q.who === ws.me.id).map((q) => ({ type: "work", key: q.kind + q.id, since: +q.since, q }));
+  const mentions: OnYou[] = ws.d.comments.filter((c) => ids.has(c.id)).map((c) => ({ type: "mention", key: "m" + c.id, since: +new Date(c.createdAt), c }));
+  return [...work, ...mentions].sort((a, b) => a.since - b.since);
+}
+
+export function useOnYou(): OnYou[] {
+  const { ws } = useApp();
+  return useMemo(() => onYou(ws), [ws]);
+}
+
+/** The offer or asset a note sits on. */
+export function noteWhere(ws: WS, c: Note): string {
+  return (c.kind === "asset" ? ws.asset(c.itemId)?.name : ws.offer(c.itemId)?.name) ?? "a note";
+}
 
 export function Inbox() {
   const { inbox, setInbox } = useApp();
@@ -34,14 +63,15 @@ function Panel({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const closeRef = useRef<HTMLButtonElement>(null);
   const meId = ws.me.id;
-  const q = useMemo(() => ws.queue(), [ws]);
-  const mine = q.filter((x) => x.who === meId);
-  const others = q.filter((x) => x.who !== meId);
+  // Mentions that were new when the panel opened stay under "On you" while it is open, even once they count as read.
+  const [fresh] = useState(() => ws.d.unreadMentions);
+  const mine = useMemo(() => onYou(ws, fresh), [ws, fresh]);
+  const others = useMemo(() => ws.queue().filter((x) => x.who !== meId), [ws, meId]);
   const unread = useMemo(() => new Set(ws.d.unreadMentions), [ws]);
-  const mentions = useMemo(
-    () => ws.d.comments.filter((c) => c.mentions.includes(meId) && c.userId !== meId && !c.resolved).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 20),
-    [ws, meId],
-  );
+  const earlier = useMemo(() => {
+    const shown = new Set(fresh);
+    return ws.d.comments.filter((c) => c.mentions.includes(meId) && c.userId !== meId && !c.resolved && !shown.has(c.id)).sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 20);
+  }, [ws, meId, fresh]);
 
   // Focus lands inside the panel, and goes back where it came from on close.
   useEffect(() => {
@@ -64,7 +94,21 @@ function Panel({ onClose }: { onClose: () => void }) {
     else router.push(href.offer(id) + "#discussion");
   };
 
-  const nothing = !mine.length && !mentions.length && !others.length;
+  const nothing = !mine.length && !earlier.length && !others.length;
+
+  const mention = (m: Note) => {
+    const isNew = unread.has(m.id) || fresh.includes(m.id);
+    return (
+      <button key={m.id} type="button" onClick={() => openItem(m.kind, m.itemId)} className={cx("lift flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left", isNew ? "border-accent/40 bg-soft" : "border-line bg-white")}>
+        <Avatar initials={ws.user(m.userId).initials} size={26} mono />
+        <span className="min-w-0 flex-1">
+          <span className="line-clamp-3 block text-[14.5px] leading-[1.5] text-ink-3">{m.text}</span>
+          <span className="mt-1 block text-[13px] text-mute-3">{ws.first(m.userId)} · on {noteWhere(ws, m)} · {ws.ago(m.createdAt)}</span>
+        </span>
+        {isNew && <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-change" role="img" aria-label="New" />}
+      </button>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Inbox">
@@ -77,7 +121,6 @@ function Panel({ onClose }: { onClose: () => void }) {
               <span className="block text-[17px] font-semibold leading-tight tracking-[-0.012em]">Inbox</span>
               <span className="block text-[13.5px] text-mute-2">
                 {mine.length ? `${mine.length} ${mine.length === 1 ? "thing needs" : "things need"} you` : "Nothing needs you"}
-                {unread.size > 0 && ` · ${unread.size} new ${unread.size === 1 ? "mention" : "mentions"}`}
               </span>
             </span>
             <button ref={closeRef} type="button" aria-label="Close" onClick={onClose} className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-mute-2 transition-colors hover:bg-hover hover:text-ink">
@@ -88,26 +131,27 @@ function Panel({ onClose }: { onClose: () => void }) {
 
         <div className="flex-1 px-5 pb-8 pt-5">
           {nothing ? (
-            <div className="flex flex-col items-center px-4 py-12 text-center">
-              <SpotArt kind="inbox" />
-              <div className="mt-3 text-[16px] font-semibold">You are all caught up</div>
-              <p className="m-0 mt-1 max-w-[34ch] text-[14.5px] text-mute-2 text-pretty">Work sent to you for review or changes, and notes that @mention you, show up here.</p>
+            <div className="px-4 py-12 text-center">
+              <div className="text-[16px] font-semibold">You are all caught up</div>
+              <p className="mx-auto mb-0 mt-1 max-w-[34ch] text-[14.5px] text-mute-2 text-pretty">Work sent to you for review or changes, and notes that @mention you, show up here.</p>
             </div>
           ) : (
             <>
               <Section icon={<UserRound />} title="On you" count={mine.length}>
                 <div className="flex flex-col gap-2">
                   {mine.map((x) => {
-                    const c = x.act === "review" ? "#8A6A12" : "#C2410C";
+                    if (x.type === "mention") return mention(x.c);
+                    const q = x.q;
+                    const c = q.act === "review" ? "#8A6A12" : "#C2410C";
                     return (
-                      <button key={x.kind + x.id} type="button" onClick={() => openItem(x.kind, x.id)} className="lift w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]">
+                      <button key={x.key} type="button" onClick={() => openItem(q.kind, q.id)} className="lift w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(15,23,42,.04)]">
                         <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                          <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{x.verb}</span>
-                          <span className="flex-1" /><span className="text-[13px] text-mute-3">{x.act === "review" ? `In review ${x.ago.replace(/ ago$/, "")}` : `Sent back ${x.ago}`}</span>
+                          <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{q.verb}</span>
+                          <span className="flex-1" /><span className="text-[13px] text-mute-3">{q.act === "review" ? `In review ${q.ago.replace(/ ago$/, "")}` : `Sent back ${q.ago}`}</span>
                         </span>
-                        <span className="block text-[15.5px] font-semibold leading-[1.35]">{x.name}</span>
-                        <span className="mt-0.5 block text-[14.5px] text-mute-2">{x.sub}</span>
-                        {x.note && <span className="mt-2 block border-t border-divider pt-2 text-[14px] leading-[1.5] text-change-ink">{x.note}</span>}
+                        <span className="block text-[15.5px] font-semibold leading-[1.35]">{q.name}</span>
+                        <span className="mt-0.5 block text-[14.5px] text-mute-2">{q.sub}</span>
+                        {q.note && <span className="mt-2 block border-t border-divider pt-2 text-[14px] leading-[1.5] text-change-ink">{q.note}</span>}
                       </button>
                     );
                   })}
@@ -115,24 +159,9 @@ function Panel({ onClose }: { onClose: () => void }) {
                 </div>
               </Section>
 
-              {mentions.length > 0 && (
-                <Section icon={<AtSign />} title="Mentions" count={mentions.length}>
-                  <div className="flex flex-col gap-2">
-                    {mentions.map((m) => {
-                      const where = m.kind === "asset" ? ws.asset(m.itemId)?.name : ws.offer(m.itemId)?.name;
-                      const isNew = unread.has(m.id);
-                      return (
-                        <button key={m.id} type="button" onClick={() => openItem(m.kind, m.itemId)} className={cx("lift flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left", isNew ? "border-accent/40 bg-soft" : "border-line bg-white")}>
-                          <Avatar initials={ws.user(m.userId).initials} size={26} mono />
-                          <span className="min-w-0 flex-1">
-                            <span className="line-clamp-3 block text-[14.5px] leading-[1.5] text-ink-3">{m.text}</span>
-                            <span className="mt-1 block text-[13px] text-mute-3">{ws.first(m.userId)} · on {where} · {ws.ago(m.createdAt)}</span>
-                          </span>
-                          {isNew && <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-change" role="img" aria-label="New" />}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {earlier.length > 0 && (
+                <Section icon={<AtSign />} title="Earlier mentions" count={earlier.length}>
+                  <div className="flex flex-col gap-2">{earlier.map(mention)}</div>
                 </Section>
               )}
 

@@ -21,8 +21,8 @@ export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: b
         )}
         sub={<>Anything deleted stays here for {days} days, with everything that was inside it. Restore puts it back exactly as it was.</>}
       />
-      {!allowed && <Empty art="bin" title="Only admins can see the bin" body="Deleting and restoring is an admin job. Ask an admin if something went missing." />}
-      {allowed && !entries.length && <Empty art="bin" title="The bin is empty" body={`Nothing has been deleted in the last ${days} days.`} />}
+      {!allowed && <Empty title="Only admins can see the bin" body="Deleting and restoring is an admin job. Ask an admin if something went missing." />}
+      {allowed && !entries.length && <Empty title="The bin is empty" body={`Nothing has been deleted in the last ${days} days.`} />}
       {allowed && entries.length > 0 && (
         <Card className="overflow-hidden">
           {entries.map((e) => (

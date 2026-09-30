@@ -15,10 +15,10 @@ import { hexA, onColor, readable } from "@/lib/color";
 import { resetDemo, signOut, switchUser } from "@/app/actions";
 import { useAction, useApp } from "./provider";
 import { PALETTES, PALETTE_KEYS, themeVars, type Palette, type Takeover } from "./theme";
-import { Avatar, cx } from "@/components/ui";
+import { Avatar, Mark, cx } from "@/components/ui";
 import { AssetDrawer } from "@/components/drawer/asset-drawer";
 import { CommandPalette } from "./command-palette";
-import { Inbox } from "./inbox";
+import { Inbox, useOnYou } from "./inbox";
 import { ModalHost } from "@/components/modals/host";
 import { Toasts } from "./toasts";
 import { Shortcuts } from "./shortcuts";
@@ -31,6 +31,8 @@ function useActiveBrand() {
   const { ws, assetId } = useApp();
   const pathname = usePathname();
   const p = parsePath(pathname);
+  // The Global Library and the team page belong to no brand, so they are never themed.
+  if (p.view === "library" || p.view === "team") return null;
   if (assetId) {
     const a = ws.asset(assetId);
     if (a?.brandId) return ws.brand(a.brandId);
@@ -41,18 +43,22 @@ function useActiveBrand() {
   return null;
 }
 
+/**
+ * How far a brand's colour takes over inside that brand. By default it leads:
+ * header rule, primary buttons, a soft tint on the page and borders. Anyone
+ * who picked a setting in this browser keeps it.
+ */
 export function useTakeover(): [Takeover, (t: Takeover) => void] {
-  return useStored<Takeover>("bos.takeover", "off", ["bold", "moderate", "off"]);
+  return useStored<Takeover>("bos.takeover", "bold", ["bold", "moderate", "off"]);
 }
 
 export function usePalette(): [Palette, (p: Palette) => void] {
   return useStored<Palette>("bos.palette", "azure", PALETTE_KEYS);
 }
 
-/** What the bell counts: work assigned to me, plus mentions I have not read (the inbox's own sources). */
+/** What the bell, the sidebar queue and the phone's Inbox count: the inbox's "On you", item for item. */
 function useWaiting() {
-  const { ws } = useApp();
-  return ws.queue().filter((q) => q.who === ws.me.id).length + ws.d.unreadMentions.length;
+  return useOnYou().length;
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -137,7 +143,7 @@ function useMiniTip(on: boolean): [ReactNode, TipBind, () => void] {
 }
 
 /** One nav row. When the sidebar is folded the label becomes a tooltip. */
-function NavItem({ href: to, icon, label, active, mini, badge, onClick, tip }: { href?: string; icon: ReactNode; label: string; active?: boolean; mini: boolean; badge?: ReactNode; onClick?: () => void; tip: TipBind }) {
+function NavItem({ href: to, icon, label, name, active, mini, badge, onClick, dialog, tip }: { href?: string; icon: ReactNode; label: string; name?: string; active?: boolean; mini: boolean; badge?: ReactNode; onClick?: () => void; dialog?: boolean; tip: TipBind }) {
   const cls = cx(itemCls(!!active), "text-left", mini && "h-10 justify-center px-0");
   const body = (
     <>
@@ -148,8 +154,25 @@ function NavItem({ href: to, icon, label, active, mini, badge, onClick, tip }: {
   );
   const tipProps = mini ? tip(label) : {};
   return to
-    ? <Link href={to} className={cls} aria-current={active ? "page" : undefined} {...tipProps}>{body}</Link>
-    : <button type="button" onClick={onClick} className={cls} {...tipProps}>{body}</button>;
+    ? <Link href={to} className={cls} aria-current={active ? "page" : undefined} aria-label={name} {...tipProps}>{body}</Link>
+    : <button type="button" onClick={onClick} className={cls} aria-label={name} aria-haspopup={dialog ? "dialog" : undefined} {...tipProps}>{body}</button>;
+}
+
+/**
+ * "Your queue": what is on you, with the same count as the bell, near the top
+ * of the sidebar. It opens the same inbox the bell opens.
+ */
+function QueueNav({ mini, drawer, tip }: { mini: boolean; drawer?: boolean; tip: TipBind }) {
+  const { inbox, setInbox, setNav } = useApp();
+  const n = useWaiting();
+  const badge = mini
+    ? n > 0 && <span aria-hidden className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold leading-none text-on-accent ring-2 ring-white theme-fade">{n}</span>
+    : <span aria-hidden className={cx("flex h-5 min-w-5 flex-none items-center justify-center rounded-full px-1.5 text-[12px] font-semibold tabular-nums theme-fade", n ? "bg-accent text-on-accent" : "bg-chip text-mute-3")}>{n}</span>;
+  return (
+    <NavItem mini={mini} tip={tip} dialog active={inbox} icon={<InboxIcon className="h-[18px] w-[18px] flex-none" />}
+      label={n ? "Your queue" : "Nothing on you"} name={n ? `Your queue, ${n} waiting` : "Nothing on you"} badge={badge || undefined}
+      onClick={() => { if (drawer) setNav(false); setInbox(true); }} />
+  );
 }
 
 function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
@@ -219,6 +242,7 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
       <nav data-scroll onScroll={hideTip} className={cx("flex-1 overflow-y-auto py-3", mini ? "px-3" : "px-2")} aria-label="Main">
         <div className="flex flex-col gap-0.5">
           <NavItem mini={mini} tip={tip} href="/" icon={<LayoutDashboard className={ic} />} label="Dashboard" active={p.view === "street"} />
+          <QueueNav mini={mini} drawer={drawer} tip={tip} />
           {/* Launch dates only: ClickUp and Asana own tasks and deadlines. */}
           <NavItem mini={mini} tip={tip} href="/calendar" icon={<CalendarDays className={ic} />} label="Launches" active={p.view === "calendar"} />
           {!ws.isGuest && <NavItem mini={mini} tip={tip} href="/library" icon={<BookOpen className={ic} />} label="Global Library" active={p.view === "library"} />}
@@ -312,6 +336,9 @@ function MobileNav() {
 
 function Header({ mini }: { mini: boolean }) {
   const { ws, open, setNav, setCmdk, setInbox } = useApp();
+  const brand = useActiveBrand();
+  const [mode] = useTakeover();
+  const themed = mode !== "off" ? brand : null;
   const me = ws.me;
   const roleNote: Partial<Record<typeof me.access, string>> = {
     Reviewer: "Reviewer — approve, send back, comment",
@@ -328,9 +355,11 @@ function Header({ mini }: { mini: boolean }) {
 
   return (
     <header className={`safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3 border-b border-line bg-white px-3 transition-[left] duration-200 sm:px-6 ${mini ? "lg:left-[72px]" : "lg:left-[264px]"}`}>
+      {themed && <span aria-hidden className="pointer-events-none absolute inset-x-0 -bottom-px h-[2px] bg-accent theme-fade" />}
       <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-mute-1 hover:bg-hover lg:hidden">
         <Menu className="h-5 w-5" />
       </button>
+      {themed && <span aria-hidden title={themed.name} className="flex-none"><Mark mark={themed.mark} color={themed.primary} size={30} radius={8} className="text-[11px]" /></span>}
       <button type="button" onClick={() => setCmdk(true)} aria-haspopup="dialog" className="flex h-10 min-w-0 max-w-2xl flex-1 items-center gap-2.5 rounded-lg border border-line bg-wash px-3 text-left text-[14.5px] text-mute-4 transition-colors duration-150 hover:border-line-strong hover:bg-white">
         <Search className="h-[18px] w-[18px] flex-none text-mute-5" />
         <span className="min-w-0 flex-1 truncate">Search clients, brands, offers, assets…</span>

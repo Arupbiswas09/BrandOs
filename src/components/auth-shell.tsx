@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { HeroArt } from "@/components/art";
 
 const POINTS = [
   ["Every brand in one place", "Clients, brands, offers and assets — with the Brand Kit right beside the work."],
@@ -11,11 +10,10 @@ const POINTS = [
 export function AuthShell({ title, sub, children, wide }: { title: ReactNode; sub?: ReactNode; children: ReactNode; wide?: boolean }) {
   return (
     <main className="grid min-h-screen bg-white lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-      <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#1D4ED8_0%,#0F2A5F_45%,#0B1B3A_100%)] px-12 py-12 text-white lg:flex lg:flex-col">
+      <aside className="relative hidden overflow-hidden bg-[#0F2A5F] px-12 py-12 text-white lg:flex lg:flex-col">
         <Brand light />
         <div className="my-auto">
-          <HeroArt className="mx-auto w-full max-w-[460px]" />
-          <h2 className="mb-6 mt-4 max-w-[22ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Your agency&apos;s brands, organised and on-brand.</h2>
+          <h2 className="mb-6 mt-0 max-w-[22ch] text-[30px] font-semibold leading-[1.15] tracking-[-0.02em]">Your agency&apos;s brands, organised and on-brand.</h2>
           <ul className="m-0 flex list-none flex-col gap-4 p-0">
             {POINTS.map(([h, p]) => (
               <li key={h} className="flex gap-3">

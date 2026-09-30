@@ -60,15 +60,15 @@ export function Library() {
       {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="item" onOpen={(a) => openAsset(a.id)} />}
       {sel.on && <BulkBar s={sel} shown={grid} library />}
       {!grid.length && (q ? (
-        <Empty art="search" title="Nothing matches that search" body={`Try another word, or clear the search to see every ${kind ? kind.noun : "item"}.`}>
+        <Empty title="Nothing matches that search" body={`Try another word, or clear the search to see every ${kind ? kind.noun : "item"}.`}>
           <Btn onClick={() => setQ("")}>Clear the search</Btn>
         </Empty>
       ) : kind ? (
-        <Empty art="folder" title={`No ${kind.many} yet`} body={kind.holds}>
+        <Empty title={`No ${kind.many} yet`} body={kind.holds}>
           {ws.can("library") && <Btn variant="dark" size="lg" onClick={() => add(kind.type)}><Plus aria-hidden className="h-4 w-4" />Add {kind.one}</Btn>}
         </Empty>
       ) : (
-        <Empty art="folder" title="Nothing in the library yet" body="Checklists, prompts, templates, SOPs and ad creatives that every client can use live here. Upload the files with them.">
+        <Empty title="Nothing in the library yet" body="Checklists, prompts, templates, SOPs and ad creatives that every client can use live here, files included.">
           {ws.can("library") && <AddMenu label="Add something" onPick={add} />}
         </Empty>
       ))}
