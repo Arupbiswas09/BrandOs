@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CloudUpload, Paperclip, X } from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
-import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY } from "@/lib/constants";
+import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY, type AssetCategory } from "@/lib/constants";
+import { addTags, tagPool } from "@/lib/tags";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
 import { checkBatch, sizeLabel } from "@/lib/upload-policy";
 import { useAction, useApp } from "@/components/app/provider";
+import { TagInput } from "@/components/tag-input";
 import { Btn, CheckRow, Chip, Field, Mark, Pills, Select, Tick, cx } from "@/components/ui";
 import { Footer, Modal } from "./frame";
 import type { AssetDraft } from "./types";
@@ -16,6 +18,13 @@ import type { AssetDraft } from "./types";
 type Step = 0 | 1 | 2 | 3;
 
 const plural = (n: number) => `${n} file${n === 1 ? "" : "s"}`;
+
+/** The type step's groups: what the work is, and where it will live. */
+const GROUPS: { cat: AssetCategory; what: string; where?: string }[] = [
+  { cat: "campaign", what: "Campaign work" },
+  { cat: "master", what: "Master files", where: "Brand Kit" },
+  { cat: "global", what: "Process", where: "Global Library" },
+];
 
 export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft; step?: Step }) {
   const { ws, close, openAsset, toast } = useApp();
@@ -44,7 +53,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     specs: draft.specs ?? "",
     audienceNotes: draft.audienceNotes ?? "",
     aiPrompt: draft.aiPrompt ?? "",
-    tags: (draft.tags ?? []).join(", "),
+    tags: draft.tags ?? [],
     copy: draft.copy ?? { headline: "", body: "", cta: "" },
     promptFor: draft.promptFor ?? "",
     prompt: draft.prompt ?? "",
@@ -52,6 +61,10 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     offerIds: draft.offerIds ?? [],
   });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((x) => ({ ...x, [k]: v }));
+  // A tag half typed in the box; saving adds it too.
+  const [tagText, setTagText] = useState("");
+  const tagsInUse = useMemo(() => tagPool(ws.d.assets), [ws.d.assets]);
+  const uid = useId();
   const known = !editing && !!d.brandId && d.offerIds.length > 0;
   const brand = ws.brand(d.brandId);
 
@@ -99,7 +112,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       id: draft.id, brandId: d.brandId, name: d.name, type: d.type, channel: d.channel, status: d.status as Asset["status"],
       short: d.short, url: d.url, notes: d.notes, specs: d.specs, audienceNotes: d.audienceNotes, aiPrompt: d.aiPrompt,
       ctaId: d.ctaId || null, delivery: d.delivery, gated: d.gated,
-      tags: d.tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean),
+      tags: addTags(d.tags, tagText, tagsInUse),
       copy: d.copy,
       ...(d.type === "Prompt" && { promptFor: d.promptFor, prompt: d.prompt }),
       ...(d.type === "Checklist" && !editing && { items: d.checks.split("\n").map((t) => t.trim()).filter(Boolean).map((text) => ({ text, done: false })) }),
@@ -116,13 +129,14 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   const title = editing ? "Edit asset" : "What are you making?";
   const stepLabel = editing ? undefined : known ? "One step — the rest is already known" : `Step ${step + 1} of 4`;
 
+  // On the type step, picking a type is the way forward, so there is no Next or Save to press.
   const footer = (
     <>
       {!editing && <Btn onClick={() => setStep((s) => Math.max(0, s - 1) as Step)} disabled={step === 0} className="px-[15px] py-2">Back</Btn>}
       <span className="flex-1" />
       <Btn variant="ghost" onClick={close}>Cancel</Btn>
-      {step < 3 && <Btn onClick={() => setStep((s) => Math.min(3, s + 1) as Step)} disabled={step === 0 && !d.type} className="px-[15px] py-2">Next</Btn>}
-      <Btn type="submit" variant="primary" disabled={!valid || pending} className="px-[17px] py-2">{pending ? "Saving…" : "Save asset"}</Btn>
+      {step > 0 && step < 3 && <Btn onClick={() => setStep((s) => Math.min(3, s + 1) as Step)} className="px-[15px] py-2">Next</Btn>}
+      {step > 0 && <Btn type="submit" variant="primary" disabled={!valid || pending} className="px-[17px] py-2">{pending ? "Saving…" : "Save asset"}</Btn>}
     </>
   );
 
@@ -135,9 +149,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               Going into <span className="font-semibold">{brand?.name} · {ws.offer(d.offerIds[0])?.name}</span> — pick the kind and you are done.
             </div>
           )}
-          {(["campaign", "master", "global"] as const).map((cat) => (
-            <div key={cat} className="mb-3 last:mb-0">
-              <div className="eyebrow mb-2 text-[12px]">{cat === "campaign" ? "Campaign work" : cat === "master" ? "Master files for the Brand Kit" : "Reusable — usually in the Global Library"}</div>
+          {GROUPS.map(({ cat, what, where }) => (
+            <div key={cat} role="group" aria-labelledby={`${uid}-${cat}`} className="mb-3 last:mb-0">
+              <div id={`${uid}-${cat}`} className="eyebrow mb-2 text-[12px]">
+                {what}
+                {where && <><span aria-hidden> → </span><span className="sr-only">, kept in the </span>{where}</>}
+              </div>
               <div className="grid grid-cols-2 gap-[9px] sm:grid-cols-3">
                 {Object.entries(ASSET_TYPES).filter(([k, t]) => t.cat === cat && k !== "Newsletter ad").map(([k, t]) => (
                   <button key={k} type="button" aria-pressed={d.type === k}
@@ -191,7 +208,10 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
 
       {step === 3 && (
         <>
-          <div className="text-[14.5px] text-mute-2">{d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}</div>
+          <div className="text-[14.5px] text-mute-2">
+            {d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}
+            {!editing && <span className="text-mute-3"> · starts as {d.status}</span>}
+          </div>
           <Field label="Asset name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
           {dupes.length > 0 && (
             <div className="rounded-[10px] border border-[rgba(201,154,46,.4)] bg-[rgba(201,154,46,.07)] px-[15px] py-[13px]">
@@ -205,9 +225,10 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               </div>
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
+          {/* New assets start as the caller says (Draft, or Live in the Global Library); status then changes on the asset itself. */}
+          <div className={cx("grid gap-3", editing && "sm:grid-cols-2")}>
             <Field label="Short description"><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
-            <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>
+            {editing && <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>}
           </div>
           {canUpload && (
             <div>
@@ -251,7 +272,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           {d.brandId && (
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>
-              <Field label="Tags" hint={<span className="font-normal text-mute-4">comma separated</span>}><input className="field" value={d.tags} onChange={(e) => set("tags", e.target.value)} placeholder="landing, evergreen" /></Field>
+              <TagInput value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="landing, evergreen" />
             </div>
           )}
           <div className="grid items-end gap-3 sm:grid-cols-2">

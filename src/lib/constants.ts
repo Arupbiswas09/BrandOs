@@ -118,6 +118,22 @@ export const BRAND_PALETTES: [string, string][] = [
   ["#1D4ED8", "#F59E0B"],
 ];
 
+/**
+ * The colour pair a new brand starts with, so no two brands look alike on day
+ * one: the first pair whose primary no brand wears yet or, once every pair is
+ * taken, the least worn. Archived brands are out of sight, so they do not count.
+ */
+export function freshBrandPair(brands: { primary: string; archived?: boolean }[]): [string, string] {
+  const worn = (hex: string) => brands.filter((b) => !b.archived && b.primary.toUpperCase() === hex.toUpperCase()).length;
+  let pick = BRAND_PALETTES[0];
+  let least = Infinity;
+  for (const pair of BRAND_PALETTES) {
+    const n = worn(pair[0]);
+    if (n < least) { pick = pair; least = n; }
+  }
+  return [pick[0], pick[1]];
+}
+
 export const SEGMENT_PALETTE = ["#7C6AC4", "#2D6FA8", "#C2740C", "#2F8F62", "#C2410C", "#0E7490", "#B4553A", "#4B62C4"];
 
 export const NEUTRAL = "#64748B";
