@@ -22,7 +22,7 @@ export default async function SharePage({ params }: PageProps<"/share/[token]">)
   const fg = onColor(b.primary);
   return (
     <main className="min-h-screen" style={{ background: hexA(b.primary, 0.04) }}>
-      <header className="px-5 pb-10 pt-14 sm:px-8" style={{ background: `linear-gradient(180deg, ${hexA(b.primary, 0.12)}, transparent)` }}>
+      <header className="px-5 pb-10 pt-14 sm:px-8" style={{ background: hexA(b.primary, 0.06), borderTop: `3px solid ${b.primary}` }}>
         <div className="mx-auto max-w-[860px]">
           <span className="mb-5 flex h-14 w-14 items-center justify-center rounded-[14px] text-[19px] font-bold" style={{ background: b.primary, color: fg }}>{b.mark}</span>
           <h1 className="m-0 mb-2 text-[28px] font-semibold leading-[1.1] tracking-[-0.02em] sm:text-[30px]">{b.name}</h1>

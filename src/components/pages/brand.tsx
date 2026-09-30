@@ -18,9 +18,8 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, OfferCard, blocksFor } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { CtaButton } from "@/components/drawer/asset-drawer";
-import { ArchExpander, ArchivedNote, Blocks, Btn, Card, H2, Mark, Page, Pills, SectionHead, Warn, cx } from "@/components/ui";
-import { EmptyArt, FOCUS, IconTile, LIFT } from "@/components/polish";
-import { SpotArt } from "@/components/art";
+import { ArchExpander, ArchivedNote, Blocks, Btn, Card, Empty, H2, Mark, Page, Pills, SectionHead, Warn, cx } from "@/components/ui";
+import { FOCUS, IconTile, LIFT } from "@/components/polish";
 import { NotHere, useVisit } from "./common";
 import { BrandHealth } from "@/components/health";
 import { BrandKit } from "./kit";
@@ -78,9 +77,9 @@ function BrandHero({ b }: { b: Brand }) {
   const client = ws.client(b.clientId);
   return (
     <div className="head-band -mt-8 mb-7 pb-8 pt-9 text-center sm:-mt-10 sm:pt-10">
-      {/* Full-bleed brand tint and colour strip, painted over the band's white. */}
-      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(180deg, ${hexA(b.primary, 0.1)}, ${hexA(b.secondary, 0.04)} 70%, rgba(255,255,255,0))` }} />
-      <span aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-[1] h-[3px] w-[200vw] -translate-x-1/2" style={{ background: `linear-gradient(90deg, ${b.primary}, ${b.secondary})` }} />
+      {/* Full-bleed: a flat soft tint of the brand colour over the band's white, under a solid rule in it. */}
+      <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: hexA(b.primary, 0.06) }} />
+      <span aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-[1] h-[3px] w-[200vw] -translate-x-1/2" style={{ background: b.primary }} />
       <Mark mark={b.mark} color={b.primary} size={64} radius={16} className="mx-auto mb-4 text-[21px] shadow-[0_8px_20px_-10px_rgba(15,23,42,.5)]" />
       <h1 className="m-0 text-[28px] font-semibold leading-[1.15] tracking-[-0.02em] sm:text-[32px]">Welcome to {b.name}</h1>
       {b.tagline && <p className="mx-auto mb-0 mt-2 max-w-[56ch] text-[16px] text-mute-2 text-pretty">{b.tagline}</p>}
@@ -173,7 +172,7 @@ function Home({ b }: { b: Brand }) {
             {subs.length > 0 ? (
               <div className="grid gap-3.5 md:grid-cols-2">
                 {subs.map((sb) => (
-                  <Link key={sb.id} href={href.brand(sb.id)} className={cx("flex items-center gap-3.5 rounded-[13px] border border-line p-[18px] text-left", LIFT, FOCUS)} style={{ background: `linear-gradient(100deg, ${hexA(sb.primary, 0.1)}, ${hexA(sb.secondary, 0.05)} 60%, #FFFFFF)` }}>
+                  <Link key={sb.id} href={href.brand(sb.id)} className={cx("flex items-center gap-3.5 rounded-[13px] border border-line p-[18px] text-left", LIFT, FOCUS)} style={{ background: hexA(sb.primary, 0.06) }}>
                     <Mark mark={sb.mark} color={sb.primary} size={38} radius={9} />
                     <span className="min-w-0 flex-1"><span className="block text-[16px] font-semibold">{sb.name}</span><span className="mt-0.5 block text-[14px] text-mute-1">{sb.tagline}</span></span>
                     <span className="flex-none text-[14.5px] text-mute-2">{plural(live(ws.assetsOf(sb.id)).length, "asset")}</span>
@@ -225,9 +224,9 @@ function Home({ b }: { b: Brand }) {
               {recent.map((a) => <AssetCard key={a.id} a={a} variant="recent" />)}
             </div>
           ) : (
-            <EmptyArt art={<SpotArt kind="rocket" />} title="This brand is empty" body="Start with the thing you actually need, not with a database record.">
+            <Empty title="This brand is empty" body="Start with the thing you actually need, not with a database record.">
               {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: [] }, step: 0 })}>Add the first asset</Btn>}
-            </EmptyArt>
+            </Empty>
           )}
         </div>
 
@@ -359,9 +358,9 @@ function Services({ b }: { b: Brand }) {
       </div>
       <ArchExpander items={archivedOnly(all)} noun="service" onOpen={(v) => router.push(href.service(v.id))} />
       {!all.length && (
-        <EmptyArt art={<SpotArt kind="kit" />} title="No services yet" body="A service is a capability you sell. Offers hang off it, one per segment.">
+        <Empty title="No services yet" body="A service is a capability you sell, with one offer for each segment.">
           {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>Create the first service</Btn>}
-        </EmptyArt>
+        </Empty>
       )}
       {stand.length > 0 && (
         <div className="mt-[38px]">
@@ -403,9 +402,9 @@ function Offers({ b }: { b: Brand }) {
       <div className="grid gap-4 md:grid-cols-2">{shown.map((o) => <OfferCard key={o.id} o={o} />)}</div>
       <ArchExpander items={archivedOnly(filtered)} noun="offer" onOpen={(o) => router.push(href.offer(o.id))} />
       {!shown.length && (
-        <EmptyArt art={<SpotArt kind={all.length === 0 ? "offer" : "search"} />} title="No offers here" body={all.length === 0 ? "No offers yet. An offer is a campaign or package — it holds the positioning and every asset that supports it." : "Nothing matches those filters."}>
+        <Empty title={all.length === 0 ? "No offers yet" : "No offers here"} body={all.length === 0 ? "An offer is a campaign or package that holds the positioning and every asset that supports it." : "Nothing matches those filters."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>{all.length ? "Create an offer" : "Create the first offer"}</Btn>}
-        </EmptyArt>
+        </Empty>
       )}
     </>
   );
@@ -463,9 +462,9 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
       {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="asset" onOpen={(a) => openAsset(a.id)} />}
       {sel.on && <BulkBar s={sel} shown={grid} />}
       {!grid.length && (
-        <EmptyArt art={<SpotArt kind={camp.length === 0 ? "folder" : "search"} />} title="Nothing to show" body={camp.length === 0 ? "No assets yet. Start with the thing you actually need — a landing page, an email, an ad." : "Nothing matches that search."}>
+        <Empty title={camp.length === 0 ? "No assets yet" : "Nothing to show"} body={camp.length === 0 ? "Start with the thing you actually need: a landing page, an email, an ad." : "Nothing matches that search."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>Add an asset</Btn>}
-        </EmptyArt>
+        </Empty>
       )}
     </>
   );
@@ -575,9 +574,9 @@ function Ctas({ b }: { b: Brand }) {
         })}
       </div>
       {!ctas.length && (
-        <EmptyArt art={<SpotArt kind="inbox" />} title="No CTAs yet" body="Write the button once and reuse it across every offer and asset.">
+        <Empty title="No CTAs yet" body="Write the button once and reuse it across every offer and asset.">
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newCta}>Create a CTA</Btn>}
-        </EmptyArt>
+        </Empty>
       )}
     </>
   );

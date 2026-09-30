@@ -11,7 +11,6 @@ import { href } from "@/lib/routes";
 import { NEUTRAL } from "@/lib/constants";
 import { useApp } from "./provider";
 import { cx } from "@/components/ui";
-import { SpotArt } from "@/components/art";
 
 type Row = { key: string; title: string; sub: string; code: string; color: string; kind?: string; icon?: LucideIcon; run: () => void };
 type Section = { section: string; icon: LucideIcon; rows: Row[] };
@@ -179,8 +178,7 @@ function Palette({ onClose }: { onClose: () => void }) {
           </div>}
           {searching && total === 0 && (
             <div className="flex flex-col items-center px-6 py-8 text-center">
-              <SpotArt kind="search" />
-              <div className="mt-2 text-[15px] font-semibold text-ink">Nothing matches &ldquo;{q.trim()}&rdquo;</div>
+              <div className="text-[15px] font-semibold text-ink">Nothing matches &ldquo;{q.trim()}&rdquo;</div>
               <div className="mt-1 max-w-[40ch] text-[14px] text-mute-2">
                 {scope === "All" ? "Check the spelling, or try a client, brand or offer name." : <>Nothing in {KIND[scope].label.toLowerCase()}. <button type="button" onClick={() => setScope("All")} className="font-semibold text-accent hover:underline">Search everything</button></>}
               </div>

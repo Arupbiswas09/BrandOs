@@ -2,6 +2,7 @@
 
 import { useContext, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MapPin } from "lucide-react";
 import type { Comment } from "@/db/schema";
 import { href } from "@/lib/routes";
 import { deleteComment, editComment, postComment, toggleResolve } from "@/app/actions";
@@ -105,7 +106,7 @@ function Note({ c }: { c: Comment }) {
   );
 }
 
-/** "📍 on hero.png" — a note pinned in the proof view. Opens the proof view on that pin. */
+/** "Pin on hero.png": a note pinned in the proof view. Opens the proof view on that pin. */
 function PinChip({ c }: { c: PinnedComment }) {
   const { ws, openAsset } = useApp();
   const go = useContext(PinLink);
@@ -115,7 +116,7 @@ function PinChip({ c }: { c: PinnedComment }) {
   return (
     <button type="button" onClick={() => (go ? go(c) : openAsset(c.itemId, "proof"))} aria-label={`Note ${n} on ${name}. Open it in the proof view`}
       className="max-w-[220px] truncate rounded-[5px] bg-soft px-[7px] py-[2px] text-[13px] font-semibold text-accent hover:underline">
-      <span aria-hidden>📍</span> on {name}
+      <MapPin aria-hidden size={13} className="mr-1 inline-block align-[-2px]" />on {name}
     </button>
   );
 }

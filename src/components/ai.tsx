@@ -11,7 +11,7 @@ export function AiDraftButton({ assetId, label = "Draft with AI" }: { assetId: s
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Btn variant="outline-accent" onClick={() => setOpen(true)}>✦ {label}</Btn>
+      <Btn variant="outline-accent" onClick={() => setOpen(true)}>{label}</Btn>
       {open && <DraftPanel assetId={assetId} onClose={() => setOpen(false)} />}
     </>
   );

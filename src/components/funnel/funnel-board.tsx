@@ -10,9 +10,7 @@ import {
 } from "@/lib/funnel";
 import { plural } from "@/lib/ws";
 import { useAction, useApp } from "@/components/app/provider";
-import { SpotArt } from "@/components/art";
-import { EmptyArt } from "@/components/polish";
-import { Btn, Card, cx } from "@/components/ui";
+import { Btn, Card, Empty, cx } from "@/components/ui";
 import { BoxView, DEFAULT_TEXT, boxName } from "./box";
 import { ArrowInspector, BoxInspector } from "./inspector";
 import { FunnelIndex, LinkSelect, linkGroups, parseLinkValue, resolveLink, type Resolved } from "./linked";
@@ -396,22 +394,25 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
       <section aria-labelledby={`${uid}-title`} className="mb-[34px]">
         {head}
         {editable ? (
-          <EmptyArt
-            art={<SpotArt kind="offer" />}
+          // One sentence and one way in: a draft when there is something to draft from, a blank board when not.
+          <Empty
             title="Map how people move through this offer"
             body={
               linkedAssets.length
-                ? `Draft one from the ${plural(linkedAssets.length, "asset")} already linked to it. It lays out ads and posts first, then the landing page, then the CTA and the goal, and you rearrange from there.`
+                ? `Draft one from the ${plural(linkedAssets.length, "asset")} already linked to it: ads and posts first, then the landing page, the CTA and the goal.`
                 : canDraft
-                  ? "Nothing is linked yet, so a draft starts from the CTA and the goal. Link assets first for a fuller map, or start blank."
-                  : "Link some assets, or set a CTA and a goal, and BrandOS can draft it for you. Or start with a blank board."
+                  ? "Nothing is linked yet, so a draft starts from the CTA and the goal."
+                  : "Start with a blank board, or link some assets and set a CTA and a goal so BrandOS can draft one."
             }
           >
-            <Btn variant="primary" size="lg" disabled={drafting || busy || !canDraft} onClick={() => runAction(draftFunnel, offerId)}>
-              <Spline aria-hidden size={16} />{drafting ? "Drafting…" : "Draft from linked assets"}
-            </Btn>
-            <Btn size="lg" disabled={drafting} onClick={() => add("step")}>Start blank</Btn>
-          </EmptyArt>
+            {canDraft ? (
+              <Btn variant="primary" size="lg" disabled={drafting || busy} onClick={() => runAction(draftFunnel, offerId)}>
+                <Spline aria-hidden size={16} />{drafting ? "Drafting…" : linkedAssets.length ? "Draft from linked assets" : "Draft from the CTA and goal"}
+              </Btn>
+            ) : (
+              <Btn variant="primary" size="lg" onClick={() => add("step")}>Start blank</Btn>
+            )}
+          </Empty>
         ) : (
           <div className="rounded-xl border border-dashed border-line-strong bg-white/60 px-5 py-6 text-[15px] text-mute-2">No funnel mapped yet.</div>
         )}

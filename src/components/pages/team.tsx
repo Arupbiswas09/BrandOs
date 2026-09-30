@@ -125,7 +125,7 @@ export function Team() {
         })}
       </div>
       {!ws.d.groups.length && (
-        <Empty art="people" title="No groups yet" body="Make a group for a pod or an account team, then add people to it. They get every client the group covers.">
+        <Empty title="No groups yet" body="Make a group for a pod or an account team, and everyone in it gets every client the group covers.">
           {canAccess && <Btn variant="primary" onClick={() => open({ kind: "group" })}>Make a group</Btn>}
         </Empty>
       )}

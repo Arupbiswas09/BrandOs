@@ -8,11 +8,10 @@ import { href } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
-import { ArchExpander, ArchivedNote, Avatar, Btn, Card, H2, Mark, Page, cx } from "@/components/ui";
-import { EmptyArt, EntityHeader, FOCUS, IconTile, LIFT, MetaItem } from "@/components/polish";
+import { ArchExpander, ArchivedNote, Avatar, Btn, Card, Empty, H2, Mark, Page, cx } from "@/components/ui";
+import { EntityHeader, FOCUS, IconTile, LIFT, MetaItem } from "@/components/polish";
 import { MoreMenu } from "@/components/more-menu";
 import { ActivityRow } from "@/components/activity-row";
-import { SpotArt } from "@/components/art";
 import { NotHere, useVisit } from "./common";
 
 export function ClientPage({ id }: { id: string }) {
@@ -98,8 +97,8 @@ export function ClientPage({ id }: { id: string }) {
             const subs = live(ws.subBrands(b.id));
             return (
               <Card key={b.id} className="overflow-hidden transition duration-200 hover:shadow-[0_10px_24px_-12px_rgba(15,23,42,.18)]">
-                <span aria-hidden className="block h-[3px]" style={{ background: `linear-gradient(90deg, ${b.primary}, ${b.secondary})` }} />
-                <Link href={href.brand(b.id)} className="group flex w-full items-center gap-[15px] p-5 text-left focus-visible:outline-offset-[-2px]" style={{ background: `linear-gradient(100deg, ${hexA(b.primary, 0.1)}, ${hexA(b.secondary, 0.05)} 60%, rgba(255,255,255,0))` }}>
+                <span aria-hidden className="block h-[3px]" style={{ background: b.primary }} />
+                <Link href={href.brand(b.id)} className="group flex w-full items-center gap-[15px] p-5 text-left focus-visible:outline-offset-[-2px]" style={{ background: hexA(b.primary, 0.06) }}>
                   <Mark mark={b.mark} color={b.primary} size={48} radius={12} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[18px] font-semibold tracking-[-0.015em]">{b.name}</span>
@@ -124,9 +123,9 @@ export function ClientPage({ id }: { id: string }) {
           })}
         </div>
         {!tops.length && (
-          <EmptyArt art={<SpotArt kind="kit" />} title="No brands yet" body="A brand is where offers and assets live.">
+          <Empty title="No brands yet" body="A brand is where offers and assets live.">
             {ws.can("structure") && <Btn variant="primary" size="lg" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })}>Add the first brand</Btn>}
-          </EmptyArt>
+          </Empty>
         )}
         <ArchExpander items={archivedOnly(bs)} noun="brand" onOpen={(b) => router.push(href.brand(b.id))} />
       </div>
@@ -148,7 +147,7 @@ export function ClientPage({ id }: { id: string }) {
               );
             })}
           </div>
-          {!recent.length && <EmptyArt compact art={<SpotArt kind="folder" />} title="Nothing touched here yet" body="Assets show up here as people work on them." />}
+          {!recent.length && <Empty compact title="Nothing touched here yet" body="Assets show up here as people work on them." />}
         </div>
         <div>
           <H2>Activity</H2>
@@ -156,7 +155,7 @@ export function ClientPage({ id }: { id: string }) {
             {acts.map((a) => (
               <ActivityRow key={a.id} a={a} onOpen={a.type === "asset" ? () => openAsset(a.itemId) : a.type === "offer" ? () => router.push(href.offer(a.itemId)) : a.type === "brand" ? () => router.push(href.brand(a.itemId)) : undefined} />
             ))}
-            {!acts.length && <div className="flex flex-col items-center py-5 text-center"><SpotArt kind="inbox" className="mb-2" /><span className="text-[15px] text-mute-3">Quiet so far.</span></div>}
+            {!acts.length && <div className="py-5 text-center text-[15px] text-mute-3">Quiet so far.</div>}
           </Card>
         </div>
       </div>

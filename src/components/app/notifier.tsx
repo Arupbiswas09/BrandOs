@@ -3,9 +3,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { useApp } from "./provider";
+import { noteWhere, useOnYou } from "./inbox";
 
 /*
- * Real notifications, from the same data as the inbox:
+ * Real notifications, from the same list as the inbox's "On you":
  *   - a toast when something new lands on you while the app is open,
  *   - a desktop notification too, if you allowed them in Settings,
  *   - the count on the installed app's icon and in the tab title.
@@ -15,19 +16,16 @@ import { useApp } from "./provider";
 export function Notifier() {
   const { ws, toast, setInbox } = useApp();
   const pathname = usePathname();
-  const meId = ws.me.id;
+  const list = useOnYou();
 
   const items = useMemo(() => {
     const out = new Map<string, string>();
-    for (const q of ws.queue()) if (q.who === meId) out.set(q.kind + q.id + q.verb, `${q.verb}: ${q.name}`);
-    const unread = new Set(ws.d.unreadMentions);
-    for (const c of ws.d.comments) {
-      if (!unread.has(c.id)) continue;
-      const where = c.kind === "asset" ? ws.asset(c.itemId)?.name : ws.offer(c.itemId)?.name;
-      out.set("m" + c.id, `${ws.first(c.userId)} mentioned you on ${where ?? "a note"}`);
+    for (const x of list) {
+      if (x.type === "work") out.set(x.key + x.q.verb, `${x.q.verb}: ${x.q.name}`);
+      else out.set(x.key, `${ws.first(x.c.userId)} mentioned you on ${noteWhere(ws, x.c)}`);
     }
     return out;
-  }, [ws, meId]);
+  }, [ws, list]);
   const count = items.size;
 
   // Tell people about what is new since the last refresh, never about what was already there.
