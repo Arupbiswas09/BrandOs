@@ -18,6 +18,7 @@ import { EntityHeader, IconTile, MetaItem } from "@/components/polish";
 import { MoreMenu } from "@/components/more-menu";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
 import { NotHere, useVisit } from "./common";
+import { fmtDate } from "@/lib/format";
 
 export function OfferPage({ id }: { id: string }) {
   const { ws, open, openAsset, nudge, setNudge } = useApp();
@@ -109,7 +110,7 @@ export function OfferPage({ id }: { id: string }) {
                 <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
                   onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-[8px] border border-line bg-white px-2.5 py-[5px] text-[14px]" />
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-[15px] text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? new Date(o.dueAt).toDateString() : "Not scheduled"}</span>
+                <span className="inline-flex items-center gap-1.5 text-[15px] text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? fmtDate(o.dueAt) : "Not scheduled"}</span>
               )}
             </div>
           </div>

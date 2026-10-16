@@ -1,5 +1,5 @@
 import type {
-  Activity, Asset, Brand, Client, Comment, Cta, Group, Link, NotifyPrefs, Offer, Service, ShareLink, User,
+  Activity, Asset, AssetFolder, Brand, Client, Comment, Cta, Group, Link, NotifyPrefs, Offer, Service, ShareLink, User,
 } from "@/db/schema";
 import type { MyUploadLimits, UploadPolicy } from "@/lib/upload-policy";
 
@@ -37,6 +37,8 @@ export type Workspace = {
   assets: Asset[];
   ctas: Cta[];
   links: Link[];
+  /** Folders on the offers I can see. */
+  folders: AssetFolder[];
   comments: Comment[];
   activity: Activity[];
   recents: Recent[];

@@ -24,6 +24,7 @@ import { href } from "@/lib/routes";
 import { recordSecurity } from "@/server/audit";
 import { EV } from "@/lib/audit";
 import { draftNewOfferFunnel } from "@/server/funnel";
+import { fmtDate } from "@/lib/format";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -133,7 +134,7 @@ export async function resetDemo() {
     if (authMode() !== "demo") throw new Denied("Reset is only available in demo mode.");
     const db = await getDb();
     await db.transaction(async (tx) => {
-      for (const t of [s.notificationQueue, s.calendarFeeds, s.twoFactor, s.signInCodes, s.loginAttempts, s.settings, s.trash, s.shareLinks, s.links, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
+      for (const t of [s.notificationQueue, s.calendarFeeds, s.twoFactor, s.signInCodes, s.loginAttempts, s.settings, s.trash, s.shareLinks, s.links, s.assetFolders, s.comments, s.activity, s.recents, s.reads, s.assetVersions, s.assets, s.offers, s.ctas, s.services, s.brands, s.clients, s.groups, s.invites]) {
         await tx.delete(t);
       }
       await tx.delete(s.sessions);
@@ -1343,7 +1344,7 @@ export async function setDue(kind: "offer" | "asset", id: string, date: string |
     own(me, item);
     const dueAt = dueFrom(date) ?? null;
     await db.update(t).set({ dueAt, updatedAt: new Date() }).where(eq(t.id, id));
-    await log(db, me.id, dueAt ? "set a due date on" : "cleared the due date on", kind, id, item.name, dueAt ? dueAt.toDateString() : "");
+    await log(db, me.id, dueAt ? "set a due date on" : "cleared the due date on", kind, id, item.name, dueAt ? fmtDate(dueAt) : "");
   });
 }
 
@@ -1480,7 +1481,7 @@ export async function bulkAssets(ids: string[], op: BulkOp, payload: BulkPayload
           }
           case "due": {
             await tx.update(s.assets).set({ dueAt, updatedAt: new Date() }).where(eq(s.assets.id, id));
-            await log(tx, me.id, dueAt ? "set a due date on" : "cleared the due date on", "asset", id, a.name, dueAt ? dueAt.toDateString() : "");
+            await log(tx, me.id, dueAt ? "set a due date on" : "cleared the due date on", "asset", id, a.name, dueAt ? fmtDate(dueAt) : "");
             break;
           }
           case "review": {

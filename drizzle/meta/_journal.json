@@ -78,6 +78,13 @@
       "when": 1790760804615,
       "tag": "0010_sign_in_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1792174204885,
+      "tag": "0011_thumbnails_and_folders",
+      "breakpoints": true
     }
   ]
 }

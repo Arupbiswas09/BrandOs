@@ -4,6 +4,7 @@ import { useState } from "react";
 import { createCalendarFeed, revokeCalendarFeed } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Btn, Card, cx } from "@/components/ui";
+import { fmtDate } from "@/lib/format";
 
 /**
  * A private link that Google Calendar, Apple Calendar or Outlook subscribe
@@ -29,7 +30,7 @@ export function CalendarFeedCard({ className }: { className?: string }) {
     if (!url) return;
     try { await navigator.clipboard.writeText(url); toast("Calendar link copied"); } catch { window.prompt("Copy this link", url); }
   };
-  const when = (d: Date | string) => new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  const when = (d: Date | string) => fmtDate(d);
 
   return (
     <Card className={cx("mb-8 p-6", className)}>

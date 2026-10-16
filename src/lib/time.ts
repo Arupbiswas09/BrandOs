@@ -1,3 +1,5 @@
+import { fmtDate } from "./format";
+
 const MIN = 60_000, HOUR = 60 * MIN, DAY = 24 * HOUR, WEEK = 7 * DAY, MONTH = 30 * DAY, YEAR = 365 * DAY;
 
 const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"} ago`;
@@ -27,7 +29,7 @@ export function dueLabel(when: Date | string | number, now: number): { label: st
   if (diff === 0) return { label: "Due today", tone: "today" };
   if (diff === 1) return { label: "Due tomorrow", tone: "soon" };
   if (diff <= 7) return { label: `Due in ${diff} days`, tone: "soon" };
-  return { label: `Due ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`, tone: "later" };
+  return { label: `Due ${fmtDate(d, { short: true, now })}`, tone: "later" };
 }
 
 export const DUE_COLOR: Record<DueTone, string> = { overdue: "#B42318", today: "#C2410C", soon: "#8A6A12", later: "#46534D" };

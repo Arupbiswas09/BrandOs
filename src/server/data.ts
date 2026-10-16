@@ -18,7 +18,7 @@ import { SECURITY } from "@/lib/audit";
  */
 export async function readAll() {
   const db = await getDb();
-  const [users, groups, clients, brands, services, offers, assets, ctas, links, comments, activity] = await Promise.all([
+  const [users, groups, clients, brands, services, offers, assets, ctas, links, folders, comments, activity] = await Promise.all([
     db.select().from(s.users),
     db.select().from(s.groups),
     db.select().from(s.clients).orderBy(s.clients.createdAt),
@@ -28,11 +28,12 @@ export async function readAll() {
     db.select().from(s.assets).orderBy(desc(s.assets.updatedAt)),
     db.select().from(s.ctas).orderBy(s.ctas.createdAt),
     db.select().from(s.links),
+    db.select().from(s.assetFolders).orderBy(s.assetFolders.createdAt),
     db.select().from(s.comments).orderBy(s.comments.createdAt),
     // Sign-ins, password changes and exports live only in the admin audit log.
     db.select().from(s.activity).where(ne(s.activity.type, SECURITY)).orderBy(desc(s.activity.createdAt)).limit(400),
   ]);
-  return { users, groups, clients, brands, services, offers, assets, ctas, links, comments, activity };
+  return { users, groups, clients, brands, services, offers, assets, ctas, links, folders, comments, activity };
 }
 
 export const loadAll = cache(readAll);
@@ -151,6 +152,7 @@ export async function buildWorkspace(
     assets,
     ctas: all.ctas.filter((c) => vis.brand(c.brandId)),
     links: all.links.filter((l) => offerIds.has(l.offerId) && assetIds.has(l.assetId)),
+    folders: all.folders.filter((f) => offerIds.has(f.offerId)),
     comments,
     activity,
     recents: extra.recents,

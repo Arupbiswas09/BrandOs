@@ -235,6 +235,8 @@ export const assets = pgTable("assets", {
   prompt: text("prompt").notNull().default(""),
   /** When this asset has to be ready. */
   dueAt: timestamp("due_at", { withTimezone: true }),
+  /** A picture chosen for the card (uploaded or pasted). Without one the card shows the first image file. */
+  thumbnail: jsonb("thumbnail").$type<FileRef | null>(),
   archived: boolean("archived").notNull().default(false),
   ...stamps,
 }, (t) => [index("assets_brand_idx").on(t.brandId)]);
@@ -260,10 +262,23 @@ export const ctas = pgTable("ctas", {
   ...stamps,
 });
 
+/** A folder inside one offer's assets. Folders group links, never copies: the asset still exists once. */
+export const assetFolders = pgTable("asset_folders", {
+  id: text("id").primaryKey(),
+  offerId: text("offer_id").notNull(),
+  name: text("name").notNull(),
+  /** The folder's own picture; without one it shows its first asset's. */
+  thumbnail: jsonb("thumbnail").$type<FileRef | null>(),
+  createdBy: text("created_by"),
+  ...stamps,
+}, (t) => [index("asset_folders_offer_idx").on(t.offerId)]);
+
 export const links = pgTable("links", {
   id: text("id").primaryKey(),
   assetId: text("asset_id").notNull(),
   offerId: text("offer_id").notNull(),
+  /** The folder this asset sits in on this offer's page, if any. */
+  folderId: text("folder_id"),
   createdBy: text("created_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("links_pair_idx").on(t.assetId, t.offerId)]);
@@ -440,6 +455,7 @@ export type Asset = typeof assets.$inferSelect;
 export type AssetVersion = typeof assetVersions.$inferSelect;
 export type Cta = typeof ctas.$inferSelect;
 export type Link = typeof links.$inferSelect;
+export type AssetFolder = typeof assetFolders.$inferSelect;
 export type Comment = typeof comments.$inferSelect;
 export type Activity = typeof activity.$inferSelect;
 

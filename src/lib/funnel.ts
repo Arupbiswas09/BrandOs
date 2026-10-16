@@ -1,3 +1,4 @@
+import { ASSET_TYPES, type AssetRole } from "@/lib/constants";
 import type { Funnel, FunnelArrow, FunnelBox, FunnelLink } from "@/db/schema";
 
 /*
@@ -87,12 +88,14 @@ export function arrowLine(from: Rect, to: Rect) {
 
 /* ---------------------------------------------------------------- the first draft */
 
+/* Which asset types go where comes from one place: ASSET_TYPES roles in lib/constants. */
+const typesWith = (...roles: AssetRole[]) => new Set(Object.keys(ASSET_TYPES).filter((t) => roles.includes(ASSET_TYPES[t].role as AssetRole)));
 /** Asset types that bring people in: ads, posts, emails, video and print. */
-export const TRAFFIC_TYPES = new Set(["Meta ad", "Google ad", "Social post", "LinkedIn post", "Newsletter ad", "Email", "Email sequence", "Newsletter", "Video", "Poster"]);
-/** Asset types that catch them: landing pages, lead magnets and documents. */
-export const CAPTURE_TYPES = new Set(["Landing page", "Lead magnet", "Document"]);
+export const TRAFFIC_TYPES = typesWith("traffic");
+/** Asset types that catch them: landing pages, lead magnets, and documents people download. */
+export const CAPTURE_TYPES = new Set([...typesWith("entry"), "Document"]);
 /** Asset types that make the ask believable. */
-export const PROOF_TYPES = new Set(["Case study"]);
+export const PROOF_TYPES = typesWith("proof");
 
 export type DraftSource = {
   /** The offer's linked assets, in the order they should appear. */

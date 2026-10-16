@@ -2,22 +2,37 @@ import type { Access, AssetStatus, OfferStatus, Review } from "@/db/schema";
 import { ROLES, ROLE_INFO } from "@/lib/access";
 
 export type AssetCategory = "campaign" | "master" | "global";
+/**
+ * What an asset does in a funnel — the one place this is decided. The service
+ * page groups by it, the brand home counts by it and the funnel draft lays out
+ * by it.
+ *   entry      where people arrive and convert (landing pages, lead magnets)
+ *   automation what runs after they convert (sequences, flows)
+ *   after      what they see once they convert (thank-you pages)
+ *   traffic    what brings people in (ads, posts, emails, print, video)
+ *   proof      what makes the ask believable (case studies)
+ *   resource   anything else that supports the offer (documents, Drive links)
+ */
+export type AssetRole = "entry" | "automation" | "after" | "traffic" | "proof" | "resource";
 
-export const ASSET_TYPES: Record<string, { code: string; cat: AssetCategory }> = {
-  "Landing page": { code: "LP", cat: "campaign" },
-  Email: { code: "EM", cat: "campaign" },
-  "Email sequence": { code: "SEQ", cat: "campaign" },
-  "Social post": { code: "SOC", cat: "campaign" },
-  "Meta ad": { code: "META", cat: "campaign" },
-  "Google ad": { code: "ADS", cat: "campaign" },
-  Newsletter: { code: "NL", cat: "campaign" },
-  "Newsletter ad": { code: "NL", cat: "campaign" },
-  Video: { code: "VID", cat: "campaign" },
-  "Case study": { code: "CS", cat: "campaign" },
-  Poster: { code: "PST", cat: "campaign" },
-  Document: { code: "DOC", cat: "campaign" },
-  "Lead magnet": { code: "MAG", cat: "campaign" },
-  "LinkedIn post": { code: "LI", cat: "campaign" },
+export const ASSET_TYPES: Record<string, { code: string; cat: AssetCategory; role?: AssetRole }> = {
+  "Landing page": { code: "LP", cat: "campaign", role: "entry" },
+  "Lead magnet": { code: "MAG", cat: "campaign", role: "entry" },
+  "Thank you page": { code: "TY", cat: "campaign", role: "after" },
+  Automation: { code: "AUTO", cat: "campaign", role: "automation" },
+  "Email sequence": { code: "SEQ", cat: "campaign", role: "automation" },
+  Email: { code: "EM", cat: "campaign", role: "traffic" },
+  "Social post": { code: "SOC", cat: "campaign", role: "traffic" },
+  "Meta ad": { code: "META", cat: "campaign", role: "traffic" },
+  "Google ad": { code: "ADS", cat: "campaign", role: "traffic" },
+  "LinkedIn post": { code: "LI", cat: "campaign", role: "traffic" },
+  Newsletter: { code: "NL", cat: "campaign", role: "traffic" },
+  "Newsletter ad": { code: "NL", cat: "campaign", role: "traffic" },
+  Video: { code: "VID", cat: "campaign", role: "traffic" },
+  Poster: { code: "PST", cat: "campaign", role: "traffic" },
+  "Case study": { code: "CS", cat: "campaign", role: "proof" },
+  Document: { code: "DOC", cat: "campaign", role: "resource" },
+  "Drive link": { code: "DRV", cat: "campaign", role: "resource" },
   Logo: { code: "LOGO", cat: "master" },
   Guidelines: { code: "GDL", cat: "master" },
   Font: { code: "FONT", cat: "master" },
@@ -26,6 +41,13 @@ export const ASSET_TYPES: Record<string, { code: string; cat: AssetCategory }> =
   Template: { code: "TPL", cat: "global" },
   SOP: { code: "SOP", cat: "global" },
   "Ad creative": { code: "AD", cat: "global" },
+};
+
+/** The funnel role of an asset type; unknown campaign types count as resources. */
+export const roleOf = (type: string): AssetRole | null => {
+  const t = ASSET_TYPES[type];
+  if (!t) return "resource";
+  return t.cat === "campaign" ? t.role ?? "resource" : null;
 };
 
 export const CHANNELS = [

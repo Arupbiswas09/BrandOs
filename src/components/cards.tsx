@@ -10,6 +10,7 @@ import { useApp } from "./app/provider";
 import { CalendarDays, Download, Link2, MessageSquare, Pencil, Unlink } from "lucide-react";
 import { Avatar, Blocks, Chip, CodeTile, Tick, cx } from "./ui";
 import { FOCUS, LIFT } from "./polish";
+import { fmtDate } from "@/lib/format";
 
 /** One square per asset, coloured by where it stands in review. Live assets get a ring. */
 export function blocksFor(list: Asset[], limit = 28) {
@@ -141,7 +142,7 @@ function LaunchDate({ at, now }: { at: Date | string; now: number }) {
   const d = new Date(at);
   const today = new Date(now);
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const when = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(d.getFullYear() !== today.getFullYear() && { year: "numeric" }) });
+  const when = fmtDate(d, { short: true, now });
   return (
     <span suppressHydrationWarning className="inline-flex flex-none items-center gap-1 text-[13px] font-medium text-mute-2">
       <CalendarDays aria-hidden size={13} className="text-mute-4" />{day(d) < day(today) ? "Launched" : "Launches"} {when}

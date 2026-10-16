@@ -294,13 +294,13 @@ export async function seed(db: DB) {
     offs: string[], ownerId: string, when: string, extra: Partial<s.Asset> = {},
   ): s.Asset => {
     const [status, review] = SMAP[legacy];
-    offs.forEach((o) => linkRows.push({ id: uid("lk"), assetId: id, offerId: o, createdBy: "pr", createdAt: at("1 month ago") }));
+    offs.forEach((o) => linkRows.push({ id: uid("lk"), assetId: id, offerId: o, folderId: null, createdBy: "pr", createdAt: at("1 month ago") }));
     return {
       id, brandId, name, type, channel, status, review, reviewerId: null, changeNote: "", ownerId, version: 1,
       short: "", tags: [], url: "", notes: "", copy: null, files: [], specs: "", audienceNotes: "", aiPrompt: "",
       ctaId: null, clientVisible: false, isTemplate: false, clonedFromId: null, gated: false,
       delivery: type === "Landing page" ? "Designed page" : "None",
-      items: type === "Checklist" ? [] : null, promptFor: "", prompt: "", dueAt: null, archived: false,
+      items: type === "Checklist" ? [] : null, promptFor: "", prompt: "", dueAt: null, thumbnail: null, archived: false,
       createdAt: at("3 months ago"), updatedAt: at(when), ...extra,
     };
   };
@@ -416,6 +416,19 @@ export async function seed(db: DB) {
       changeNote: "The calendar embed pushes the only proof point below the fold. Move the 34 percent line above it.",
     }),
     A("as40", "br1", "Grant Myths Newsletter Edition", "Newsletter ad", "Email", "Draft", ["of22"], "do", "2 days ago", { short: "Friday mirror of the carousel", tags: ["newsletter", "organic"] }),
+    A("as41", "br1", "Audit Request Nurture Flow", "Automation", "Email", "Live", ["of1", "of4", "of15"], "pr", "3 days ago", {
+      short: "Five emails over two weeks after an audit request", tags: ["nurture", "automation"],
+      notes: "Runs in the CRM. Day 0 confirmation, day 2 checklist, day 5 case study, day 9 booking nudge, day 14 last call.",
+    }),
+    A("as42", "br1", "Checklist Follow-up Sequence", "Automation", "Email", "Draft", ["of23"], "do", "1 week ago", {
+      short: "Three emails after the checklist download", tags: ["nurture", "automation"],
+    }),
+    A("as43", "br1", "Audit Booked — Thank You Page", "Thank you page", "Owned", "Live", ["of15", "of1"], "ib", "4 days ago", {
+      short: "What happens next, and the calendar link", url: "quokkaforgood.org/audit/thanks", tags: ["thank-you"],
+    }),
+    A("as44", "br1", "Grant Application Source Files", "Drive link", "Owned", "Approved", ["of1", "of24"], "pr", "1 week ago", {
+      short: "Shared Drive folder with the raw files", url: "drive.google.com/drive/folders/quokka-grant-sources", tags: ["drive"],
+    }),
   ];
 
   const CL = (id: string, name: string, short: string, tags: string[], items: string[]) =>

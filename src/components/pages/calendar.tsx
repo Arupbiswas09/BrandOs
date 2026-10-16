@@ -9,6 +9,7 @@ import { plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
 import { Btn, Card, H2, Page, PageHead, Pills, cx } from "@/components/ui";
 import { CalendarFeedCard } from "@/components/calendar-feed";
+import { fmtDate, fmtLongDate, fmtMonth } from "@/lib/format";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAY = 86_400_000;
@@ -53,7 +54,7 @@ export function Calendar() {
 
   const when = (at: Date) => {
     const days = Math.round((+new Date(at.getFullYear(), at.getMonth(), at.getDate()) - +startOfToday) / DAY);
-    const date = at.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const date = fmtDate(at, { short: true, now: ws.d.now });
     if (days === 0) return "Launches today";
     if (days === 1) return "Launches tomorrow";
     if (days > 1) return days <= 14 ? `Launches in ${plural(days, "day")}` : `Launches ${date}`;
@@ -96,7 +97,7 @@ export function Calendar() {
       </div>
 
       <div className="mb-3 flex items-center gap-2">
-        <H2 icon={<CalendarRange />} className="mb-0 flex-1">{month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</H2>
+        <H2 icon={<CalendarRange />} className="mb-0 flex-1">{fmtMonth(month)}</H2>
         <Btn size="sm" aria-label="Previous month" className="px-2" onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1)); setSelected(null); }}><ChevronLeft className="h-4 w-4" /></Btn>
         <Btn size="sm" onClick={() => { setMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setSelected(null); }}>Today</Btn>
         <Btn size="sm" aria-label="Next month" className="px-2" onClick={() => { setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1)); setSelected(null); }}><ChevronRight className="h-4 w-4" /></Btn>
@@ -112,7 +113,7 @@ export function Calendar() {
             const inMonth = d.getMonth() === month.getMonth();
             const isToday = k === key(today);
             return (
-              <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-label={`${d.toDateString()}, ${plural(list.length, "launch", "launches")}`}
+              <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-label={`${fmtLongDate(d)}, ${plural(list.length, "launch", "launches")}`}
                 className={cx("focus-inset flex min-h-[60px] flex-col items-stretch gap-1 border-b border-r border-divider p-1.5 text-left transition-colors hover:bg-wash sm:min-h-[96px]", !inMonth && "bg-wash-2", selected === k && "bg-soft outline-2 -outline-offset-2 outline-accent")}>
                 <span className={cx("self-start rounded-full px-1.5 text-[13px]", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-5")}>{d.getDate()}</span>
                 <span className="hidden flex-col gap-1 sm:flex">
@@ -131,7 +132,7 @@ export function Calendar() {
       </Card>
       {dayItems && (
         <div className="mt-5">
-          <H2 icon={<CalendarDays />}>{new Date(weeks.find((d) => key(d) === selected)!).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</H2>
+          <H2 icon={<CalendarDays />}>{fmtLongDate(weeks.find((d) => key(d) === selected)!)}</H2>
           <Card className="overflow-hidden">
             {dayItems.map((x) => <Row key={x.id} x={x} />)}
             {!dayItems.length && <Quiet>No launches that day.</Quiet>}
