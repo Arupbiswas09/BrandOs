@@ -9,14 +9,14 @@ test("brand sections live in the sidebar, not in a second row of tabs", async ({
   await signIn(page);
   await page.goto("/brands/br1");
   await settle(page);
-  await expect(page.getByRole("heading", { name: "Welcome to Quokka For Good" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Quokka For Good", level: 1 })).toBeVisible();
   await expect(page.getByRole("tablist")).toHaveCount(0);
   const sections = page.getByRole("group", { name: "Quokka For Good sections" });
   await expect(sections.getByRole("link", { name: "CTAs" })).toHaveCount(0);
   await sections.getByRole("link", { name: "Offers" }).click();
   await expect(page).toHaveURL(/\/brands\/br1\/offers$/);
   // Inside a section the brand header is one line, with no borrowed actions.
-  await expect(page.getByRole("heading", { name: "Welcome to Quokka For Good" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Quokka For Good", level: 1 })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Add asset/ })).toHaveCount(0);
   await expect(page.getByText(/^Kit \d+%$/)).toHaveCount(0);
 });
@@ -38,7 +38,7 @@ test("the dashboard opens on the lists, with no due dates or stat tiles", async 
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Launches" })).toBeVisible();
 });
 
-test("only admins archive or delete clients, and only admins see the team", async ({ page }) => {
+test("only admins archive clients, nobody deletes one, and only admins see the team", async ({ page }) => {
   await signIn(page, "Joss Weekes"); // Manager
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link", { name: /Team and access/ })).toHaveCount(0);
@@ -54,7 +54,7 @@ test("only admins archive or delete clients, and only admins see the team", asyn
   await settle(page);
   await page.getByRole("button", { name: "More client actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Archive client" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Delete client" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /Delete/ })).toHaveCount(0);
 });
 
 test("the client page shows the primary contact, and activity keeps the change visible", async ({ page }) => {
@@ -62,12 +62,16 @@ test("the client page shows the primary contact, and activity keeps the change v
   await page.goto("/clients/cl1");
   await settle(page);
   await expect(page.getByText("Primary contact")).toBeVisible();
-  await expect(page.getByText("Client since")).toBeVisible();
+  await expect(page.getByText(/^Updated · client since /)).toBeVisible();
 });
 
 test("share with the client is gone; the kit exports as a PDF", async ({ page }) => {
   await signIn(page);
   await page.goto("/brands/br1");
+  await settle(page);
+  await expect(page.getByText(/Share with the client/)).toHaveCount(0);
+  // The export lives in the Brand Kit; the brand home keeps to its services.
+  await page.goto("/brands/br1/kit");
   await settle(page);
   await expect(page.getByText(/Share with the client/)).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Export brand kit" })).toHaveAttribute("href", "/guidelines/br1");
