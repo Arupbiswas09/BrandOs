@@ -77,6 +77,24 @@ same command in Coolify → brandos → Terminal.
 Without `CRON_SECRET`, anything set to "Daily digest" is emailed straight
 away and due-date reminders are not sent.
 
+**Daily link check.** Opens every asset's link (landing pages, thank-you
+pages, Drive links) and flags the ones that stop opening as "Link not
+responding". Uses the same `CRON_SECRET`. Add a second scheduled task:
+
+- Name: `links`
+- Command: `curl -fsS -m 600 -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/links`
+- Frequency: `30 6 * * *` (06:30 every day, before the digest)
+- Container: `brandos`
+
+Links checked in the last 20 hours are skipped, so a second run is harmless.
+A run checks four links at a time, at most 300, and starts no new check after
+four minutes; anything left (`remaining` in the JSON summary) is picked up by
+the next run. Pages are fetched by the server itself, http and https only,
+never private or cloud-metadata addresses, 8 seconds and 2 MB at most each.
+The first time a landing page, lead magnet or thank-you page without a picture
+opens, its share image (og:image) becomes the card picture. Nothing goes in the
+history unless a link that opened stops opening.
+
 **Slack.** Create an incoming webhook for the channel (api.slack.com/apps →
 Create app → Incoming Webhooks), set `SLACK_WEBHOOK_URL`, redeploy, then use
 **Settings → Slack → Send test message**.
