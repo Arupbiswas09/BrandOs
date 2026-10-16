@@ -10,7 +10,9 @@ import { NextResponse, type NextRequest } from "next/server";
  *
  * Styles allow 'unsafe-inline' because the UI sets brand colours through
  * style attributes, which a nonce cannot cover. Google Fonts is allowed for
- * the Brand Kit's font previews. Everything else stays on this origin.
+ * the Brand Kit's font previews. Link previews may frame six named origins
+ * (Figma, Google Docs and Drive, YouTube's no-cookie player, Vimeo, Loom).
+ * Everything else stays on this origin.
  *
  * The other security headers live in next.config.ts; /sw.js has its own CSP.
  */
@@ -30,7 +32,8 @@ export function proxy(request: NextRequest) {
     `connect-src 'self'${dev ? " ws: wss:" : ""}`,
     "worker-src 'self'",
     "manifest-src 'self'",
-    "frame-src 'self'",
+    // Link previews (src/lib/embeds.ts) frame exactly these, and only after someone presses "Load preview".
+    "frame-src 'self' https://www.figma.com https://docs.google.com https://drive.google.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com",
     "frame-ancestors 'self'",
     "object-src 'none'",
     "base-uri 'self'",
