@@ -32,8 +32,8 @@ export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?:
       case "offers": return <Offers b={b} />;
       case "assets": return <Assets key={type ?? "all"} b={b} initialType={type} />;
       // The CTA library sits at the foot of the Brand Kit.
-      // Kit agent: pass ctas as a prop, i.e. <BrandKit b={b} ctas={<Ctas b={b} />} />, and keep the #kit-ctas anchor on that section.
-      case "kit": case "ctas": return <><BrandKit b={b} /><div id="kit-ctas" className="mt-12 scroll-mt-24"><Ctas b={b} /></div></>;
+      // The CTA library is the Brand Kit's last section (#kit-ctas opens it).
+      case "kit": case "ctas": return <BrandKit b={b} ctas={<Ctas b={b} />} />;
       case "strategy": return <Strategy b={b} />;
       default: return <Home b={b} />;
     }
