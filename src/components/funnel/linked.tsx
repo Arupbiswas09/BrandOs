@@ -66,7 +66,7 @@ export function CodeBadge({ code, color, size = 28 }: { code: string; color: str
   return (
     <span
       aria-hidden
-      className="flex flex-none items-center justify-center rounded-[7px] px-1 font-mono font-bold tracking-[0.04em]"
+      className="flex flex-none items-center justify-center rounded-lg px-1 font-mono font-bold tracking-[0.04em]"
       style={{ height: size, minWidth: size, fontSize: size >= 28 ? 11 : 10.5, background: solidTint(color, 0.12), color: readable(color, 0.12) }}
     >
       {code}
@@ -147,18 +147,18 @@ export function FunnelIndex({ funnel }: { funnel: Funnel }) {
       return r.missing ? [] : [{ key, r }];
     });
   if (!items.length) return null;
-  const row = "inline-flex max-w-full items-center gap-2 rounded-[10px] border border-line bg-white py-1.5 pl-1.5 pr-2.5 text-left";
+  const row = "inline-flex max-w-full items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-2.5 text-left";
   return (
     <div className="mt-4">
-      <h3 className="m-0 mb-2 text-[14.5px] font-semibold text-ink-3">Everything this funnel points at</h3>
+      <h3 className="m-0 mb-2 text-body font-semibold text-ink-3">Everything this funnel points at</h3>
       <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
         {items.map(({ key, r }) => {
           const body = (
             <>
               <CodeBadge code={r.code} color={r.color} size={26} />
               <span className="min-w-0">
-                <span className="block truncate text-[14px] font-semibold leading-tight text-ink">{r.name}</span>
-                <span className="block truncate text-[12.5px] leading-tight text-mute-3">{r.sub}</span>
+                <span className="block truncate text-meta font-semibold leading-tight text-ink">{r.name}</span>
+                <span className="block truncate text-small leading-tight text-mute-3">{r.sub}</span>
               </span>
               {r.open && <ArrowUpRight aria-hidden size={14} className="flex-none text-mute-4" />}
             </>

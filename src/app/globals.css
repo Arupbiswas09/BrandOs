@@ -14,6 +14,7 @@
   --bos-soft: #edf2f0;
   --bos-border: #e1e7e4;
   --bos-on: #ffffff;
+  --surface: #fcfdfc;
 }
 
 @theme inline {
@@ -23,15 +24,40 @@
   --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
   --font-code: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 
-  /* Soft green-grey neutrals. The lightest text grey still clears 4.5:1 on white and on chips. */
+  /*
+   * One type scale, about 1.15 per step. Use these names, never text-[Npx]:
+   * micro 12 · small 13 · meta 14 · body 15 · lead 17 · title 20 · heading 26 · display 32.
+   */
+  --text-micro: 12px; --text-micro--line-height: 1.4;
+  --text-small: 13px; --text-small--line-height: 1.45;
+  --text-meta: 14px; --text-meta--line-height: 1.45;
+  --text-body: 15px; --text-body--line-height: 1.55;
+  --text-lead: 17px; --text-lead--line-height: 1.45;
+  --text-title: 20px; --text-title--line-height: 1.3;
+  --text-heading: 26px; --text-heading--line-height: 1.2;
+  --text-display: 32px; --text-display--line-height: 1.1;
+
+  /* Three corner sizes: 4 for chips, 8 for controls, 12 for cards and panels. */
+  --radius-xs: 4px; --radius-sm: 4px; --radius-md: 8px; --radius-lg: 8px; --radius-xl: 12px; --radius-2xl: 12px; --radius-3xl: 12px;
+
+  /* Three depths: resting cards, raised on hover, and things that float (menus, popovers, dialogs, drawers). */
+  --shadow-card: 0 1px 2px rgba(16,22,20,.05);
+  --shadow-raise: 0 6px 16px -4px rgba(16,22,20,.10), 0 1px 2px rgba(16,22,20,.04);
+  --shadow-pop: 0 18px 48px -12px rgba(16,22,20,.22), 0 2px 6px rgba(16,22,20,.06);
+
+  /* Strong ease-out for anything entering or responding; nothing in the UI eases in. */
+  --ease-snap: cubic-bezier(0.23, 1, 0.32, 1);
+
+  /* Soft green-grey neutrals: ink, secondary and tertiary text. The tertiary grey still clears 4.5:1 on chips. */
+  --color-surface: var(--surface);
   --color-ink: #101614;
   --color-ink-2: #2a3833;
   --color-ink-3: #3e4a45;
-  --color-mute-1: #46534d;
-  --color-mute-2: #4e5b55;
+  --color-mute-1: #3e4a45;
+  --color-mute-2: #56645e;
   --color-mute-3: #56645e;
-  --color-mute-4: #5a6862;
-  --color-mute-5: #5e6c66;
+  --color-mute-4: #56645e;
+  --color-mute-5: #56645e;
   --color-line-strong: #c9d3ce;
   --color-divider: #edf2f0;
   --color-wash: #f7f9f8;
@@ -56,20 +82,20 @@
   --color-hl: var(--bos-hl);
   --color-hl-ink: var(--bos-hl-ink);
 
-  --animate-fade: bos-fade 0.2s ease both;
-  --animate-rise: bos-rise 0.35s ease both;
-  --animate-slide: bos-slide 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-slide-left: bos-slide-left 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  --animate-pop: bos-pop 0.2s ease both;
-  --animate-toast: bos-toast 0.24s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-fade: bos-fade 0.16s ease-out both;
+  --animate-rise: bos-rise 0.22s cubic-bezier(0.23, 1, 0.32, 1) both;
+  --animate-slide: bos-slide 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-slide-left: bos-slide-left 0.24s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-pop: bos-pop 0.16s cubic-bezier(0.23, 1, 0.32, 1) both;
+  --animate-toast: bos-toast 0.22s cubic-bezier(0.23, 1, 0.32, 1) both;
   --animate-shimmer: bos-shimmer 1.4s ease-in-out infinite;
 }
 
 @keyframes bos-fade { from { opacity: 0 } to { opacity: 1 } }
-@keyframes bos-rise { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
+@keyframes bos-rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
 @keyframes bos-slide { from { opacity: 0; transform: translateX(28px) } to { opacity: 1; transform: none } }
 @keyframes bos-slide-left { from { opacity: 0; transform: translateX(-28px) } to { opacity: 1; transform: none } }
-@keyframes bos-pop { from { opacity: 0; transform: translateY(-6px) scale(0.985) } to { opacity: 1; transform: none } }
+@keyframes bos-pop { from { opacity: 0; transform: translateY(-4px) scale(0.97) } to { opacity: 1; transform: none } }
 @keyframes bos-toast { from { opacity: 0; transform: translateY(10px) scale(0.98) } to { opacity: 1; transform: none } }
 @keyframes bos-shimmer { 0%, 100% { opacity: 1 } 50% { opacity: .55 } }
 
@@ -128,7 +154,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
 .head-band { position: relative; isolation: isolate; }
 .head-band::before {
   content: ""; position: absolute; z-index: -1; top: 0; bottom: 0; left: 50%; width: 200vw; transform: translateX(-50%);
-  background: #fff; border-bottom: 1px solid var(--bos-border);
+  background: var(--surface); border-bottom: 1px solid var(--bos-border);
 }
 
 .theme-fade { transition: background-color 0.34s ease, border-color 0.34s ease, color 0.34s ease; }
@@ -157,7 +183,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
     border-radius: 8px;
     padding: 10px 13px;
     font-size: 15px;
-    background: #fff;
+    background: var(--surface);
     outline: none;
     transition: border-color .15s, box-shadow .15s;
   }
@@ -171,7 +197,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
   .skel { background: #e6ece9; border-radius: 8px; animation: var(--animate-shimmer); }
   .kbd {
     display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px;
-    border: 1px solid #c9d3ce; border-bottom-width: 2px; border-radius: 5px; background: #fff;
+    border: 1px solid #c9d3ce; border-bottom-width: 2px; border-radius: 5px; background: var(--surface);
     font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; line-height: 1; color: #3e4a45;
   }
   .label {

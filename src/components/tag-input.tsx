@@ -115,10 +115,10 @@ export function TagInput({ value, onChange, text, onText, pool, placeholder, lab
         {/* A click anywhere in the box, between chips too, lands in the text field. */}
         <div
           onClick={() => box.current?.focus()}
-          className="field flex cursor-text flex-wrap items-center gap-1.5 px-2 py-[6px] focus-within:border-accent focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--bos-accent)_16%,transparent)]"
+          className="field flex cursor-text flex-wrap items-center gap-1.5 px-2 py-1.5 focus-within:border-accent focus-within:shadow-card"
         >
           {value.map((t) => (
-            <span key={t} className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-soft py-[2px] pl-2.5 pr-[3px] text-[14px] font-medium text-accent">
+            <span key={t} className="inline-flex max-w-full items-center gap-0.5 rounded-full bg-soft py-0.5 pl-2.5 pr-1 text-meta font-medium text-accent">
               <span className="truncate">{t}</span>
               <button
                 type="button"
@@ -145,7 +145,7 @@ export function TagInput({ value, onChange, text, onText, pool, placeholder, lab
             onKeyDown={keys}
             onBlur={() => setOpen(false)}
             placeholder={value.length ? undefined : placeholder}
-            className="min-w-[9ch] flex-1 border-0 bg-transparent px-1 py-1 text-[15px] outline-none"
+            className="min-w-[9ch] flex-1 border-0 bg-transparent px-1 py-1 text-body outline-none"
           />
         </div>
         {shown && (
@@ -157,7 +157,7 @@ export function TagInput({ value, onChange, text, onText, pool, placeholder, lab
             aria-label="Suggested tags"
             onMouseDown={(e) => e.preventDefault()}
             className={cx(
-              "absolute inset-x-0 z-20 m-0 flex list-none flex-col gap-px rounded-[10px] border border-line bg-white p-1 shadow-[0_10px_28px_rgba(16,22,20,.14)]",
+              "absolute inset-x-0 z-20 m-0 flex list-none flex-col gap-px rounded-xl border border-line bg-surface p-1 shadow-card",
               above ? "bottom-full mb-1.5" : "top-full mt-1.5",
             )}
           >
@@ -169,14 +169,14 @@ export function TagInput({ value, onChange, text, onText, pool, placeholder, lab
                 aria-selected={i === active}
                 onMouseMove={() => setCursor(i)}
                 onClick={() => { add(o.tag); setOpen(false); }}
-                className={cx("flex cursor-pointer items-baseline gap-3 rounded-[7px] px-2.5 py-1.5 text-[14.5px] text-ink-3", i === active && "bg-soft")}
+                className={cx("flex cursor-pointer items-baseline gap-3 rounded-lg px-2.5 py-1.5 text-body text-ink-3", i === active && "bg-soft")}
               >
                 {o === same ? (
                   <span className="min-w-0 flex-1">Use “<span className="font-semibold text-ink">{o.tag}</span>” <span className="text-mute-2">(already used {timesUsed(o.n)})</span></span>
                 ) : (
                   <>
                     <span className="min-w-0 flex-1 truncate font-medium text-ink">{o.tag}</span>
-                    <span className="flex-none text-[13px] text-mute-3">used {timesUsed(o.n)}</span>
+                    <span className="flex-none text-small text-mute-3">used {timesUsed(o.n)}</span>
                   </>
                 )}
               </li>

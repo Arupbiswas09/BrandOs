@@ -40,10 +40,10 @@ function Editor({ initial, usage, onPerson }: {
       <Card className="px-5 py-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <div className="text-[14px] font-medium text-mute-2">Storage used</div>
-            <div className="text-[26px] font-semibold tracking-[-0.02em]">{sizeLabel(usage.workspaceBytes)}{quotaBytes && <span className="text-[16px] font-normal text-mute-3"> of {sizeLabel(quotaBytes)}</span>}</div>
+            <div className="text-meta font-medium text-mute-2">Storage used</div>
+            <div className="text-heading font-semibold tracking-[-0.02em]">{sizeLabel(usage.workspaceBytes)}{quotaBytes && <span className="text-lead font-normal text-mute-3"> of {sizeLabel(quotaBytes)}</span>}</div>
           </div>
-          <p className="m-0 max-w-[48ch] text-[13.5px] text-mute-3">Limits apply to new uploads. Nothing already stored is removed. The server never accepts a single file over {sizeLabel(usage.hardCapBytes)} (MAX_UPLOAD_MB).</p>
+          <p className="m-0 max-w-[48ch] text-meta text-mute-3">Limits apply to new uploads. Nothing already stored is removed. The server never accepts a single file over {sizeLabel(usage.hardCapBytes)} (MAX_UPLOAD_MB).</p>
         </div>
         {pct != null && (
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-wash" role="progressbar" aria-label="Storage used" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
@@ -53,20 +53,20 @@ function Editor({ initial, usage, onPerson }: {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-mute-2">What people may upload</div>
+        <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-small font-semibold uppercase tracking-[0.05em] text-mute-2">What people may upload</div>
         {FILE_KINDS.map(({ kind, label, examples }) => {
           const k = p.kinds[kind];
           return (
             <div key={kind} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-divider px-5 py-3 last:border-b-0">
               <button type="button" role="switch" aria-checked={k.allowed} aria-label={`Allow ${label.toLowerCase()}`} onClick={() => setKind(kind, { allowed: !k.allowed })}
                 className={cx("relative h-6 w-11 flex-none rounded-full transition", k.allowed ? "bg-accent" : "bg-line-strong")}>
-                <span className={cx("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", k.allowed ? "left-[22px]" : "left-0.5")} />
+                <span className={cx("absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all", k.allowed ? "left-[22px]" : "left-0.5")} />
               </button>
               <span className="min-w-[180px] flex-1">
-                <span className="block text-[15px] font-semibold">{label}</span>
-                <span className="block text-[13px] text-mute-3">{examples}</span>
+                <span className="block text-body font-semibold">{label}</span>
+                <span className="block text-small text-mute-3">{examples}</span>
               </span>
-              <label className={cx("flex items-center gap-2 text-[14px] text-mute-2", !k.allowed && "opacity-40")}>
+              <label className={cx("flex items-center gap-2 text-meta text-mute-2", !k.allowed && "opacity-40")}>
                 Largest file
                 <input type="number" min={1} max={capMb} disabled={!k.allowed} value={k.maxMb} aria-label={`Largest ${label.toLowerCase()} file in MB`}
                   onChange={(e) => setKind(kind, { maxMb: Math.max(1, Math.min(capMb, Number(e.target.value) || 1)) })} className="field w-[96px] py-1.5 text-right" />
@@ -90,19 +90,19 @@ function Editor({ initial, usage, onPerson }: {
 
       {people.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-mute-2">Who is using the space</div>
+          <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-small font-semibold uppercase tracking-[0.05em] text-mute-2">Who is using the space</div>
           {people.map(({ u, bytes }) => {
             const quota = u.storageQuotaMb ?? p.personQuotaMb;
             return (
               <button key={u.id} type="button" onClick={() => onPerson(u.id)} className="flex w-full items-center gap-3 border-b border-divider px-5 py-2.5 text-left last:border-b-0 hover:bg-wash">
                 <Avatar initials={u.initials} size={28} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[14.5px] font-medium">{u.name}</span>
-                  <span className="block text-[13px] text-mute-3">
+                  <span className="block truncate text-body font-medium">{u.name}</span>
+                  <span className="block text-small text-mute-3">
                     {[u.storageQuotaMb != null && "own storage allowance", u.uploadLimitMb != null && `largest file ${u.uploadLimitMb} MB`].filter(Boolean).join(" · ") || "workspace defaults"}
                   </span>
                 </span>
-                <span className="flex-none text-[14px] text-mute-1">{sizeLabel(bytes)}{quota != null && <span className="text-mute-3"> / {sizeLabel(quota * 1024 * 1024)}</span>}</span>
+                <span className="flex-none text-meta text-mute-1">{sizeLabel(bytes)}{quota != null && <span className="text-mute-3"> / {sizeLabel(quota * 1024 * 1024)}</span>}</span>
               </button>
             );
           })}
@@ -121,9 +121,9 @@ function NumberSetting({ label, hint, unit, value, min, max, optional, onChange 
       <span className="flex items-center gap-2">
         <input type="number" min={min} max={max} value={value ?? ""} placeholder={optional ? "No cap" : undefined} className="field"
           onChange={(e) => { const v = e.target.value; onChange(v === "" ? (optional ? null : min) : Math.max(min, Math.min(max, Number(v)))); }} />
-        {unit && <span className="text-[14px] text-mute-2">{unit}</span>}
+        {unit && <span className="text-meta text-mute-2">{unit}</span>}
       </span>
-      <span className="mt-1 block text-[12.5px] text-mute-3">{hint}</span>
+      <span className="mt-1 block text-small text-mute-3">{hint}</span>
     </label>
   );
 }

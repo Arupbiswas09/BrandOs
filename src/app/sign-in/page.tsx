@@ -44,11 +44,11 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
     >
       {mode === "demo" ? <DemoPicker people={people} /> : (
         <>
-          {error && <div role="alert" className="mb-5 rounded-[9px] bg-[rgba(194,65,18,.07)] px-3 py-2 text-[15px] text-[#A63A12]">{error}</div>}
+          {error && <div role="alert" className="mb-5 rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-body text-[#A63A12]">{error}</div>}
           {google && <><GoogleButton /><OrRule /></>}
           <PasswordForm />
           {mailEnabled() && (
-            <a href="/sign-in/code" className="mt-3 block rounded-[9px] border border-line bg-white px-4 py-2.5 text-center text-[15px] font-semibold text-ink-3 hover:border-line-strong hover:bg-wash">
+            <a href="/sign-in/code" className="mt-3 block rounded-lg border border-line bg-surface px-4 py-2.5 text-center text-body font-semibold text-ink-3 hover:border-line-strong hover:bg-wash">
               Email me a sign-in code instead
             </a>
           )}

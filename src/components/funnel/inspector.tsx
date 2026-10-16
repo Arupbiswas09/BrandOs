@@ -13,7 +13,7 @@ import { LinkSelect, linkValue, type Resolved } from "./linked";
  * arrow (label, reverse, delete).
  */
 
-const PANEL = "absolute z-[10] animate-pop rounded-xl border border-line bg-white p-3.5 text-left shadow-[0_14px_36px_-10px_rgba(16,22,20,.28)]";
+const PANEL = "absolute z-[10] animate-pop rounded-xl border border-line bg-surface p-3.5 text-left shadow-card";
 
 function Head({ title, onClose }: { title: string; onClose: () => void }) {
   return (
@@ -56,12 +56,12 @@ export function BoxInspector({ box, r, groups, style, autoFocus, onText, onKind,
         placeholder={box.link ? "Add a note (optional)" : "Write what happens here"}
         value={box.text}
         onChange={(e) => onText(e.target.value)}
-        className="field px-3 py-2 text-[14.5px] leading-[1.45]"
+        className="field px-3 py-2 text-body leading-[1.45]"
       />
       <Pills
         label="Shape"
         tone="dark"
-        className="mt-2.5 [&>button]:px-2.5 [&>button]:py-[3px] [&>button]:text-[13.5px]"
+        className="mt-2.5 [&>button]:px-2.5 [&>button]:py-1 [&>button]:text-meta"
         value={box.kind}
         onChange={onKind}
         options={[{ value: "step", label: "Step" }, { value: "stage", label: "Stage" }, { value: "note", label: "Note" }]}
@@ -69,7 +69,7 @@ export function BoxInspector({ box, r, groups, style, autoFocus, onText, onKind,
       <LinkSelect
         label="What this box links to"
         empty="Not linked to anything"
-        className="mt-2.5 px-2.5 py-2 text-[14px]"
+        className="mt-2.5 px-2.5 py-2 text-meta"
         groups={groups}
         value={linkValue(box.link)}
         current={r ? `${r.name} (${r.sub})` : undefined}
@@ -77,7 +77,7 @@ export function BoxInspector({ box, r, groups, style, autoFocus, onText, onKind,
       />
       <div className="mt-3 flex items-center justify-between gap-2">
         <Btn variant="primary" size="sm" onClick={onDraw}><Spline aria-hidden size={14} />Draw arrow from here</Btn>
-        <button type="button" onClick={onDelete} className="rounded-md px-1.5 py-1 text-[14px] font-semibold text-danger hover:underline">Delete</button>
+        <button type="button" onClick={onDelete} className="rounded-md px-1.5 py-1 text-meta font-semibold text-danger hover:underline">Delete</button>
       </div>
     </div>
   );
@@ -101,7 +101,7 @@ export function ArrowInspector({ arrow, from, to, style, autoFocus, onLabel, onR
   return (
     <div role="group" aria-label="Arrow" className={PANEL} style={style} onPointerDown={(e) => e.stopPropagation()}>
       <Head title="Arrow" onClose={onClose} />
-      <p className="m-0 mb-2 truncate text-[13.5px] text-mute-2" title={`${from} → ${to}`}>{from} <span aria-hidden>→</span><span className="sr-only">to</span> {to}</p>
+      <p className="m-0 mb-2 truncate text-meta text-mute-2" title={`${from} → ${to}`}>{from} <span aria-hidden>→</span><span className="sr-only">to</span> {to}</p>
       <input
         ref={input}
         maxLength={MAX_LABEL}
@@ -110,11 +110,11 @@ export function ArrowInspector({ arrow, from, to, style, autoFocus, onLabel, onR
         value={arrow.label ?? ""}
         onChange={(e) => onLabel(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onClose(); } }}
-        className="field px-3 py-2 text-[14.5px]"
+        className="field px-3 py-2 text-body"
       />
       <div className="mt-3 flex items-center justify-between gap-2">
         <Btn size="sm" onClick={onReverse}><ArrowLeftRight aria-hidden size={14} />Reverse</Btn>
-        <button type="button" onClick={onDelete} className="rounded-md px-1.5 py-1 text-[14px] font-semibold text-danger hover:underline">Delete</button>
+        <button type="button" onClick={onDelete} className="rounded-md px-1.5 py-1 text-meta font-semibold text-danger hover:underline">Delete</button>
       </div>
     </div>
   );

@@ -41,18 +41,18 @@ export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: b
             const keep = neverDeleted(e.kind);
             return (
               <div key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-divider px-5 py-3.5 transition-colors first:border-t-0 hover:bg-wash">
-                <span className="eyebrow w-[84px] flex-none rounded-[5px] bg-chip px-2 py-1 text-center text-mute-1">{KIND[e.kind] ?? e.kind}</span>
+                <span className="eyebrow w-[84px] flex-none rounded-sm bg-chip px-2 py-1 text-center text-mute-1">{KIND[e.kind] ?? e.kind}</span>
                 <span className="min-w-[200px] flex-1">
-                  <span className="block text-[15px] font-semibold">{e.label}</span>
-                  <span className="block text-[13.5px] text-mute-2">
+                  <span className="block text-body font-semibold">{e.label}</span>
+                  <span className="block text-meta text-mute-2">
                     {[e.context, e.contains.join(", "), `deleted ${ws.ago(e.deletedAt)} by ${ws.first(e.deletedBy)}`].filter(Boolean).join(" · ")}
                   </span>
                 </span>
-                <span className={cx("inline-flex items-center gap-1 text-[13px]", left(e.deletedAt) <= 3 ? "font-semibold text-[#B42318]" : "text-mute-3")}><Clock aria-hidden className="h-3.5 w-3.5" />{left(e.deletedAt)} days left</span>
+                <span className={cx("inline-flex items-center gap-1 text-small", left(e.deletedAt) <= 3 ? "font-semibold text-[#B42318]" : "text-mute-3")}><Clock aria-hidden className="h-3.5 w-3.5" />{left(e.deletedAt)} days left</span>
                 <Btn variant="primary" size="sm" disabled={pending} aria-label={`Restore ${e.label}`} onClick={async () => { const r = await run(restoreFromTrash, e.id); if (r.ok) toast(`${e.label} is back`); }}><RotateCcw aria-hidden className="h-3.5 w-3.5" />Restore</Btn>
                 {keep
-                  ? <span className="px-1.5 py-1 text-[13px] text-mute-3">Restore only</span>
-                  : <button type="button" disabled={pending} aria-label={`Delete ${e.label} forever`} onClick={() => { if (window.confirm(`Delete ${e.label} for good? This cannot be undone.`)) void run(deleteForever, e.id); }} className="rounded-md px-1.5 py-1 text-[13px] font-medium text-danger hover:underline">Delete forever</button>}
+                  ? <span className="px-1.5 py-1 text-small text-mute-3">Restore only</span>
+                  : <button type="button" disabled={pending} aria-label={`Delete ${e.label} forever`} onClick={() => { if (window.confirm(`Delete ${e.label} for good? This cannot be undone.`)) void run(deleteForever, e.id); }} className="rounded-md px-1.5 py-1 text-small font-medium text-danger hover:underline">Delete forever</button>}
               </div>
             );
           })}

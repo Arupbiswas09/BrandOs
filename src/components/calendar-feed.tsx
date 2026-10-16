@@ -36,12 +36,12 @@ export function CalendarFeedCard({ className }: { className?: string }) {
     <Card className={cx("mb-8 p-6", className)}>
       <div className="flex flex-wrap items-start gap-4">
         <div className="min-w-[240px] flex-1">
-          <div className="mb-1 text-[15px] font-semibold">Launch calendar feed</div>
-          <p className="m-0 text-[15px] text-mute-1">
+          <div className="mb-1 text-body font-semibold">Launch calendar feed</div>
+          <p className="m-0 text-body text-mute-1">
             See offer launch dates in Google Calendar, Apple Calendar or Outlook, with a reminder the day before.
             It shows only what you can see here, and updates on its own.
           </p>
-          <p className="m-0 mt-2 text-[14px] text-mute-3" role="status">
+          <p className="m-0 mt-2 text-meta text-mute-3" role="status">
             {url ? "Here is your link. Copy it now: for your security it is shown only once."
               : feed ? `Your link is on. Made ${when(feed.createdAt)}${feed.lastUsedAt ? `, last read by a calendar ${when(feed.lastUsedAt)}` : ", not used by a calendar yet"}. Lost it? Make a new one.`
               : "You have no calendar link yet."}
@@ -56,13 +56,13 @@ export function CalendarFeedCard({ className }: { className?: string }) {
         <div className="mt-4 flex flex-col gap-2 border-t border-divider pt-4">
           <label className="block">
             <span className="label">Your private calendar link</span>
-            <input readOnly className="field font-mono text-[13.5px]" value={url} onFocus={(e) => e.currentTarget.select()} />
+            <input readOnly className="field font-mono text-meta" value={url} onFocus={(e) => e.currentTarget.select()} />
           </label>
           <div className="flex flex-wrap items-center gap-2">
             <Btn variant="primary" onClick={copy}>Copy link</Btn>
-            <a href={url.replace(/^https?:/, "webcal:")} className="rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 hover:border-line-strong">Open in calendar app</a>
+            <a href={url.replace(/^https?:/, "webcal:")} className="rounded-lg border border-line bg-surface px-3 py-2 text-body font-medium text-ink-3 hover:border-line-strong">Open in calendar app</a>
           </div>
-          <p className="m-0 text-[14px] text-mute-3">
+          <p className="m-0 text-meta text-mute-3">
             Google Calendar: Other calendars → + → From URL, then paste. Apple Calendar: File → New Calendar Subscription.
             Anyone with the link can read these dates, so keep it to yourself.
           </p>

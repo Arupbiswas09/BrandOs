@@ -10,7 +10,7 @@ export type CardMenuItem =
   /** A labelled set of choices where one is current, such as which folder an asset sits in. */
   | { kind: "choice"; label: string; options: { label: string; checked: boolean; onSelect: () => void }[] };
 
-const ITEM = "flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-[14.5px] font-medium outline-none hover:bg-wash focus-visible:bg-wash";
+const ITEM = "flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-body font-medium outline-none hover:bg-wash focus-visible:bg-wash";
 
 /**
  * A small "…" menu for a card. It opens in a layer of its own (so a card's
@@ -105,7 +105,7 @@ export function CardMenu({ label, items, triggerClassName, icon, onOpenChange }:
           role="menu"
           aria-label={label}
           onKeyDown={keys}
-          className="fixed z-[75] min-w-[210px] max-w-[min(280px,calc(100vw-16px))] animate-pop overflow-hidden rounded-xl border border-line bg-white py-1 shadow-[0_12px_32px_rgba(16,22,20,.14)]"
+          className="fixed z-[75] min-w-[210px] max-w-[min(280px,calc(100vw-16px))] animate-pop overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-card"
           style={{ top: -9999, left: -9999 }}
         >
           {items.map((it, i) => it.kind === "item" ? (
@@ -114,7 +114,7 @@ export function CardMenu({ label, items, triggerClassName, icon, onOpenChange }:
             </button>
           ) : (
             <div key={it.label} role="group" aria-label={it.label} className={cx(i > 0 && "mt-1 border-t border-divider pt-1")}>
-              <div aria-hidden className="eyebrow px-3.5 pb-1 pt-1.5 text-[11px]">{it.label}</div>
+              <div aria-hidden className="eyebrow px-3.5 pb-1 pt-1.5 text-micro">{it.label}</div>
               {it.options.map((o) => (
                 <button key={o.label} type="button" role="menuitemradio" aria-checked={o.checked} tabIndex={-1} onClick={() => pick(o.onSelect)} className={cx(ITEM, "text-ink-3")}>
                   <span className="flex w-4 flex-none justify-center text-accent">{o.checked && <Check aria-hidden size={15} />}</span>

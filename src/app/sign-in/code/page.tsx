@@ -15,7 +15,7 @@ export default async function SignInWithCode() {
   return (
     <AuthShell title="Sign in with a code" sub="No password needed. We email you a six-digit code that works once, for ten minutes.">
       <CodeForm />
-      <p className="mt-6 text-[14px]"><Link href="/sign-in" className="font-medium text-accent hover:underline">← Sign in with a password instead</Link></p>
+      <p className="mt-6 text-meta"><Link href="/sign-in" className="font-medium text-accent hover:underline">← Sign in with a password instead</Link></p>
     </AuthShell>
   );
 }

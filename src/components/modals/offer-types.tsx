@@ -32,7 +32,7 @@ export function RemoveOfferType({ brandId, type, className, onRemoved }: { brand
       aria-disabled={off || undefined}
       title={blocked || undefined}
       onClick={async () => { if (off) return; const r = await run(deleteOfferType, brandId, type); if (r.ok) onRemoved?.(); }}
-      className={cx("text-[14px]", off ? "cursor-not-allowed text-mute-4" : "text-danger hover:underline", className)}
+      className={cx("text-meta", off ? "cursor-not-allowed text-mute-4" : "text-danger hover:underline", className)}
     >
       Remove<span className="sr-only"> {type}</span>
     </button>
@@ -89,17 +89,17 @@ export function OfferTypesModal({ brandId, edit, add }: { brandId: string; edit?
       footer={<Btn variant="primary" onClick={close}>Done</Btn>}
       bodyClass="gap-3"
     >
-      <ul aria-label={`Offer types in ${b.name}`} className="m-0 flex list-none flex-col gap-[7px] p-0">
+      <ul aria-label={`Offer types in ${b.name}`} className="m-0 flex list-none flex-col gap-2 p-0">
         {types.map((t) => {
           const n = live(t);
           return (
-            <li key={t} className="flex min-h-[48px] items-center gap-2.5 rounded-[10px] border border-line bg-white px-[13px] py-[6px]">
+            <li key={t} className="flex min-h-[48px] items-center gap-2.5 rounded-xl border border-line bg-surface px-3 py-1.5">
               {editing === t ? (
                 <>
                   <input
                     autoFocus
                     aria-label={`New name for ${t}`}
-                    className="field min-w-0 flex-1 py-[6px]"
+                    className="field min-w-0 flex-1 py-1.5"
                     maxLength={80}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -113,13 +113,13 @@ export function OfferTypesModal({ brandId, edit, add }: { brandId: string; edit?
                 </>
               ) : (
                 <>
-                  <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{t}</span>
-                  <span className="flex-none text-[14px] font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
+                  <span className="min-w-0 flex-1 truncate text-body font-semibold">{t}</span>
+                  <span className="flex-none text-meta font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
                   <button
                     type="button"
                     ref={(el) => { if (el) editBtns.current.set(t, el); else editBtns.current.delete(t); }}
                     onClick={() => { setEditing(t); setName(t); }}
-                    className="flex-none text-[14px] text-mute-2 hover:text-ink"
+                    className="flex-none text-meta text-mute-2 hover:text-ink"
                   >
                     Edit<span className="sr-only"> {t}</span>
                   </button>

@@ -58,33 +58,33 @@ export function Team() {
           const isMe = u.id === ws.me.id;
           return (
             <div key={u.id} className="flex flex-wrap items-center gap-x-3.5 gap-y-2 border-t border-divider px-5 py-3 transition-colors first:border-t-0 hover:bg-wash">
-              <Avatar initials={u.initials} size={34} mono className="text-[13.5px] font-bold" />
+              <Avatar initials={u.initials} size={34} mono className="text-meta font-bold" />
               <span className="w-[154px] min-w-0 flex-none">
-                <span className="flex items-center gap-[7px]"><span className="truncate text-[15px] font-semibold">{u.name}</span>{isMe && <span className="font-mono text-[12.5px] text-mute-4">You</span>}</span>
-                <span className="mt-px block truncate text-[14.5px] text-mute-3">{u.role}</span>
+                <span className="flex items-center gap-2"><span className="truncate text-body font-semibold">{u.name}</span>{isMe && <span className="font-mono text-small text-mute-4">You</span>}</span>
+                <span className="mt-px block truncate text-body text-mute-3">{u.role}</span>
               </span>
               <AccessChip access={u.access} />
               {Object.keys(u.permOverrides ?? {}).length > 0 && (
-                <span className="flex-none rounded-[5px] bg-[#FEF3C7] px-2 py-[3px] text-[12.5px] font-semibold text-[#92400E]" title={Object.entries(u.permOverrides).map(([p, v]) => `${v ? "Allowed" : "Blocked"}: ${PERM_INFO.find((x) => x.perm === p)?.label ?? p}`).join("\n")}>
+                <span className="flex-none rounded-sm bg-[#FEF3C7] px-2 py-1 text-small font-semibold text-[#92400E]" title={Object.entries(u.permOverrides).map(([p, v]) => `${v ? "Allowed" : "Blocked"}: ${PERM_INFO.find((x) => x.perm === p)?.label ?? p}`).join("\n")}>
                   Custom · {Object.keys(u.permOverrides).length}
                 </span>
               )}
-              <span className="min-w-[96px] flex-1 text-[15px] leading-[1.35] text-mute-1">{ws.scopeLabel(u)}</span>
-              <span className="flex-none font-mono text-[14.5px] text-mute-3" title="Items waiting on them">{ws.d.queueCounts[u.id] ?? 0}</span>
+              <span className="min-w-[96px] flex-1 text-body leading-[1.35] text-mute-1">{ws.scopeLabel(u)}</span>
+              <span className="flex-none font-mono text-body text-mute-3" title="Items waiting on them">{ws.d.queueCounts[u.id] ?? 0}</span>
               {demo && !isMe && <Btn size="sm" onClick={() => run(switchUser, u.id)}>View as</Btn>}
               {!demo && canAccess && !isMe && (
-                <button type="button" onClick={() => invite(u.id)} className="flex-none p-[5px] text-[14px] text-accent hover:underline">{u.hasPassword ? "Reset link" : "Invite link"}</button>
+                <button type="button" onClick={() => invite(u.id)} className="flex-none p-1 text-meta text-accent hover:underline">{u.hasPassword ? "Reset link" : "Invite link"}</button>
               )}
-              {!demo && !u.hasPassword && <span className="flex-none rounded bg-chip px-1.5 py-0.5 text-[13px] text-mute-3">Not joined</span>}
-              {!demo && u.twoFactor && <span className="flex-none rounded bg-[#DCFCE7] px-1.5 py-0.5 text-[13px] font-medium text-[#166534]" title="Two-step verification is on">2-step on</span>}
+              {!demo && !u.hasPassword && <span className="flex-none rounded bg-chip px-1.5 py-0.5 text-small text-mute-3">Not joined</span>}
+              {!demo && u.twoFactor && <span className="flex-none rounded bg-[#DCFCE7] px-1.5 py-0.5 text-small font-medium text-[#166534]" title="Two-step verification is on">2-step on</span>}
               {!demo && canAccess && !isMe && u.twoFactor && (
-                <button type="button" onClick={() => security("2fa", u.id, u.name)} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink">Reset 2-step</button>
+                <button type="button" onClick={() => security("2fa", u.id, u.name)} className="flex-none p-1 text-meta text-mute-3 hover:text-ink">Reset 2-step</button>
               )}
               {!demo && canAccess && !isMe && (
-                <button type="button" onClick={() => security("sessions", u.id, u.name)} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink" title="End every session they have">Sign out everywhere</button>
+                <button type="button" onClick={() => security("sessions", u.id, u.name)} className="flex-none p-1 text-meta text-mute-3 hover:text-ink" title="End every session they have">Sign out everywhere</button>
               )}
-              {canAccess && <button type="button" aria-label={`Access for ${u.name}`} onClick={() => open({ kind: "person", draft: u })} className="flex-none p-[5px] text-[14px] text-mute-3 hover:text-ink">Access</button>}
-              {canAccess && !isMe && <button type="button" onClick={() => open({ kind: "confirm", item: "person", id: u.id, label: u.name })} className="flex-none p-[5px] text-[14px] text-mute-5 hover:text-danger">Remove</button>}
+              {canAccess && <button type="button" aria-label={`Access for ${u.name}`} onClick={() => open({ kind: "person", draft: u })} className="flex-none p-1 text-meta text-mute-3 hover:text-ink">Access</button>}
+              {canAccess && !isMe && <button type="button" onClick={() => open({ kind: "confirm", item: "person", id: u.id, label: u.name })} className="flex-none p-1 text-meta text-mute-5 hover:text-danger">Remove</button>}
             </div>
           );
         })}
@@ -93,30 +93,30 @@ export function Team() {
       </>}
 
       {tab === "groups" && <>
-      <H2 className="mb-[5px]" icon={<UsersRound />} right={canAccess && <Btn size="sm" onClick={() => open({ kind: "group" })}><Plus aria-hidden className="h-3.5 w-3.5" />New group</Btn>}>Groups</H2>
-      <p className="mb-4 mt-0 max-w-[62ch] text-[15px] text-mute-3">A group is a saved set of clients. Put someone in the pod and they get everything the pod covers — no per-person list to maintain.</p>
+      <H2 className="mb-1" icon={<UsersRound />} right={canAccess && <Btn size="sm" onClick={() => open({ kind: "group" })}><Plus aria-hidden className="h-3.5 w-3.5" />New group</Btn>}>Groups</H2>
+      <p className="mb-4 mt-0 max-w-[62ch] text-body text-mute-3">A group is a saved set of clients. Put someone in the pod and they get everything the pod covers — no per-person list to maintain.</p>
       <div className="grid gap-3.5 md:grid-cols-2">
         {ws.d.groups.map((g) => {
           const members = ws.d.users.filter((u) => u.groupIds.includes(g.id));
           return (
-            <Card key={g.id} className="rounded-[13px] px-5 py-[18px]">
-              <div className="mb-[5px] flex items-baseline gap-[9px]">
-                <span className="text-[16px] font-semibold">{g.name}</span>
+            <Card key={g.id} className="rounded-xl px-5 py-4">
+              <div className="mb-1 flex items-baseline gap-2">
+                <span className="text-lead font-semibold">{g.name}</span>
                 <span className="flex-1" />
-                <span className="font-mono text-[14.5px] text-mute-3">{members.length} {members.length === 1 ? "person" : "people"}</span>
+                <span className="font-mono text-body text-mute-3">{members.length} {members.length === 1 ? "person" : "people"}</span>
               </div>
-              <div className="mb-3 text-[15px] leading-[1.5] text-mute-1">{g.note}</div>
-              <div className="mb-3 flex flex-wrap gap-[5px]">
-                {g.clientIds.map((c) => ws.client(c)).filter(Boolean).map((c) => <span key={c!.id} className="rounded-[5px] bg-chip px-[9px] py-[3px] text-[14px] text-mute-1">{c!.name}</span>)}
+              <div className="mb-3 text-body leading-[1.5] text-mute-1">{g.note}</div>
+              <div className="mb-3 flex flex-wrap gap-1">
+                {g.clientIds.map((c) => ws.client(c)).filter(Boolean).map((c) => <span key={c!.id} className="rounded-sm bg-chip px-2 py-1 text-meta text-mute-1">{c!.name}</span>)}
               </div>
-              <div className="flex items-center gap-[5px] border-t border-divider pt-[11px]">
-                {members.map((m) => <Avatar key={m.id} initials={m.initials} size={26} mono title={m.name} className="text-[12px] font-bold" />)}
-                {!members.length && <span className="text-[14.5px] text-mute-4">Nobody in it yet</span>}
+              <div className="flex items-center gap-1 border-t border-divider pt-3">
+                {members.map((m) => <Avatar key={m.id} initials={m.initials} size={26} mono title={m.name} className="text-micro font-bold" />)}
+                {!members.length && <span className="text-body text-mute-4">Nobody in it yet</span>}
                 <span className="flex-1" />
                 {canAccess && (
                   <>
-                    <button type="button" onClick={() => open({ kind: "group", draft: g })} className="text-[14px] text-mute-3 hover:text-ink">Edit</button>
-                    <button type="button" onClick={() => open({ kind: "confirm", item: "group", id: g.id, label: g.name })} className="ml-2 text-[14px] text-mute-5 hover:text-danger">Delete</button>
+                    <button type="button" onClick={() => open({ kind: "group", draft: g })} className="text-meta text-mute-3 hover:text-ink">Edit</button>
+                    <button type="button" onClick={() => open({ kind: "confirm", item: "group", id: g.id, label: g.name })} className="ml-2 text-meta text-mute-5 hover:text-danger">Delete</button>
                   </>
                 )}
               </div>
@@ -136,5 +136,5 @@ export function Team() {
 
 export function AccessChip({ access }: { access: keyof typeof ACCESS_COLOR }) {
   const c = ACCESS_COLOR[access];
-  return <span className="flex-none rounded-[5px] px-[9px] py-[3px] font-mono text-[13.5px] font-bold tracking-[0.04em]" style={{ background: hexA(c, 0.14), color: readable(c) }}>{access}</span>;
+  return <span className="flex-none rounded-sm px-2 py-1 font-mono text-meta font-bold tracking-[0.04em]" style={{ background: hexA(c, 0.14), color: readable(c) }}>{access}</span>;
 }

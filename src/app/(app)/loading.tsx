@@ -4,7 +4,7 @@
  */
 export default function Loading() {
   return (
-    <div className="mx-auto max-w-[1180px] px-4 pb-12 pt-8 sm:px-8 sm:pt-10 lg:pb-[88px]" aria-busy="true">
+    <div className="mx-auto max-w-[1180px] px-4 pb-12 pt-8 sm:px-8 sm:pt-10 lg:pb-22" aria-busy="true">
       <span role="status" className="sr-only">Loading…</span>
       <div aria-hidden>
         <div className="head-band -mt-8 mb-6 pb-6 pt-8 sm:-mt-10 sm:pt-10">
@@ -18,7 +18,7 @@ export default function Loading() {
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-line bg-white p-4">
+            <div key={i} className="rounded-xl border border-line bg-surface p-4">
               <div className="flex items-center justify-between">
                 <div className="skel h-3.5 w-24" />
                 <div className="skel h-8 w-8 rounded-lg" />
@@ -30,7 +30,7 @@ export default function Loading() {
         </div>
 
         <div className="mt-5 grid items-start gap-5 lg:grid-cols-[1.55fr_1fr]">
-          <div className="rounded-xl border border-line bg-white px-5 py-4">
+          <div className="rounded-xl border border-line bg-surface px-5 py-4">
             <div className="mb-4 flex gap-5 border-b border-divider pb-3">
               {[110, 84, 104].map((w, i) => <div key={i} className="skel h-3.5" style={{ width: w }} />)}
             </div>
@@ -47,7 +47,7 @@ export default function Loading() {
           </div>
           <div className="flex flex-col gap-5">
             {[3, 4].map((n, c) => (
-              <div key={c} className="rounded-xl border border-line bg-white px-5 py-4">
+              <div key={c} className="rounded-xl border border-line bg-surface px-5 py-4">
                 <div className="skel mb-4 h-4 w-28" />
                 {Array.from({ length: n }, (_, i) => (
                   <div key={i} className="flex items-center gap-3 py-2">

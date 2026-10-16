@@ -16,14 +16,14 @@ import { CodeBadge, OpenLink, type Resolved } from "./linked";
 export const DEFAULT_TEXT: Record<FunnelBox["kind"], string> = { step: "New step", stage: "New stage", note: "New note" };
 
 const SHELL: Record<FunnelBox["kind"], string> = {
-  step: "rounded-[10px] border border-line bg-white px-3 py-2.5 text-left text-ink shadow-[0_1px_2px_rgba(16,22,20,.05)]",
-  stage: "rounded-full border border-transparent bg-accent px-5 py-3 text-center text-on-accent shadow-[0_1px_3px_rgba(16,22,20,.14)] theme-fade",
-  note: "rounded-[6px] border border-[#FDE68A] bg-[#FEF3C7] px-3 py-2.5 text-left text-[#713F12] shadow-[0_2px_6px_rgba(120,53,15,.10)]",
+  step: "rounded-xl border border-line bg-surface px-3 py-2.5 text-left text-ink shadow-card",
+  stage: "rounded-full border border-transparent bg-accent px-5 py-3 text-center text-on-accent shadow-card theme-fade",
+  note: "rounded-lg border border-[#FDE68A] bg-[#FEF3C7] px-3 py-2.5 text-left text-[#713F12] shadow-card",
 };
 
 const OPEN_BTN: Record<FunnelBox["kind"], string> = {
   step: "text-mute-3 hover:bg-chip hover:text-ink",
-  stage: "text-on-accent hover:bg-white/15",
+  stage: "text-on-accent hover:bg-surface/15",
   note: "text-[#713F12] hover:bg-[#FDE68A]",
 };
 
@@ -37,11 +37,11 @@ export function boxName(b: FunnelBox, r: Resolved | null) {
 function Face({ box, r }: { box: FunnelBox; r: Resolved | null }) {
   const room = r?.open && box.kind !== "stage" ? "pr-5" : "";
   const note = box.text.trim() && (
-    <span className={cx("mt-1 whitespace-pre-wrap break-words text-[12.5px] leading-[1.4] line-clamp-3", box.kind === "stage" ? "" : "text-mute-2", room)}>{box.text}</span>
+    <span className={cx("mt-1 whitespace-pre-wrap break-words text-small leading-[1.4] line-clamp-3", box.kind === "stage" ? "" : "text-mute-2", room)}>{box.text}</span>
   );
   if (!r) {
     return (
-      <span className={cx("whitespace-pre-wrap break-words leading-[1.35] line-clamp-5", box.kind === "stage" ? "text-[14px] font-bold" : "text-[14px] font-medium", !box.text.trim() && "italic opacity-80")}>
+      <span className={cx("whitespace-pre-wrap break-words leading-[1.35] line-clamp-5", box.kind === "stage" ? "text-meta font-bold" : "text-meta font-medium", !box.text.trim() && "italic opacity-80")}>
         {box.text.trim() ? box.text : `Empty ${KIND_LABEL[box.kind].toLowerCase()}`}
       </span>
     );
@@ -49,8 +49,8 @@ function Face({ box, r }: { box: FunnelBox; r: Resolved | null }) {
   if (box.kind === "stage") {
     return (
       <span className="block">
-        <span className="break-words text-[14px] font-bold leading-[1.3] line-clamp-2">{r.name}</span>
-        <span className="mt-0.5 block truncate text-[12px] font-medium">{r.sub}</span>
+        <span className="break-words text-meta font-bold leading-[1.3] line-clamp-2">{r.name}</span>
+        <span className="mt-0.5 block truncate text-micro font-medium">{r.sub}</span>
         {note}
       </span>
     );
@@ -59,8 +59,8 @@ function Face({ box, r }: { box: FunnelBox; r: Resolved | null }) {
     <span className="flex items-start gap-2">
       <CodeBadge code={r.code} color={r.color} />
       <span className="min-w-0 flex-1">
-        <span className={cx("break-words text-[14px] font-semibold leading-[1.3] line-clamp-2", r.missing && "text-mute-2")}>{r.name}</span>
-        <span className={cx("mt-0.5 block truncate text-[12.5px] leading-[1.35] text-mute-3", room)}>{r.sub}</span>
+        <span className={cx("break-words text-meta font-semibold leading-[1.3] line-clamp-2", r.missing && "text-mute-2")}>{r.name}</span>
+        <span className={cx("mt-0.5 block truncate text-small leading-[1.35] text-mute-3", room)}>{r.sub}</span>
         {note}
       </span>
     </span>
@@ -124,7 +124,7 @@ export function BoxView({ box, r, editable, selected, drawing, lifted, measure, 
               selected && (box.kind === "stage" ? "ring-2 ring-accent ring-offset-2" : "ring-2 ring-accent"),
               drawing === "source" && "ring-2 ring-accent ring-offset-2",
               drawing === "target" && "cursor-crosshair outline-2 outline-offset-2 outline-dashed outline-accent/50 hover:outline-accent",
-              !drawing && (lifted ? "cursor-grabbing shadow-[0_12px_28px_-8px_rgba(16,22,20,.3)]" : "cursor-grab"),
+              !drawing && (lifted ? "cursor-grabbing shadow-card" : "cursor-grab"),
             )}
             {...handlers}
           >

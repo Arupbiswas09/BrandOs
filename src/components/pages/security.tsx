@@ -22,16 +22,16 @@ export function TwoFactorNudge() {
   return (
     <div role="note" className="mb-8 flex items-start gap-3 rounded-xl border border-[#F5C27A] bg-[#FFF7EB] px-5 py-4">
       <ShieldAlert aria-hidden className="mt-0.5 h-5 w-5 flex-none text-[#B45309]" />
-      <div className="min-w-0 flex-1 text-[15px] leading-[1.5] text-[#7C2D12]">
+      <div className="min-w-0 flex-1 text-body leading-[1.5] text-[#7C2D12]">
         <strong className="font-semibold">Turn on two-step verification.</strong> Your role can change every client&apos;s work and who sees it,
         so a stolen password would be costly. It takes a minute with any authenticator app.
       </div>
-      <a href="#two-step" className="flex-none self-center rounded-[9px] bg-[#B45309] px-3.5 py-2 text-[14.5px] font-semibold text-white hover:brightness-110">Set it up</a>
+      <a href="#two-step" className="flex-none self-center rounded-lg bg-[#B45309] px-3.5 py-2 text-body font-semibold text-white hover:brightness-110">Set it up</a>
     </div>
   );
 }
 
-const codeInput = "field w-[12ch] text-center font-mono text-[17px] tracking-[0.2em]";
+const codeInput = "field w-[12ch] text-center font-mono text-lead tracking-[0.2em]";
 
 export function TwoFactorCard({ info }: { info: SecurityInfo }) {
   const { toast } = useApp();
@@ -74,13 +74,13 @@ export function TwoFactorCard({ info }: { info: SecurityInfo }) {
     <Card className="mb-8 p-6">
       <div id="two-step" className="flex flex-wrap items-start gap-4">
         <div className="min-w-[240px] flex-1">
-          <div className="mb-1 flex items-center gap-2 text-[15px] font-semibold">
+          <div className="mb-1 flex items-center gap-2 text-body font-semibold">
             Two-step verification
             {info.twoFactor
-              ? <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2.5 py-0.5 text-[13px] font-semibold text-[#166534]"><ShieldCheck aria-hidden className="h-3.5 w-3.5" />On</span>
-              : <span className="rounded-full bg-chip px-2.5 py-0.5 text-[13px] font-semibold text-mute-2">Off</span>}
+              ? <span className="inline-flex items-center gap-1 rounded-full bg-[#DCFCE7] px-2.5 py-0.5 text-small font-semibold text-[#166534]"><ShieldCheck aria-hidden className="h-3.5 w-3.5" />On</span>
+              : <span className="rounded-full bg-chip px-2.5 py-0.5 text-small font-semibold text-mute-2">Off</span>}
           </div>
-          <p className="m-0 text-[14.5px] leading-[1.5] text-mute-2">
+          <p className="m-0 text-body leading-[1.5] text-mute-2">
             {info.twoFactor
               ? <>Signing in asks for a six-digit code from your authenticator app. You have {info.recoveryLeft} unused recovery code{info.recoveryLeft === 1 ? "" : "s"}{info.recoveryLeft <= 2 ? " — make new ones soon" : ""}.</>
               : "After your password (or Google), BrandOS asks for a six-digit code from an app on your phone: Google Authenticator, 1Password, Microsoft Authenticator or similar."}
@@ -97,17 +97,17 @@ export function TwoFactorCard({ info }: { info: SecurityInfo }) {
 
       {setup && (
         <form className="mt-5 grid gap-5 border-t border-divider pt-5 sm:grid-cols-[auto_minmax(0,1fr)]" onSubmit={(e) => { e.preventDefault(); confirm(); }}>
-          <a href={setup.uri} aria-label="Open in an authenticator app on this device" className="block w-[184px] flex-none rounded-lg border border-line bg-white p-2">
+          <a href={setup.uri} aria-label="Open in an authenticator app on this device" className="block w-[184px] flex-none rounded-lg border border-line bg-surface p-2">
             <svg viewBox={`0 0 ${setup.qr.size} ${setup.qr.size}`} role="img" aria-label="QR code for your authenticator app" className="block h-auto w-full" shapeRendering="crispEdges">
               <rect width={setup.qr.size} height={setup.qr.size} fill="#fff" />
               <path d={setup.qr.d} fill="#101614" />
             </svg>
           </a>
           <div className="flex min-w-0 flex-col gap-3">
-            <ol className="m-0 flex list-decimal flex-col gap-1.5 pl-5 text-[14.5px] leading-[1.5] text-mute-1">
+            <ol className="m-0 flex list-decimal flex-col gap-1.5 pl-5 text-body leading-[1.5] text-mute-1">
               <li>Open your authenticator app and scan this code. On this phone? Tap the code instead.</li>
               <li>Cannot scan? Choose &ldquo;enter a setup key&rdquo; and type:
-                <code className="mt-1 block break-all rounded-md bg-soft px-2.5 py-1.5 font-mono text-[14px] tracking-[0.08em] text-ink">{setup.secret.match(/.{1,4}/g)?.join(" ")}</code>
+                <code className="mt-1 block break-all rounded-md bg-soft px-2.5 py-1.5 font-mono text-meta tracking-[0.08em] text-ink">{setup.secret.match(/.{1,4}/g)?.join(" ")}</code>
               </li>
               <li>Enter the six-digit code the app shows.</li>
             </ol>
@@ -124,7 +124,7 @@ export function TwoFactorCard({ info }: { info: SecurityInfo }) {
 
       {manage && (
         <form className="mt-5 flex flex-wrap items-end gap-2 border-t border-divider pt-5" onSubmit={(e) => { e.preventDefault(); doManage(); }}>
-          <p className="m-0 mb-1 w-full text-[14.5px] text-mute-2">
+          <p className="m-0 mb-1 w-full text-body text-mute-2">
             {manage === "off" ? "To turn it off, enter a code from your app (or a recovery code)." : "Enter a code from your app. Your old recovery codes stop working."}
           </p>
           <Field label="Code" required error={error || undefined}>
@@ -154,9 +154,9 @@ function RecoveryCodes({ codes, onDone }: { codes: string[]; onDone: () => void 
   };
   return (
     <Card className="mb-8 p-6">
-      <div id="two-step" className="mb-1 text-[15px] font-semibold">Save your recovery codes</div>
-      <p className="m-0 mb-4 text-[14.5px] leading-[1.5] text-mute-2">If you lose your phone, each of these gets you in once. Keep them in a password manager. You will not see them again.</p>
-      <ul aria-label="Recovery codes" className="m-0 mb-5 grid list-none grid-cols-2 gap-x-6 gap-y-1.5 rounded-lg bg-soft p-4 font-mono text-[15.5px] tracking-[0.06em] text-ink sm:grid-cols-4">
+      <div id="two-step" className="mb-1 text-body font-semibold">Save your recovery codes</div>
+      <p className="m-0 mb-4 text-body leading-[1.5] text-mute-2">If you lose your phone, each of these gets you in once. Keep them in a password manager. You will not see them again.</p>
+      <ul aria-label="Recovery codes" className="m-0 mb-5 grid list-none grid-cols-2 gap-x-6 gap-y-1.5 rounded-lg bg-soft p-4 font-mono text-body tracking-[0.06em] text-ink sm:grid-cols-4">
         {codes.map((c) => <li key={c}>{c}</li>)}
       </ul>
       <div className="flex flex-wrap gap-2">
@@ -180,7 +180,7 @@ export function SessionsCard({ info }: { info: SecurityInfo }) {
   return (
     <>
       <H2 right={others.length > 0 && (
-        <button type="button" disabled={pending} onClick={() => act(revokeOtherSessions, "Signed out everywhere else.")} className="text-[14.5px] font-medium text-accent hover:underline disabled:opacity-50">
+        <button type="button" disabled={pending} onClick={() => act(revokeOtherSessions, "Signed out everywhere else.")} className="text-body font-medium text-accent hover:underline disabled:opacity-50">
           Sign out everywhere else
         </button>
       )}>Where you&apos;re signed in</H2>
@@ -188,11 +188,11 @@ export function SessionsCard({ info }: { info: SecurityInfo }) {
         {info.sessions.map((x) => (
           <div key={x.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-divider px-5 py-3.5 first:border-t-0">
             <span className="min-w-[200px] flex-1">
-              <span className="flex items-center gap-2 text-[15px] font-semibold">
+              <span className="flex items-center gap-2 text-body font-semibold">
                 {x.device}
-                {x.current && <span className="rounded-full bg-soft px-2 py-px text-[12.5px] font-semibold text-accent">This device</span>}
+                {x.current && <span className="rounded-full bg-soft px-2 py-px text-small font-semibold text-accent">This device</span>}
               </span>
-              <span className="mt-0.5 block text-[14px] text-mute-3">
+              <span className="mt-0.5 block text-meta text-mute-3">
                 {x.ip || "Unknown address"} · signed in {timeAgo(x.createdAt, ws.d.now)} · active {x.current ? "now" : timeAgo(x.lastSeenAt, ws.d.now)}
               </span>
             </span>
@@ -201,7 +201,7 @@ export function SessionsCard({ info }: { info: SecurityInfo }) {
             )}
           </div>
         ))}
-        {!info.sessions.length && <p className="m-0 px-5 py-4 text-[15px] text-mute-2">No sessions.</p>}
+        {!info.sessions.length && <p className="m-0 px-5 py-4 text-body text-mute-2">No sessions.</p>}
       </Card>
     </>
   );

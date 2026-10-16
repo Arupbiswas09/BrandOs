@@ -46,14 +46,14 @@ export function Modal({
 
   const Inner = onSubmit ? "form" : "div";
   return (
-    <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-[72px]">
-      <div className="fixed inset-0 animate-fade bg-[rgba(16,22,20,.38)] backdrop-blur-[2px]" onClick={close} />
+    <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-18">
+      <div className="fixed inset-0 animate-fade bg-[rgba(16,22,20,.38)] " onClick={close} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={label ?? (typeof title === "string" ? title : undefined)}
-        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl border border-line bg-white shadow-[0_24px_64px_rgba(16,22,20,.22)]"
+        className="group/dlg relative w-full animate-pop overflow-hidden rounded-2xl border border-line bg-surface shadow-card"
         style={{ maxWidth: width }}
       >
         <Inner
@@ -61,16 +61,16 @@ export function Modal({
         >
           <div className={cx("relative py-5 pl-6 pr-14 sm:pl-7", (children || footer) ? "border-b border-line" : "")}>
             {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
-            <div className="text-[20px] font-semibold leading-[1.3] tracking-[-0.015em]">{title}</div>
-            {sub && <div className="mt-1 text-[15px] leading-[1.5] text-mute-2 text-pretty">{sub}</div>}
+            <div className="text-title font-semibold leading-[1.3] tracking-[-0.015em]">{title}</div>
+            {sub && <div className="mt-1 text-body leading-[1.5] text-mute-2 text-pretty">{sub}</div>}
             <button type="button" onClick={close} aria-label="Close" className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-md text-mute-3 transition-colors hover:bg-hover hover:text-ink">
               <X className="h-[18px] w-[18px]" />
             </button>
           </div>
-          {children && <div className={cx("flex flex-col gap-4 px-6 pb-6 pt-[22px] sm:px-7", bodyClass)}>{children}</div>}
+          {children && <div className={cx("flex flex-col gap-4 px-6 pb-6 pt-5 sm:px-7", bodyClass)}>{children}</div>}
           {footer && (
-            <div className="flex flex-wrap items-center justify-end gap-[9px] border-t border-line bg-wash-2 px-6 py-3.5 sm:px-7">
-              <span className="mr-auto hidden text-[13px] text-mute-3 group-has-[[required]]/dlg:inline"><span aria-hidden className="text-[#DC2626]">*</span> Required</span>
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-wash-2 px-6 py-3.5 sm:px-7">
+              <span className="mr-auto hidden text-small text-mute-3 group-has-[[required]]/dlg:inline"><span aria-hidden className="text-[#DC2626]">*</span> Required</span>
               {footer}
             </div>
           )}
@@ -89,8 +89,8 @@ export function Footer({ saveLabel, pending, disabled, onCancel, left, saveVaria
     <>
       {left}
       {left && <span className="flex-1" />}
-      <Btn size="md" onClick={onCancel ?? close} className="px-[15px] py-2">Cancel</Btn>
-      <Btn type="submit" variant="primary" disabled={pending || disabled} title={disabled && !pending ? "Fill in the fields marked *" : undefined} className={cx("px-[17px] py-2", solid && `${solid} text-white`)}>
+      <Btn size="md" onClick={onCancel ?? close} className="px-4 py-2">Cancel</Btn>
+      <Btn type="submit" variant="primary" disabled={pending || disabled} title={disabled && !pending ? "Fill in the fields marked *" : undefined} className={cx("px-4 py-2", solid && `${solid} text-white`)}>
         {pending ? "Saving…" : saveLabel}
       </Btn>
     </>

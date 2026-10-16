@@ -25,7 +25,7 @@ export function ClientModal({ draft }: { draft?: Partial<Client> }) {
   };
   return (
     <Modal title={draft?.id ? "Edit client" : "New client"} width={480} onSubmit={save} footer={<Footer saveLabel="Save client" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="Client name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
+      <Field label="Client name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Quokka For Good" /></Field>
       <Field label="Sector and location"><input className="field" value={d.kind} onChange={(e) => setD({ ...d, kind: e.target.value })} placeholder="Wildlife conservation · Western Australia" /></Field>
       <Field label="What we do for them"><textarea rows={3} className="field leading-[1.55]" value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} /></Field>
       <Field label="Primary contact" hint={<span className="font-normal text-mute-4">who on the team looks after them</span>}>
@@ -40,9 +40,9 @@ export function ClientModal({ draft }: { draft?: Partial<Client> }) {
 export function ColourInput({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   const [text, setText] = useState(value);
   return (
-    <span className="flex items-center gap-2 rounded-[9px] border border-line bg-white py-1 pl-1 pr-2">
+    <span className="flex items-center gap-2 rounded-lg border border-line bg-surface py-1 pl-1 pr-2">
       <input type="color" aria-label={label} value={isHex(value) && value.length === 7 ? value : "#2D4A5C"} onChange={(e) => { onChange(e.target.value.toUpperCase()); setText(e.target.value.toUpperCase()); }} className="h-7 w-8 cursor-pointer rounded-md border-0 bg-transparent p-0" />
-      <input value={text} aria-label={`${label} hex`} onChange={(e) => { setText(e.target.value); if (isHex(e.target.value)) onChange(e.target.value.toUpperCase()); }} className="w-[76px] border-0 bg-transparent font-mono text-[14.5px] outline-none" />
+      <input value={text} aria-label={`${label} hex`} onChange={(e) => { setText(e.target.value); if (isHex(e.target.value)) onChange(e.target.value.toUpperCase()); }} className="w-[76px] border-0 bg-transparent font-mono text-body outline-none" />
     </span>
   );
 }
@@ -67,15 +67,15 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
   };
   return (
     <Modal title={draft.id ? "Edit brand" : "New brand"} sub={parent ? `A wing of ${parent.name}` : undefined} width={540} onSubmit={save} footer={<Footer saveLabel="Save brand" pending={pending} disabled={!d.name.trim()} />}>
-      <div className="flex items-center gap-3.5 rounded-xl p-[18px]" style={{ background: hexA(d.primary, 0.06) }}>
+      <div className="flex items-center gap-3.5 rounded-xl p-4" style={{ background: hexA(d.primary, 0.06) }}>
         <Mark mark={mark} color={d.primary} fg={onColor(d.primary)} size={44} radius={11} />
         <span className="flex-1">
-          <span className="block text-[16px] font-semibold">{d.name || "New brand"}</span>
-          <span className="mt-0.5 block text-[14px] text-mute-1">{draft.id ? d.tagline || "No tagline yet" : "Starts with five default goals you can edit or merge later"}</span>
+          <span className="block text-lead font-semibold">{d.name || "New brand"}</span>
+          <span className="mt-0.5 block text-meta text-mute-1">{draft.id ? d.tagline || "No tagline yet" : "Starts with five default goals you can edit or merge later"}</span>
         </span>
         <span className="h-6 w-6 rounded-md" style={{ background: d.secondary }} title="Secondary colour" />
       </div>
-      <Field label="Brand name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
+      <Field label="Brand name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
       <div className="grid grid-cols-[2fr_1fr] gap-3">
         <Field label="Tagline"><input className="field" value={d.tagline} onChange={(e) => setD({ ...d, tagline: e.target.value })} placeholder="Small animal. Big mandate." /></Field>
         <Field label="Monogram"><input className="field uppercase" maxLength={3} value={d.mark} onChange={(e) => setD({ ...d, mark: e.target.value })} placeholder={mark} /></Field>
@@ -118,7 +118,7 @@ export function ServiceModal({ draft }: { draft: Partial<Service> & { brandId: s
   };
   return (
     <Modal title={draft.id ? "Edit service" : "New service"} sub={`In ${ws.brand(d.brandId)?.name}. A capability you sell — offers hang off it, one per segment.`} onSubmit={save} footer={<Footer saveLabel="Save service" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="Service name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
+      <Field label="Service name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
       <Field label="One line"><input className="field" value={d.short} onChange={(e) => setD({ ...d, short: e.target.value })} placeholder="Ten thousand a month, actually spent" /></Field>
       <Field label="What it is"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="The capability itself, before it is aimed at anyone." /></Field>
     </Modal>
@@ -145,10 +145,10 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
   const swatches = [b?.primary, b?.secondary, ...(b?.colours.map((c) => c.hex) ?? []), "#101614", "#FFFFFF"].filter((x, i, a): x is string => !!x && a.indexOf(x) === i).slice(0, 8);
   return (
     <Modal title={draft.id ? "Edit CTA" : "New CTA"} width={480} onSubmit={save} footer={<Footer saveLabel="Save CTA" pending={pending} disabled={!d.text.trim()} />}>
-      <div className="flex items-center justify-center rounded-[11px] bg-wash-2 p-6">
-        <span className="inline-block rounded-[7px] px-[18px] py-[9px] text-[16px] font-semibold" style={preview}>{d.text || "Button text"}</span>
+      <div className="flex items-center justify-center rounded-xl bg-wash-2 p-6">
+        <span className="inline-block rounded-lg px-4 py-2 text-lead font-semibold" style={preview}>{d.text || "Button text"}</span>
       </div>
-      <Field label="Button text" required><input required className="field text-[16px]" value={d.text} onChange={(e) => setD({ ...d, text: e.target.value })} placeholder="Book a Grant Audit" maxLength={80} /></Field>
+      <Field label="Button text" required><input required className="field text-lead" value={d.text} onChange={(e) => setD({ ...d, text: e.target.value })} placeholder="Book a Grant Audit" maxLength={80} /></Field>
       <Field label="Destination"><input className="field" value={d.url} onChange={(e) => setD({ ...d, url: e.target.value })} placeholder="quokkaforgood.org/grant-audit" /></Field>
       <div>
         <div className="label">{outline ? "Colour" : "Button colour"}</div>
@@ -173,8 +173,8 @@ export function GoalModal({ brandId, name, description, original }: { brandId: s
   const remove = async () => { const r = await run(deleteGoal, brandId, original!); if (r.ok) close(); };
   return (
     <Modal title={original ? "Edit goal" : "New goal"} sub={`In ${ws.brand(brandId)?.name}. Keep it broad enough that a tactic never fits it exactly.`} width={480} onSubmit={save}
-      footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <button type="button" onClick={remove} className="px-0.5 py-1.5 text-[14.5px] text-danger hover:underline">Remove from every offer</button> : undefined} />}>
-      <Field label="Goal" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
+      footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <button type="button" onClick={remove} className="px-0.5 py-1.5 text-body text-danger hover:underline">Remove from every offer</button> : undefined} />}>
+      <Field label="Goal" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
       <Field label="What it means here"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="Grow the audience we own — list, followers, members." /></Field>
     </Modal>
   );
@@ -187,9 +187,9 @@ export function MergeGoalModal({ brandId, from }: { brandId: string; from: strin
   const n = ws.offersOf(brandId).filter((o) => o.goals.includes(from)).length;
   const save = async () => { const r = await run(mergeGoal, brandId, from, into); if (r.ok) close(); };
   return (
-    <Modal title={`Merge ${from} into…`} sub={`${n} ${n === 1 ? "offer moves" : "offers move"} across. ${from} then disappears.`} width={460} onSubmit={save} footer={<Footer saveLabel="Merge" pending={pending} disabled={!into} />} bodyClass="gap-[7px]">
+    <Modal title={`Merge ${from} into…`} sub={`${n} ${n === 1 ? "offer moves" : "offers move"} across. ${from} then disappears.`} width={460} onSubmit={save} footer={<Footer saveLabel="Merge" pending={pending} disabled={!into} />} bodyClass="gap-2">
       {(ws.brand(brandId)?.goals ?? []).filter((g) => g.name !== from).map((g) => (
-        <button key={g.name} type="button" aria-pressed={into === g.name} onClick={() => setInto(g.name)} className={cx("w-full rounded-[10px] border px-3.5 py-[11px] text-left text-[16px] font-medium transition", into === g.name ? "border-accent bg-soft" : "border-line bg-white")}>{g.name}</button>
+        <button key={g.name} type="button" aria-pressed={into === g.name} onClick={() => setInto(g.name)} className={cx("w-full rounded-xl border px-3.5 py-3 text-left text-lead font-medium transition", into === g.name ? "border-accent bg-soft" : "border-line bg-surface")}>{g.name}</button>
       ))}
     </Modal>
   );
@@ -200,17 +200,17 @@ export function GoalOffersModal({ brandId, name }: { brandId: string; name: stri
   const router = useRouter();
   const list = ws.offersOf(brandId).filter((o) => o.goals.includes(name));
   return (
-    <Modal title={name} sub={`${list.length} ${list.length === 1 ? "offer chases this" : "offers chase this"}.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[340px] gap-[7px] overflow-y-auto">
+    <Modal title={name} sub={`${list.length} ${list.length === 1 ? "offer chases this" : "offers chase this"}.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[340px] gap-2 overflow-y-auto">
       {list.map((o) => (
-        <button key={o.id} type="button" onClick={() => { close(); router.push(href.offer(o.id)); }} className="flex w-full items-center gap-[11px] rounded-[10px] border border-line bg-white px-[13px] py-[11px] text-left hover:border-mute-2">
+        <button key={o.id} type="button" onClick={() => { close(); router.push(href.offer(o.id)); }} className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-3 py-3 text-left hover:border-mute-2">
           <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-semibold">{o.name}</span>
-            <span className="mt-0.5 block text-[14.5px] text-mute-2">{o.serviceId ? ws.service(o.serviceId)?.name ?? "Standalone" : "Standalone"} · {o.segment}</span>
+            <span className="block text-body font-semibold">{o.name}</span>
+            <span className="mt-0.5 block text-body text-mute-2">{o.serviceId ? ws.service(o.serviceId)?.name ?? "Standalone" : "Standalone"} · {o.segment}</span>
           </span>
           <Chip color={OFFER_STATUS[o.status]} size="xs">{o.status}</Chip>
         </button>
       ))}
-      {!list.length && <div className="p-7 text-center text-[15px] text-mute-2">No offer chases this goal yet.</div>}
+      {!list.length && <div className="p-7 text-center text-body text-mute-2">No offer chases this goal yet.</div>}
     </Modal>
   );
 }

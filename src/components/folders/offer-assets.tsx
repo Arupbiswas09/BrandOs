@@ -20,7 +20,7 @@ import { Btn, Empty, cx } from "@/components/ui";
  */
 
 const GRID = "grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4";
-const ROUND = cx("flex h-8 w-8 items-center justify-center rounded-full border border-black/[.06] bg-white text-ink-3 shadow-[0_1px_4px_rgba(16,22,20,.16)] transition-colors hover:text-accent", FOCUS);
+const ROUND = cx("flex h-8 w-8 items-center justify-center rounded-full border border-black/[.06] bg-surface text-ink-3 shadow-card transition-colors hover:text-accent", FOCUS);
 const QUIET = cx("flex h-8 w-8 items-center justify-center rounded-full text-mute-3 transition-colors hover:bg-wash hover:text-ink", FOCUS);
 const carriesAsset = (e: DragEvent) => e.dataTransfer.types.includes(ASSET_DRAG);
 
@@ -83,8 +83,8 @@ export function OfferAssets({ o }: { o: Offer }) {
     <section aria-labelledby="supports-h">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
         <div>
-          <h2 id="supports-h" className="m-0 mb-1 text-[17px] font-semibold">What supports this offer</h2>
-          <p className="m-0 text-[14.5px] text-mute-2">{assets.length} {assets.length === 1 ? "asset supports" : "assets support"} this offer. Linking never duplicates — the asset stays where it lives.</p>
+          <h2 id="supports-h" className="m-0 mb-1 text-lead font-semibold">What supports this offer</h2>
+          <p className="m-0 text-body text-mute-2">{assets.length} {assets.length === 1 ? "asset supports" : "assets support"} this offer. Linking never duplicates — the asset stays where it lives.</p>
         </div>
         {canEdit && (
           <div className="flex flex-wrap gap-2">
@@ -106,7 +106,7 @@ export function OfferAssets({ o }: { o: Offer }) {
             const r = await run(createFolder, o.id, name);
             if (r.ok) { setNaming(false); toast(`Created ${name.trim()}`); }
           }}
-          className="mb-4 rounded-xl border border-line bg-white p-3"
+          className="mb-4 rounded-xl border border-line bg-surface p-3"
         />
       )}
 
@@ -114,7 +114,7 @@ export function OfferAssets({ o }: { o: Offer }) {
         <>
           <nav aria-label="Folders" className="mb-3.5 flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1">
             <button type="button" onClick={() => setAt(null)} {...dropOn("root", null)}
-              className={cx("-ml-1.5 inline-flex items-center gap-1.5 rounded-[8px] px-1.5 py-1 text-[15px] font-medium text-mute-2 transition-colors hover:text-ink", FOCUS, over === "root" && "bg-soft text-ink ring-2 ring-accent")}>
+              className={cx("-ml-1.5 inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-body font-medium text-mute-2 transition-colors hover:text-ink", FOCUS, over === "root" && "bg-soft text-ink ring-2 ring-accent")}>
               <ArrowLeft aria-hidden size={15} />All assets
             </button>
             <span aria-hidden className="text-mute-5">/</span>
@@ -123,8 +123,8 @@ export function OfferAssets({ o }: { o: Offer }) {
                 onCancel={() => setRenaming(null)} onSave={async (name) => { const r = await run(renameFolder, current.id, name); if (r.ok) setRenaming(null); }} />
             ) : (
               <>
-                <span aria-current="page" className="min-w-0 truncate text-[15px] font-semibold text-ink">{current.name}</span>
-                <span className="font-mono text-[13px] text-mute-4">{shown.length}</span>
+                <span aria-current="page" className="min-w-0 truncate text-body font-semibold text-ink">{current.name}</span>
+                <span className="font-mono text-small text-mute-4">{shown.length}</span>
                 <span className="flex-1" />
                 {canEdit && <CardMenu label={`Folder actions for ${current.name}`} items={folderMenu(current)} triggerClassName={ROUND} />}
               </>
@@ -145,7 +145,7 @@ export function OfferAssets({ o }: { o: Offer }) {
                 {folders.map((f) => renaming === f.id ? (
                   <NameForm key={f.id} label={`New name for ${f.name}`} initial={f.name} submit="Save" pending={pending} compact
                     onCancel={() => setRenaming(null)} onSave={async (name) => { const r = await run(renameFolder, f.id, name); if (r.ok) setRenaming(null); }}
-                    className="rounded-[12px] border border-accent bg-white p-2.5 [&>input]:basis-full" />
+                    className="rounded-xl border border-accent bg-surface p-2.5 [&>input]:basis-full" />
                 ) : (
                   <FolderTile key={f.id} f={f} count={inside(f.id).length} cover={cover(f)} tint={tint} over={over === f.id} drop={dropOn(f.id, f.id)}
                     onOpen={() => setAt(f.id)} menu={canEdit ? folderMenu(f) : []} />
@@ -183,14 +183,14 @@ function FolderTile({ f, count, cover, tint, over, drop, onOpen, menu }: {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div {...drop} className={cx(
-      "group relative flex items-center rounded-[12px] border bg-white shadow-[0_1px_2px_rgba(16,22,20,.04)] transition-colors hover:border-line-strong",
+      "group relative flex items-center rounded-xl border bg-surface shadow-card transition-colors hover:border-line-strong",
       over ? "border-accent bg-soft ring-2 ring-accent" : "border-line", menuOpen && "z-20",
     )}>
-      <button type="button" onClick={onOpen} className={cx("flex min-w-0 flex-1 items-center gap-3 rounded-[11px] py-2.5 pl-2.5 text-left", menu.length ? "pr-12" : "pr-3", FOCUS)}>
+      <button type="button" onClick={onOpen} className={cx("flex min-w-0 flex-1 items-center gap-3 rounded-xl py-2.5 pl-2.5 text-left", menu.length ? "pr-12" : "pr-3", FOCUS)}>
         {/* A second sheet peeking out behind the picture, so a folder reads as a folder at a glance. */}
         <span aria-hidden className="relative ml-1 mt-1 h-10 w-10 flex-none">
-          <span className="absolute -right-1 -top-1 h-10 w-10 rounded-[8px] border border-line bg-wash" />
-          <span className="absolute inset-0 overflow-hidden rounded-[8px] border border-line bg-wash">
+          <span className="absolute -right-1 -top-1 h-10 w-10 rounded-lg border border-line bg-wash" />
+          <span className="absolute inset-0 overflow-hidden rounded-lg border border-line bg-wash">
             {cover ? (
               // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; the folder's name sits right beside it
               <img src={cover} alt="" loading="lazy" decoding="async" draggable={false} className="h-full w-full object-cover" />
@@ -200,8 +200,8 @@ function FolderTile({ f, count, cover, tint, over, drop, onOpen, menu }: {
           </span>
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-[1.3] text-ink">{f.name}</span>
-          <span className="block text-[12.5px] text-mute-3">{over ? "Drop to move here" : count ? plural(count, "asset") : "Empty"}</span>
+          <span className="block truncate text-body font-semibold leading-[1.3] text-ink">{f.name}</span>
+          <span className="block text-small text-mute-3">{over ? "Drop to move here" : count ? plural(count, "asset") : "Empty"}</span>
         </span>
       </button>
       {menu.length > 0 && (

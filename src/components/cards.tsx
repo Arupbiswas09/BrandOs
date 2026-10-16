@@ -33,7 +33,7 @@ export function blocksFor(list: Asset[], limit = 28) {
 export function StatusLine({ a }: { a: Asset }) {
   const reviewed = a.review !== "None";
   return (
-    <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-[13px] text-mute-2">
+    <span className="mt-1.5 flex min-w-0 items-center gap-1.5 text-small text-mute-2">
       <span aria-hidden className="h-2 w-2 flex-none rounded-full" style={{ background: reviewed ? REVIEW_COLOR[a.review] : ASSET_STATUS[a.status] ?? "#93A09A" }} />
       <span className="truncate">{reviewed && <span className="font-medium text-ink-3">{a.review} · </span>}{a.status} · v{a.version}</span>
     </span>
@@ -42,10 +42,10 @@ export function StatusLine({ a }: { a: Asset }) {
 
 export function StatusChips({ a }: { a: Asset }) {
   return (
-    <span className="mb-2 flex flex-wrap items-center gap-[5px]">
+    <span className="mb-2 flex flex-wrap items-center gap-1">
       <Chip color={ASSET_STATUS[a.status] ?? "#93A09A"} size="xs">{a.status}</Chip>
       {a.review !== "None" && <Chip color={REVIEW_COLOR[a.review]} size="xs">{a.review}</Chip>}
-      <span className="font-mono text-[12.5px] text-mute-4">v{a.version}</span>
+      <span className="font-mono text-small text-mute-4">v{a.version}</span>
     </span>
   );
 }
@@ -83,7 +83,7 @@ export type FolderMove = { folders: { id: string; name: string }[]; current: str
 export const ASSET_DRAG = "application/x-brandos-asset";
 
 const CARD_ACTION = cx(
-  "flex h-8 w-8 items-center justify-center rounded-full border border-black/[.06] bg-white text-ink-3 shadow-[0_1px_4px_rgba(16,22,20,.16)] transition-colors hover:text-accent",
+  "flex h-8 w-8 items-center justify-center rounded-full border border-black/[.06] bg-surface text-ink-3 shadow-card transition-colors hover:text-accent",
   FOCUS,
 );
 
@@ -128,7 +128,7 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
       draggable={draggable || undefined}
       onDragStart={draggable ? (e) => { e.dataTransfer.setData(ASSET_DRAG, a.id); e.dataTransfer.effectAllowed = "move"; } : undefined}
       className={cx(
-        "group relative flex flex-col rounded-[13px] border border-line bg-white shadow-[0_1px_2px_rgba(16,22,20,.04)]",
+        "group relative flex flex-col rounded-xl border border-line bg-surface shadow-card",
         quiet ? "transition hover:border-line-strong" : LIFT,
         a.archived && !selected && "opacity-55",
         selected && "border-accent ring-2 ring-accent",
@@ -139,31 +139,31 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
         type="button"
         onClick={() => (selecting ? onToggle?.() : openAsset(a.id))}
         {...(selecting && { role: "checkbox", "aria-checked": !!selected })}
-        className={cx("relative flex w-full flex-1 flex-col overflow-hidden rounded-[12px] p-0 text-left", FOCUS)}
+        className={cx("relative flex w-full flex-1 flex-col overflow-hidden rounded-xl p-0 text-left", FOCUS)}
       >
-        {selecting && <span className="absolute left-2 top-2 z-[1] rounded-[6px] bg-white p-[2px] shadow-[0_1px_4px_rgba(16,22,20,.25)]"><Tick on={!!selected} size={19} /></span>}
+        {selecting && <span className="absolute left-2 top-2 z-[1] rounded-lg bg-surface p-0.5 shadow-card"><Tick on={!!selected} size={19} /></span>}
         {/* A fixed 4:3 frame, so cards never jump while their pictures load. Purely a picture: the type and name follow in words. */}
-        <span aria-hidden className="relative block aspect-[4/3] w-full flex-none overflow-hidden rounded-t-[12px] border-b border-divider bg-wash">
+        <span aria-hidden className="relative block aspect-[4/3] w-full flex-none overflow-hidden rounded-t-xl border-b border-divider bg-wash">
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; next/image would proxy it through the optimizer. The name sits right under it, so alt stays empty.
             <img src={preview} alt="" loading="lazy" decoding="async" draggable={false} className={cx("h-full w-full", whole ? "object-contain p-5" : "object-cover")} />
           ) : tile}
         </span>
         <span className="block px-3.5 pb-3 pt-2.5">
-          <span className="block truncate font-mono text-[11px] uppercase tracking-[0.08em] text-mute-4">{a.type}</span>
-          <span className="mt-0.5 block truncate text-[15px] font-semibold leading-[1.35] text-ink">{a.name}</span>
-          {variant === "kit" && a.short && <span className="mt-1 block truncate text-[13.5px] text-mute-2">{a.short}</span>}
+          <span className="block truncate font-mono text-micro uppercase tracking-[0.08em] text-mute-4">{a.type}</span>
+          <span className="mt-0.5 block truncate text-body font-semibold leading-[1.35] text-ink">{a.name}</span>
+          {variant === "kit" && a.short && <span className="mt-1 block truncate text-meta text-mute-2">{a.short}</span>}
           {variant === "library" && (
-            <span className="mt-1 block text-[13.5px] leading-[1.45] text-mute-2">
-              {a.type === "Checklist" && <span className="font-mono text-[12.5px]">{(a.items ?? []).length} checks · </span>}
-              {a.type === "Prompt" && a.promptFor && <span className="font-mono text-[12.5px]">{a.promptFor} · </span>}
+            <span className="mt-1 block text-meta leading-[1.45] text-mute-2">
+              {a.type === "Checklist" && <span className="font-mono text-small">{(a.items ?? []).length} checks · </span>}
+              {a.type === "Prompt" && a.promptFor && <span className="font-mono text-small">{a.promptFor} · </span>}
               {a.short}
             </span>
           )}
           {(variant === "full" || variant === "recent") && (
             <>
               <StatusLine a={a} />
-              <span className="mt-0.5 block text-[12px] text-mute-3">
+              <span className="mt-0.5 block text-micro text-mute-3">
                 <span className={cx(n === 0 && "font-medium text-warn-text")}>{n === 0 ? "Not linked yet" : plural(n, "offer")}</span>
                 {open > 0 && <> · {plural(open, "note")}</>}
               </span>
@@ -208,7 +208,7 @@ function LaunchDate({ at, now }: { at: Date | string; now: number }) {
   const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const when = fmtDate(d, { short: true, now });
   return (
-    <span suppressHydrationWarning className="inline-flex flex-none items-center gap-1 text-[13px] font-medium text-mute-2">
+    <span suppressHydrationWarning className="inline-flex flex-none items-center gap-1 text-small font-medium text-mute-2">
       <CalendarDays aria-hidden size={13} className="text-mute-4" />{day(d) < day(today) ? "Launched" : "Launches"} {when}
     </span>
   );
@@ -217,7 +217,7 @@ function LaunchDate({ at, now }: { at: Date | string; now: number }) {
 export function GoalChips({ ws, o, size = "sm" }: { ws: WS; o: Offer; size?: "sm" | "md" }) {
   if (!o.goals.length) return null;
   return (
-    <span className="flex flex-wrap gap-[5px]">
+    <span className="flex flex-wrap gap-1">
       {o.goals.map((g) => <Chip key={g} round size={size} color={ws.goalColor(o.brandId, g)}>{g}</Chip>)}
     </span>
   );
@@ -236,14 +236,14 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
 
   if (variant === "standalone") {
     return (
-      <Link href={href.offer(o.id)} className={cx("flex flex-col gap-2.5 rounded-[13px] border border-line bg-white px-5 py-[18px] text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]", LIFT, FOCUS, o.archived && "opacity-55")}>
+      <Link href={href.offer(o.id)} className={cx("flex flex-col gap-2.5 rounded-xl border border-line bg-surface px-5 py-4 text-left shadow-card", LIFT, FOCUS, o.archived && "opacity-55")}>
         <span className="flex flex-wrap items-center gap-1.5">
           <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
           <Chip color={segColor}>{o.segment}</Chip>
         </span>
-        <span className="block text-[16.5px] font-semibold leading-[1.3] tracking-[-0.012em] text-ink">{o.name}</span>
-        {o.positioning && <span className="block text-[15px] leading-[1.5] text-mute-1 text-pretty">{o.positioning}</span>}
-        <span className="mt-auto block w-full border-t border-divider pt-2.5 text-[14px] font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#46534D" }}>{assetLabel}</span>
+        <span className="block text-lead font-semibold leading-[1.3] tracking-[-0.012em] text-ink">{o.name}</span>
+        {o.positioning && <span className="block text-body leading-[1.5] text-mute-1 text-pretty">{o.positioning}</span>}
+        <span className="mt-auto block w-full border-t border-divider pt-2.5 text-meta font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#46534D" }}>{assetLabel}</span>
       </Link>
     );
   }
@@ -252,9 +252,9 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
     <Link
       href={href.offer(o.id)}
       className={cx(
-        "flex flex-col rounded-[14px] border border-line bg-white text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]",
+        "flex flex-col rounded-xl border border-line bg-surface text-left shadow-card",
         LIFT, FOCUS,
-        variant === "full" ? "gap-3 px-[22px] py-5" : "gap-2.5 p-5",
+        variant === "full" ? "gap-3 px-5 py-5" : "gap-2.5 p-5",
         o.archived && "opacity-55",
       )}
     >
@@ -267,16 +267,16 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
       {variant === "full" ? (
         <span className="block">
           <span className="eyebrow mb-1 block">{serviceName}</span>
-          <span className="block text-[18px] font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{o.name}</span>
-          {label && <span className="mt-1 block text-[15px] text-mute-2">{label}</span>}
+          <span className="block text-lead font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{o.name}</span>
+          {label && <span className="mt-1 block text-body text-mute-2">{label}</span>}
         </span>
       ) : (
-        <span className="block text-[17px] font-semibold leading-[1.25] tracking-[-0.014em] text-ink">{o.name}</span>
+        <span className="block text-lead font-semibold leading-[1.25] tracking-[-0.014em] text-ink">{o.name}</span>
       )}
-      {o.positioning && <span className="block text-[15px] leading-[1.55] text-ink-3 text-pretty">{o.positioning}</span>}
+      {o.positioning && <span className="block text-body leading-[1.55] text-ink-3 text-pretty">{o.positioning}</span>}
       <GoalChips ws={ws} o={o} />
       {ac > 0 && <span className="mb-0.5"><Blocks blocks={blocksFor(assets)} /></span>}
-      <span className="mt-auto flex w-full items-center gap-3 border-t border-divider pt-3 text-[14px]">
+      <span className="mt-auto flex w-full items-center gap-3 border-t border-divider pt-3 text-meta">
         <span className="font-medium" style={{ color: ac === 0 ? "#8A6A12" : "#46534D" }}>{assetLabel}</span>
         {open > 0 && <span className="inline-flex items-center gap-1 text-mute-2"><MessageSquare aria-hidden size={14} />{plural(open, "note")}</span>}
         <span className="flex-1" />

@@ -48,7 +48,7 @@ export function Library() {
         <div className="mb-5 flex flex-wrap items-center gap-3">
           <label className="relative block w-full max-w-[300px]">
             <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-4" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field pl-9 text-[15px]" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field pl-9 text-body" />
           </label>
           {/* Every kind shows, even at 0: they are the library's categories, not search results. */}
           <Pills tone="dark" value={tab} onChange={setTab} options={TABS.map((x) => ({ ...x, count: live(all).filter((a) => x.value === "All" || a.type === x.value).length }))} label="Type" />
@@ -135,12 +135,12 @@ function AddMenu({ label, onPick, first }: { label: string; onPick: (type: strin
         <>
           <div className="fixed inset-0 z-[70]" onClick={() => setAt(null)} />
           <div ref={menu} id={id} role="menu" aria-label="What to add" style={{ top: at.top, left: at.left, width: Math.min(MENU_W, window.innerWidth - 32) }}
-            className="fixed z-[71] animate-pop rounded-lg border border-line bg-white p-1.5 text-left shadow-[0_16px_40px_rgba(16,22,20,.14)]">
+            className="fixed z-[71] animate-pop rounded-lg border border-line bg-surface p-1.5 text-left shadow-card">
             {kinds.map((k) => (
               <button key={k.type} type="button" role="menuitem" onClick={() => { setAt(null); onPick(k.type); }}
                 className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-hover focus-visible:bg-hover focus-visible:outline-none">
-                <span aria-hidden className="flex h-8 w-11 flex-none items-center justify-center rounded-[7px] bg-chip font-mono text-[11.5px] font-bold tracking-[0.05em] text-mute-1">{ASSET_TYPES[k.type]?.code}</span>
-                <span className="min-w-0 flex-1 text-[14.5px] font-medium text-ink">{k.type}</span>
+                <span aria-hidden className="flex h-8 w-11 flex-none items-center justify-center rounded-lg bg-chip font-mono text-micro font-bold tracking-[0.05em] text-mute-1">{ASSET_TYPES[k.type]?.code}</span>
+                <span className="min-w-0 flex-1 text-body font-medium text-ink">{k.type}</span>
               </button>
             ))}
           </div>

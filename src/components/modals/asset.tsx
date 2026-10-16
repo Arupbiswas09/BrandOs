@@ -135,36 +135,36 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   // On the type step, picking a type is the way forward, so there is no Next or Save to press.
   const footer = (
     <>
-      {!editing && <Btn onClick={() => setStep((s) => Math.max(0, s - 1) as Step)} disabled={step === 0} className="px-[15px] py-2">Back</Btn>}
+      {!editing && <Btn onClick={() => setStep((s) => Math.max(0, s - 1) as Step)} disabled={step === 0} className="px-4 py-2">Back</Btn>}
       <span className="flex-1" />
       <Btn variant="ghost" onClick={close}>Cancel</Btn>
-      {step > 0 && step < 3 && <Btn onClick={() => setStep((s) => Math.min(3, s + 1) as Step)} className="px-[15px] py-2">Next</Btn>}
-      {step > 0 && <Btn type="submit" variant="primary" disabled={!valid || pending} className="px-[17px] py-2">{pending ? "Saving…" : "Save asset"}</Btn>}
+      {step > 0 && step < 3 && <Btn onClick={() => setStep((s) => Math.min(3, s + 1) as Step)} className="px-4 py-2">Next</Btn>}
+      {step > 0 && <Btn type="submit" variant="primary" disabled={!valid || pending} className="px-4 py-2">{pending ? "Saving…" : "Save asset"}</Btn>}
     </>
   );
 
   return (
-    <Modal title={title} eyebrow={stepLabel} width={640} onSubmit={() => valid && save()} footer={footer} bodyClass={step === 3 ? "gap-[15px]" : "px-6"}>
+    <Modal title={title} eyebrow={stepLabel} width={640} onSubmit={() => valid && save()} footer={footer} bodyClass={step === 3 ? "gap-4" : "px-6"}>
       {step === 0 && (
         <div>
           {known && (
-            <div className="mb-3.5 rounded-[9px] bg-soft px-[13px] py-2.5 text-[15px] text-ink-2">
+            <div className="mb-3.5 rounded-lg bg-soft px-3 py-2.5 text-body text-ink-2">
               Going into <span className="font-semibold">{brand?.name} · {ws.offer(d.offerIds[0])?.name}</span> — pick the kind and you are done.
             </div>
           )}
           {GROUPS.map(({ cat, what, where }) => (
             <div key={cat} role="group" aria-labelledby={`${uid}-${cat}`} className="mb-3 last:mb-0">
-              <div id={`${uid}-${cat}`} className="eyebrow mb-2 text-[12px]">
+              <div id={`${uid}-${cat}`} className="eyebrow mb-2 text-micro">
                 {what}
                 {where && <><span aria-hidden> → </span><span className="sr-only">, kept in the </span>{where}</>}
               </div>
-              <div className="grid grid-cols-2 gap-[9px] sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {Object.entries(ASSET_TYPES).filter(([k, t]) => t.cat === cat && k !== "Newsletter ad").map(([k, t]) => (
                   <button key={k} type="button" aria-pressed={d.type === k}
                     onClick={() => { setType(k); setStep(d.offerIds.length && d.brandId ? 3 : d.brandId === null && draft.brandId === null ? 3 : 1); }}
-                    className={cx("rounded-[10px] border p-3 text-left transition hover:border-mute-2", d.type === k ? "border-accent bg-soft" : "border-line bg-white")}>
-                    <span className="mb-1.5 block font-mono text-[12px] font-bold tracking-[0.06em] text-mute-4">{t.code}</span>
-                    <span className="block text-[15px] font-semibold leading-[1.3]">{k}</span>
+                    className={cx("rounded-xl border p-3 text-left transition hover:border-mute-2", d.type === k ? "border-accent bg-soft" : "border-line bg-surface")}>
+                    <span className="mb-1.5 block font-mono text-micro font-bold tracking-[0.06em] text-mute-4">{t.code}</span>
+                    <span className="block text-body font-semibold leading-[1.3]">{k}</span>
                   </button>
                 ))}
               </div>
@@ -175,53 +175,53 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
 
       {step === 1 && (
         <div>
-          <div className="mb-3.5 text-[15px] text-mute-1">A {d.type || "new asset"}. Which brand does it belong to?</div>
+          <div className="mb-3.5 text-body text-mute-1">A {d.type || "new asset"}. Which brand does it belong to?</div>
           <div className="grid gap-2.5 sm:grid-cols-2">
             {ws.d.brands.filter((b) => !b.archived).map((b) => (
               <button key={b.id} type="button" onClick={() => { setD((x) => ({ ...x, brandId: b.id, offerIds: x.brandId === b.id ? x.offerIds : [], ctaId: x.brandId === b.id ? x.ctaId : "" })); setStep(2); }}
-                className="flex items-center gap-3 rounded-[11px] border bg-white p-3.5 text-left hover:border-mute-2" style={{ borderColor: d.brandId === b.id ? b.primary : "var(--bos-border)" }}>
+                className="flex items-center gap-3 rounded-xl border bg-surface p-3.5 text-left hover:border-mute-2" style={{ borderColor: d.brandId === b.id ? b.primary : "var(--bos-border)" }}>
                 <Mark mark={b.mark} color={b.primary} size={32} radius={8} />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold">{b.name}</span>
-                  <span className="mt-px block text-[14.5px] text-mute-2">{b.parentId ? `Sub-brand of ${ws.brand(b.parentId)?.name}` : ws.client(b.clientId)?.name}</span>
+                  <span className="block text-body font-semibold">{b.name}</span>
+                  <span className="mt-px block text-body text-mute-2">{b.parentId ? `Sub-brand of ${ws.brand(b.parentId)?.name}` : ws.client(b.clientId)?.name}</span>
                 </span>
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-[11px] border border-dashed border-line-strong bg-white p-3.5 text-left hover:border-mute-2">
-            <span className="block text-[15px] font-semibold">No brand — put it in the Global Library</span>
-            <span className="mt-0.5 block text-[14.5px] text-mute-2">Checklists, prompts, templates, SOPs, ad creatives</span>
+          <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-xl border border-dashed border-line-strong bg-surface p-3.5 text-left hover:border-mute-2">
+            <span className="block text-body font-semibold">No brand — put it in the Global Library</span>
+            <span className="mt-0.5 block text-body text-mute-2">Checklists, prompts, templates, SOPs, ad creatives</span>
           </button>
         </div>
       )}
 
       {step === 2 && (
         <div>
-          <div className="mb-1.5 text-[15px] text-mute-1">Which offers does it support?</div>
-          <div className="mb-3.5 text-[15px] text-mute-3">Pick as many as apply. One asset, many rooms — nothing gets copied.</div>
-          <div data-scroll className="flex max-h-[260px] flex-col gap-[7px] overflow-y-auto">
+          <div className="mb-1.5 text-body text-mute-1">Which offers does it support?</div>
+          <div className="mb-3.5 text-body text-mute-3">Pick as many as apply. One asset, many rooms — nothing gets copied.</div>
+          <div data-scroll className="flex max-h-[260px] flex-col gap-2 overflow-y-auto">
             {ws.offersOf(d.brandId ?? "").filter((o) => !o.archived).map((o) => (
               <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => set("offerIds", d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id])}>{o.name}</CheckRow>
             ))}
           </div>
-          {!ws.offersOf(d.brandId ?? "").length && <div className="rounded-[10px] border border-dashed border-line-strong p-[26px] text-center text-[15px] text-mute-2">No offers in this brand yet. You can link it later.</div>}
-          <div className="mt-3 text-[14.5px] text-mute-2">{d.offerIds.length ? `${d.offerIds.length} offer${d.offerIds.length > 1 ? "s" : ""} selected` : "No offers selected — it will sit in the library unlinked"}</div>
+          {!ws.offersOf(d.brandId ?? "").length && <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-body text-mute-2">No offers in this brand yet. You can link it later.</div>}
+          <div className="mt-3 text-body text-mute-2">{d.offerIds.length ? `${d.offerIds.length} offer${d.offerIds.length > 1 ? "s" : ""} selected` : "No offers selected — it will sit in the library unlinked"}</div>
         </div>
       )}
 
       {step === 3 && (
         <>
-          <div className="text-[14.5px] text-mute-2">
+          <div className="text-body text-mute-2">
             {d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}
             {!editing && <span className="text-mute-3"> · starts as {d.status}</span>}
           </div>
-          <Field label="Asset name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
+          <Field label="Asset name" required><input required className="field text-lead" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
           {dupes.length > 0 && (
-            <div className="rounded-[10px] border border-[rgba(201,154,46,.4)] bg-[rgba(201,154,46,.07)] px-[15px] py-[13px]">
-              <div className="mb-2 text-[15px] font-semibold text-warn-ink">Similar assets already exist. Reuse before you rebuild.</div>
+            <div className="rounded-xl border border-[rgba(201,154,46,.4)] bg-[rgba(201,154,46,.07)] px-4 py-3">
+              <div className="mb-2 text-body font-semibold text-warn-ink">Similar assets already exist. Reuse before you rebuild.</div>
               <div className="flex flex-col gap-1">
                 {dupes.map((a) => (
-                  <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="py-0.5 text-left text-[15px] text-warn-ink hover:underline">
+                  <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="py-0.5 text-left text-body text-warn-ink hover:underline">
                     {a.name} <span className="text-[#8A6A12]">· {ws.brand(a.brandId)?.name ?? "Global"} · {a.type}</span>
                   </button>
                 ))}
@@ -231,7 +231,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           {/* A Drive link is the link itself, so it is asked for first and files are left out of the way. */}
           {drive && (
             <Field label="Drive link" required>
-              <input required type="text" inputMode="url" className="field text-[16px]" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
+              <input required type="text" inputMode="url" className="field text-lead" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
             </Field>
           )}
           {/* New assets start as the caller says (Draft, or Live in the Global Library); status then changes on the asset itself. */}
@@ -246,29 +246,29 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                 onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
                 onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
                 onDrop={(e) => { e.preventDefault(); setDrag(false); addFiles(e.dataTransfer.files); }}
-                className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] border border-dashed px-3.5 py-3 transition-colors", drag ? "border-accent bg-soft" : "border-line-strong bg-wash-2")}
+                className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed px-3.5 py-3 transition-colors", drag ? "border-accent bg-soft" : "border-line-strong bg-wash-2")}
               >
                 <CloudUpload aria-hidden size={20} className="flex-none text-mute-3" />
-                <span className="min-w-[140px] flex-1 text-[14.5px] text-mute-2">Drop files here, or choose them from your computer.</span>
+                <span className="min-w-[140px] flex-1 text-body text-mute-2">Drop files here, or choose them from your computer.</span>
                 <Btn size="sm" onClick={() => picker.current?.click()}>Choose files</Btn>
                 <input ref={picker} type="file" multiple hidden onChange={(e) => { addFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
               </div>
               {queued.length > 0 && (
                 <ul aria-label="Files to upload" className="m-0 mt-2 flex list-none flex-col gap-1.5 p-0">
                   {queued.map((f) => (
-                    <li key={f.name} className="flex items-center gap-2.5 rounded-[8px] border border-line bg-white py-1.5 pl-3 pr-1.5">
+                    <li key={f.name} className="flex items-center gap-2.5 rounded-lg border border-line bg-surface py-1.5 pl-3 pr-1.5">
                       <Paperclip aria-hidden size={14} className="flex-none text-mute-4" />
-                      <span className="min-w-0 flex-1 truncate text-[14.5px] text-ink-3">{f.name}</span>
-                      <span className="flex-none font-mono text-[13px] text-mute-3">{sizeLabel(f.size)}</span>
+                      <span className="min-w-0 flex-1 truncate text-body text-ink-3">{f.name}</span>
+                      <span className="flex-none font-mono text-small text-mute-3">{sizeLabel(f.size)}</span>
                       <button type="button" aria-label={`Remove ${f.name} from the upload`} onClick={() => setQueued((q) => q.filter((x) => x !== f))}
-                        className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-mute-3 transition-colors hover:bg-hover hover:text-danger">
+                        className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-mute-3 transition-colors hover:bg-hover hover:text-danger">
                         <X aria-hidden size={15} />
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-              <p className="m-0 mt-1.5 text-[13px] leading-[1.5] text-mute-3">
+              <p className="m-0 mt-1.5 text-small leading-[1.5] text-mute-3">
                 {queued.length ? `${plural(queued.length)} will upload when you save.` : editing ? "New files are added when you save." : "They upload as soon as the asset is saved."}
                 {editing && (draft.files?.length ?? 0) > 0 && " Replace or remove the files already here from the asset itself."}
               </p>
@@ -286,7 +286,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           <div className="grid items-end gap-3 sm:grid-cols-2">
             <Field label="Delivery"><Select value={d.delivery} onChange={(v) => set("delivery", v)} options={DELIVERY.map((x) => ({ value: x, label: x }))} /></Field>
-            <button type="button" role="checkbox" aria-checked={d.gated} onClick={() => set("gated", !d.gated)} className="flex items-center gap-[9px] py-[9px] text-left text-[15px] text-ink-3">
+            <button type="button" role="checkbox" aria-checked={d.gated} onClick={() => set("gated", !d.gated)} className="flex items-center gap-2 py-2 text-left text-body text-ink-3">
               <Tick on={d.gated} />Gated — people request it
             </button>
           </div>
@@ -296,7 +296,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
             <div className="border-t border-divider pt-1.5">
               <Field label="Use for" className="mt-2"><input className="field" value={d.promptFor} onChange={(e) => set("promptFor", e.target.value)} placeholder="Copy, Creative, Strategy…" /></Field>
               <Field label="The prompt" className="mt-3" hint={<span className="font-normal text-mute-4">[BRACKETS] for the bits people swap</span>}>
-                <textarea rows={8} className="field font-[family-name:var(--font-code)] text-[14.5px] leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
+                <textarea rows={8} className="field font-[family-name:var(--font-code)] text-body leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
               </Field>
             </div>
           )}
@@ -347,7 +347,7 @@ export function CloneModal({ srcId, brandId, name, offerIds }: { srcId: string; 
   };
   return (
     <Modal title="Clone and adapt" sub={`A real copy of ${src?.name}, with a reference back to the original.`} width={560} onSubmit={save} footer={<Footer saveLabel="Create clone" pending={pending} disabled={!d.name.trim()} />}>
-      <Field label="New name" required><input required className="field text-[16px]" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
+      <Field label="New name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
       <Field label="Target brand">
         <Select value={d.brandId ?? ""} onChange={(v) => setD({ ...d, brandId: v || null, offerIds: [] })}
           options={[{ value: "", label: "Global Library — no brand" }, ...ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name + (b.parentId ? ` (sub-brand of ${ws.brand(b.parentId)?.name})` : "") }))]} />
@@ -359,13 +359,13 @@ export function CloneModal({ srcId, brandId, name, offerIds }: { srcId: string; 
             {ws.offersOf(d.brandId).filter((o) => !o.archived).map((o) => (
               <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => setD({ ...d, offerIds: d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id] })}>{o.name}</CheckRow>
             ))}
-            {!ws.offersOf(d.brandId).length && <div className="text-[15px] text-mute-3">No offers in that brand yet.</div>}
+            {!ws.offersOf(d.brandId).length && <div className="text-body text-mute-3">No offers in that brand yet.</div>}
           </div>
         </div>
       )}
-      <div className="flex gap-[18px] pt-1.5">
-        <button type="button" role="checkbox" aria-checked={d.keepFiles} onClick={() => setD({ ...d, keepFiles: !d.keepFiles })} className="flex items-center gap-2 text-[15px] text-ink-3"><Tick on={d.keepFiles} />Keep files</button>
-        <button type="button" role="checkbox" aria-checked={d.keepCopy} onClick={() => setD({ ...d, keepCopy: !d.keepCopy })} className="flex items-center gap-2 text-[15px] text-ink-3"><Tick on={d.keepCopy} />Keep copy</button>
+      <div className="flex gap-4 pt-1.5">
+        <button type="button" role="checkbox" aria-checked={d.keepFiles} onClick={() => setD({ ...d, keepFiles: !d.keepFiles })} className="flex items-center gap-2 text-body text-ink-3"><Tick on={d.keepFiles} />Keep files</button>
+        <button type="button" role="checkbox" aria-checked={d.keepCopy} onClick={() => setD({ ...d, keepCopy: !d.keepCopy })} className="flex items-center gap-2 text-body text-ink-3"><Tick on={d.keepCopy} />Keep copy</button>
       </div>
     </Modal>
   );
@@ -394,27 +394,27 @@ export function LinkModal({ offerId }: { offerId: string }) {
   const color = ws.brand(o.brandId)?.primary ?? "#5E6C66";
   return (
     <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and appears in one more offer." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
-      <input className="field text-[15px]" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
+      <input className="field text-body" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
       {choosable && <Pills tone="dark" label="Show" value={scope} onChange={setScope} options={[{ value: "unlinked", label: "Not yet linked" }, { value: "linked", label: "Already linked" }, { value: "all", label: "Everything" }]} />}
       <div data-scroll className="-mx-2 max-h-[340px] overflow-y-auto">
         {rows.slice(0, 60).map((a) => {
           const on = linked.has(a.id);
           const other = ws.linkedOfferIds(a.id).length;
           return (
-            <div key={a.id} className="flex items-center gap-3 rounded-[9px] px-2 py-2.5">
-              <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[12px] font-bold" style={{ background: hexA(color, 0.12), color: readable(color) }}>{ws.codeOf(a)}</span>
+            <div key={a.id} className="flex items-center gap-3 rounded-lg px-2 py-2.5">
+              <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-micro font-bold" style={{ background: hexA(color, 0.12), color: readable(color) }}>{ws.codeOf(a)}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-medium">{a.name}</span>
-                <span className="block text-[14.5px] text-mute-2">{a.type} · {other ? `already in ${other} offer${other > 1 ? "s" : ""}` : "not linked anywhere"}</span>
+                <span className="block truncate text-body font-medium">{a.name}</span>
+                <span className="block text-body text-mute-2">{a.type} · {other ? `already in ${other} offer${other > 1 ? "s" : ""}` : "not linked anywhere"}</span>
               </span>
-              <Btn size="sm" disabled={pending} variant={on ? "secondary" : "primary"} className="px-[13px] font-semibold"
+              <Btn size="sm" disabled={pending} variant={on ? "secondary" : "primary"} className="px-3 font-semibold"
                 onClick={async () => { const r = await run(toggleLink, a.id, offerId); if (r.ok && !on) { setNudge({ assetId: a.id, offerId }); close(); } }}>
                 {on ? "Unlink" : "Link"}
               </Btn>
             </div>
           );
         })}
-        {!rows.length && <div className="p-9 text-center text-[15px] text-mute-2">Nothing left to link here.</div>}
+        {!rows.length && <div className="p-9 text-center text-body text-mute-2">Nothing left to link here.</div>}
       </div>
     </Modal>
   );
@@ -430,21 +430,21 @@ export function LinkAssetModal({ assetId }: { assetId: string }) {
   const linked = new Set(ws.linkedOfferIds(assetId));
   const pool = ws.offersOf(a.brandId ?? "").filter((o) => !o.archived || linked.has(o.id));
   return (
-    <Modal title="Which offers use this?" sub={`${a.name} stays a single asset. Linking just adds it to another offer.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[360px] gap-[7px] overflow-y-auto px-5 pt-3.5">
+    <Modal title="Which offers use this?" sub={`${a.name} stays a single asset. Linking just adds it to another offer.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[360px] gap-2 overflow-y-auto px-5 pt-3.5">
       {pool.map((o) => {
         const on = linked.has(o.id);
         return (
-          <div key={o.id} className="flex items-center gap-[11px] rounded-[10px] border border-line px-[13px] py-[11px]">
-            <span className="flex-1 text-[15px] font-medium">{o.name}</span>
+          <div key={o.id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-3">
+            <span className="flex-1 text-body font-medium">{o.name}</span>
             <Chip color={ws.segColor(o.segment, o.brandId)} size="xs">{o.segment}</Chip>
             <button type="button" disabled={pending} aria-pressed={on} onClick={() => run(toggleLink, assetId, o.id)}
-              className={cx("flex-none rounded-[7px] border px-3 py-1 text-[14px] font-semibold", on ? "border-accent bg-soft text-accent" : "border-line bg-white text-mute-1 hover:border-mute-2")}>
+              className={cx("flex-none rounded-lg border px-3 py-1 text-meta font-semibold", on ? "border-accent bg-soft text-accent" : "border-line bg-surface text-mute-1 hover:border-mute-2")}>
               {on ? "Linked" : "Link"}
             </button>
           </div>
         );
       })}
-      {!pool.length && <div className="p-8 text-center text-[15px] text-mute-2">This brand has no offers yet.</div>}
+      {!pool.length && <div className="p-8 text-center text-body text-mute-2">This brand has no offers yet.</div>}
     </Modal>
   );
 }

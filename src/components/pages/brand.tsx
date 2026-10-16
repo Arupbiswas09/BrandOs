@@ -98,21 +98,21 @@ function Home({ b }: { b: Brand }) {
       <div className="head-band -mt-8 mb-8 pb-7 pt-7 sm:-mt-10 sm:pt-8">
         <div className="flex flex-wrap items-center gap-x-8 gap-y-5">
           <div className="flex min-w-0 flex-1 basis-[300px] items-center gap-4">
-            <Mark mark={b.mark} color={b.primary} size={52} radius={13} className="text-[17px]" />
+            <Mark mark={b.mark} color={b.primary} size={52} radius={13} className="text-lead" />
             <div className="min-w-0">
               <div className="eyebrow mb-1">{eyebrow}</div>
-              <h1 className="display m-0 text-[32px] text-ink sm:text-[38px]">{b.name}</h1>
-              {b.tagline && <p className="m-0 mt-1 max-w-[60ch] text-[15px] text-mute-2 text-pretty">{b.tagline}</p>}
+              <h1 className="display m-0 text-display text-ink sm:text-display">{b.name}</h1>
+              {b.tagline && <p className="m-0 mt-1 max-w-[60ch] text-body text-mute-2 text-pretty">{b.tagline}</p>}
             </div>
           </div>
           {tools && (
             <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
-              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a service" aria-label="Find a service" className="field min-w-0 flex-1 py-[8px] text-[15px] sm:w-[230px] sm:flex-none" />
+              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a service" aria-label="Find a service" className="field min-w-0 flex-1 py-2 text-body sm:w-[230px] sm:flex-none" />
               {needing > 0 && (
-                <div role="group" aria-label="Show services" className="flex flex-none rounded-[9px] border border-line bg-white p-[3px]">
+                <div role="group" aria-label="Show services" className="flex flex-none rounded-lg border border-line bg-surface p-1">
                   {([["all", "All"], ["attention", `Needs attention · ${needing}`]] as const).map(([k, label]) => (
                     <button key={k} type="button" aria-pressed={showOnly === k} onClick={() => setOnly(k)}
-                      className={cx("rounded-[6px] px-3 py-[5px] text-[14px] font-medium transition-colors", showOnly === k ? "bg-hl text-hl-ink" : "text-mute-2 hover:text-ink")}>
+                      className={cx("rounded-lg px-3 py-1 text-meta font-medium transition-colors", showOnly === k ? "bg-hl text-hl-ink" : "text-mute-2 hover:text-ink")}>
                       {label}
                     </button>
                   ))}
@@ -127,11 +127,11 @@ function Home({ b }: { b: Brand }) {
 
       <section aria-labelledby="brand-services">
         <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h2 id="brand-services" className="m-0 text-[17px] font-semibold tracking-[-0.01em]">
+          <h2 id="brand-services" className="m-0 text-lead font-semibold tracking-[-0.01em]">
             Services
-            {shown.length < tiles.length && <span className="ml-2 text-[14.5px] font-normal text-mute-3">{shown.length} of {tiles.length} shown</span>}
+            {shown.length < tiles.length && <span className="ml-2 text-body font-normal text-mute-3">{shown.length} of {tiles.length} shown</span>}
           </h2>
-          {canEdit && services.length > 0 && <button type="button" onClick={newService} className="text-[14.5px] text-mute-2 hover:text-ink">+ New service</button>}
+          {canEdit && services.length > 0 && <button type="button" onClick={newService} className="text-body text-mute-2 hover:text-ink">+ New service</button>}
         </div>
         {shown.length > 0 && (
           <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-[repeat(auto-fill,minmax(250px,1fr))]">
@@ -139,11 +139,11 @@ function Home({ b }: { b: Brand }) {
           </div>
         )}
         {tiles.length > 0 && !shown.length && (
-          <p className="m-0 rounded-xl border border-dashed border-line-strong px-5 py-4 text-[15px] text-mute-3">No service matches that.</p>
+          <p className="m-0 rounded-xl border border-dashed border-line-strong px-5 py-4 text-body text-mute-3">No service matches that.</p>
         )}
         {shown.length > 0 && (
-          <p className="m-0 mt-3.5 flex flex-wrap gap-x-4 gap-y-1 text-[13.5px] text-mute-3">
-            {COUNTS.map((c) => <span key={c.code}><span className="font-mono text-[11.5px] font-medium tracking-[0.08em] text-mute-2">{c.code}</span> {c.word}</span>)}
+          <p className="m-0 mt-3.5 flex flex-wrap gap-x-4 gap-y-1 text-meta text-mute-3">
+            {COUNTS.map((c) => <span key={c.code}><span className="font-mono text-micro font-medium tracking-[0.08em] text-mute-2">{c.code}</span> {c.word}</span>)}
           </p>
         )}
         {!services.length && (
@@ -157,14 +157,14 @@ function Home({ b }: { b: Brand }) {
 
       {subs.length > 0 && (
         <section aria-labelledby="brand-subs" className="mt-10">
-          <h2 id="brand-subs" className="m-0 mb-3 text-[17px] font-semibold tracking-[-0.01em]">Sub-brands</h2>
+          <h2 id="brand-subs" className="m-0 mb-3 text-lead font-semibold tracking-[-0.01em]">Sub-brands</h2>
           <ul className="m-0 flex list-none flex-wrap gap-2.5 p-0">
             {subs.map((sb) => (
               <li key={sb.id}>
-                <Link href={href.brand(sb.id)} className={cx("flex items-center gap-2.5 rounded-[11px] border border-line bg-white py-2 pl-2 pr-4", LIFT, FOCUS)}>
-                  <Mark mark={sb.mark} color={sb.primary} size={28} radius={7} className="text-[11px]" />
-                  <span className="text-[15px] font-semibold text-ink">{sb.name}</span>
-                  <span className="text-[14px] text-mute-3">{plural(live(ws.offersOf(sb.id)).length, "offer")}</span>
+                <Link href={href.brand(sb.id)} className={cx("flex items-center gap-2.5 rounded-xl border border-line bg-surface py-2 pl-2 pr-4", LIFT, FOCUS)}>
+                  <Mark mark={sb.mark} color={sb.primary} size={28} radius={7} className="text-micro" />
+                  <span className="text-body font-semibold text-ink">{sb.name}</span>
+                  <span className="text-meta text-mute-3">{plural(live(ws.offersOf(sb.id)).length, "offer")}</span>
                 </Link>
               </li>
             ))}
@@ -179,7 +179,7 @@ function Home({ b }: { b: Brand }) {
           {/* Brands are never deleted. Archiving a whole brand is for admins only. */}
           {ws.can("del") && <Btn onClick={() => run(setArchived, "brand", b.id, !b.archived)}>{b.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{b.archived ? "Restore brand" : "Archive brand"}</Btn>}
           <span className="flex-1" />
-          {ws.can("del") && <span className="text-[14px] text-mute-3 md:max-w-[52ch]">Archiving hides a brand and everything in it. Nothing inside changes, and restoring brings it all back as it was.</span>}
+          {ws.can("del") && <span className="text-meta text-mute-3 md:max-w-[52ch]">Archiving hides a brand and everything in it. Nothing inside changes, and restoring brings it all back as it was.</span>}
         </div>
       )}
     </div>
@@ -191,20 +191,20 @@ function ServiceCard({ x }: { x: ServiceTile }) {
   const s = x.stats;
   const parts = [s.attention > 0 && `${plural(s.attention, "thing")} need${s.attention === 1 ? "s" : ""} attention`, s.drafts > 0 && plural(s.drafts, "draft")].filter(Boolean);
   return (
-    <Link href={x.to} className={cx("flex flex-col rounded-[14px] border border-line bg-white p-[18px] shadow-[0_1px_2px_rgba(16,22,20,.04)]", LIFT, FOCUS)}>
-      <span className="block text-[17px] font-semibold leading-[1.3] tracking-[-0.012em] text-ink">{x.title}</span>
+    <Link href={x.to} className={cx("flex flex-col rounded-xl border border-line bg-surface p-4 shadow-card", LIFT, FOCUS)}>
+      <span className="block text-lead font-semibold leading-[1.3] tracking-[-0.012em] text-ink">{x.title}</span>
       <span className="mt-4 grid grid-cols-5 gap-1">
         {COUNTS.map((c) => {
           const n = c.n(s);
           return (
-            <span key={c.code} className="min-w-0 rounded-[8px] bg-wash-2 px-[7px] pb-1.5 pt-[7px]">
-              <span aria-hidden className="block font-mono text-[10.5px] font-medium tracking-[0.03em] text-mute-3">{c.code}</span>
-              <span className={cx("mt-0.5 block text-[17px] leading-[1.25] tabular-nums", n ? "font-semibold text-ink" : "font-normal text-mute-5")}>{n}<span className="sr-only"> {c.word},</span></span>
+            <span key={c.code} className="min-w-0 rounded-lg bg-wash-2 px-2 pb-1.5 pt-2">
+              <span aria-hidden className="block font-mono text-micro font-medium tracking-[0.03em] text-mute-3">{c.code}</span>
+              <span className={cx("mt-0.5 block text-lead leading-[1.25] tabular-nums", n ? "font-semibold text-ink" : "font-normal text-mute-5")}>{n}<span className="sr-only"> {c.word},</span></span>
             </span>
           );
         })}
       </span>
-      <span className={cx("mt-4 flex items-center gap-2 text-[14px]", s.attention ? "text-warn-text" : "text-mute-3")}>
+      <span className={cx("mt-4 flex items-center gap-2 text-meta", s.attention ? "text-warn-text" : "text-mute-3")}>
         {s.attention > 0 && <span aria-hidden className="h-[7px] w-[7px] flex-none rounded-full bg-warn" />}
         {parts.length ? parts.join(" · ") : "All clear"}
       </span>
@@ -224,7 +224,7 @@ function Services({ b }: { b: Brand }) {
 
   return (
     <>
-      <SectionHead eyebrow="What the brand sells" title="Services" actions={canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>+ New service</Btn>}
+      <SectionHead as="h1" eyebrow="What the brand sells" title="Services" actions={canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "service", draft: { brandId: b.id } })}>+ New service</Btn>}
         sub={<>A service is what you sell. An offer is that service argued at one segment.</>}
       />
 
@@ -233,14 +233,14 @@ function Services({ b }: { b: Brand }) {
           const st = ws.serviceStats(b.id, v.id);
           const segs = new Set(ws.serviceOffers(b.id, v.id).map((o) => o.segment));
           return (
-            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]", LIFT, FOCUS)}>
+            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 text-left shadow-card", LIFT, FOCUS)}>
               <span className="flex items-start gap-3.5">
                 <IconTile icon={Layers} color={b.primary} size={40} />
-                <span className="min-w-0 flex-1"><span className="block text-[19px] font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{v.name}</span>{v.short && <span className="mt-[3px] block text-[15px] text-mute-2">{v.short}</span>}</span>
+                <span className="min-w-0 flex-1"><span className="block text-title font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{v.name}</span>{v.short && <span className="mt-1 block text-body text-mute-2">{v.short}</span>}</span>
               </span>
-              {v.description && <span className="block text-[15px] leading-[1.55] text-ink-3 text-pretty">{v.description}</span>}
-              {segs.size > 0 && <span className="flex flex-wrap gap-[5px]">{[...segs].map((n) => <span key={n} className="rounded-[5px] px-2 py-0.5 text-[13px] font-semibold" style={{ background: hexA(ws.segColor(n, b.id), 0.13), color: readable(ws.segColor(n, b.id)) }}>{n}</span>)}</span>}
-              <span className="mt-auto flex gap-4 border-t border-divider pt-3 text-[14.5px] text-mute-2">
+              {v.description && <span className="block text-body leading-[1.55] text-ink-3 text-pretty">{v.description}</span>}
+              {segs.size > 0 && <span className="flex flex-wrap gap-1">{[...segs].map((n) => <span key={n} className="rounded-sm px-2 py-0.5 text-small font-semibold" style={{ background: hexA(ws.segColor(n, b.id), 0.13), color: readable(ws.segColor(n, b.id)) }}>{n}</span>)}</span>}
+              <span className="mt-auto flex gap-4 border-t border-divider pt-3 text-body text-mute-2">
                 <span className="inline-flex items-center gap-1.5"><Megaphone aria-hidden size={15} className="text-mute-4" />{plural(st.offers, "offer")}</span>
                 <span className="inline-flex items-center gap-1.5"><FolderOpen aria-hidden size={15} className="text-mute-4" />{plural(st.assets, "asset")}</span>
               </span>
@@ -255,9 +255,9 @@ function Services({ b }: { b: Brand }) {
         </Empty>
       )}
       {stand.length > 0 && (
-        <div className="mt-[38px]">
-          <h2 className="m-0 mb-1 text-[17px] font-semibold">Standalone offers</h2>
-          <p className="mb-3.5 mt-0 text-[14.5px] text-mute-2">These sit above every service rather than inside one.</p>
+        <div className="mt-9">
+          <h2 className="m-0 mb-1 text-lead font-semibold">Standalone offers</h2>
+          <p className="mb-3.5 mt-0 text-body text-mute-2">These sit above every service rather than inside one.</p>
           <div className="grid gap-3.5 md:grid-cols-2">{stand.map((o) => <OfferCard key={o.id} o={o} variant="standalone" />)}</div>
         </div>
       )}
@@ -283,7 +283,7 @@ function Offers({ b }: { b: Brand }) {
   const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: seg !== "All" ? seg : "All segments", status: "Ideation" } });
   return (
     <>
-      <SectionHead eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
+      <SectionHead as="h1" eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
         sub={<>Each offer holds one piece of positioning and everything that supports it. Assets can sit in several at once.</>}
       />
       {/* Filters only earn their place when there is something to choose between, and fit on one row. */}
@@ -332,7 +332,7 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
 
   return (
     <>
-      <SectionHead eyebrow="Files and content" title="Assets"
+      <SectionHead as="h1" eyebrow="Files and content" title="Assets"
         actions={(ws.can("edit") || canBulk(ws, false)) && (
           <>
             {canBulk(ws, false) && camp.length > 0 && <SelectToggle s={sel} />}
@@ -342,7 +342,7 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
         sub={<>{plural(liveCamp.length, "asset")} in this brand. Each one exists once, however many offers point at it.</>}
       />
       {unlinked.length > 0 && (
-        <button type="button" onClick={() => { setUnlinkedOnly(!unlinkedOnly); setType("All"); setStat("All"); }} className="mb-[18px] block w-full text-left">
+        <button type="button" onClick={() => { setUnlinkedOnly(!unlinkedOnly); setType("All"); setStat("All"); }} className="mb-4 block w-full text-left">
           <Warn>
             {unlinkedOnly ? <>Showing the {unlinked.length} not linked to any offer. <span className="font-semibold underline">Show everything</span></> : <>{unlinked.length} not linked to any offer — probably the fastest thing to fix in here. <span className="font-semibold underline">Show them</span></>}
           </Warn>
@@ -379,42 +379,42 @@ function Strategy({ b }: { b: Brand }) {
 
   return (
     <>
-      <SectionHead eyebrow="Who it is for and why" title="Strategy"
+      <SectionHead as="h1" eyebrow="Who it is for and why" title="Strategy"
         sub={<>Goals, segments and offer types. Every offer is tagged with them.</>}
       />
 
-      <H2 className="mb-[5px]" right={canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id })} className="text-[14.5px] text-mute-2 hover:text-ink">+ New goal</button>}>Goals</H2>
-      <p className="mb-[13px] mt-0 max-w-[64ch] text-[15px] text-mute-2">Broad business outcomes this brand is chasing — not channels or tactics. {b.goals.length} goals · five is usually enough. If two of them keep catching the same offers, merge them.</p>
+      <H2 className="mb-1" right={canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id })} className="text-body text-mute-2 hover:text-ink">+ New goal</button>}>Goals</H2>
+      <p className="mb-3 mt-0 max-w-[64ch] text-body text-mute-2">Broad business outcomes this brand is chasing — not channels or tactics. {b.goals.length} goals · five is usually enough. If two of them keep catching the same offers, merge them.</p>
       <div className="mb-8 grid gap-3 md:grid-cols-2">
         {b.goals.map((g) => {
           const n = offers.filter((o) => o.goals.includes(g.name)).length;
           const c = ws.goalColor(b.id, g.name);
           return (
-            <Card key={g.name} className="rounded-xl px-[18px] py-4">
-              <div className="mb-[7px] flex items-center gap-[9px]"><span className="h-[9px] w-[9px] flex-none rounded-[3px]" style={{ background: c }} /><span className="flex-1 text-[15px] font-semibold">{g.name}</span></div>
-              <div className="mb-[11px] min-h-8 text-[14.5px] leading-[1.5] text-mute-1 text-pretty">{g.description}</div>
+            <Card key={g.name} className="rounded-xl px-4 py-4">
+              <div className="mb-2 flex items-center gap-2"><span className="h-[9px] w-[9px] flex-none rounded-sm" style={{ background: c }} /><span className="flex-1 text-body font-semibold">{g.name}</span></div>
+              <div className="mb-3 min-h-8 text-body leading-[1.5] text-mute-1 text-pretty">{g.description}</div>
               <div className="flex items-center gap-2 border-t border-divider pt-2.5">
-                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 text-left text-[14px] font-medium hover:underline" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</button>
-                {canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id, name: g.name, description: g.description, original: g.name })} className="text-[14px] text-mute-2 hover:text-ink">Edit</button>}
-                {canEdit && b.goals.length > 1 && <button type="button" onClick={() => open({ kind: "mergeGoal", brandId: b.id, from: g.name })} className="text-[14px] text-mute-2 hover:text-ink">Merge</button>}
+                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 text-left text-meta font-medium hover:underline" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</button>
+                {canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id, name: g.name, description: g.description, original: g.name })} className="text-meta text-mute-2 hover:text-ink">Edit</button>}
+                {canEdit && b.goals.length > 1 && <button type="button" onClick={() => open({ kind: "mergeGoal", brandId: b.id, from: g.name })} className="text-meta text-mute-2 hover:text-ink">Merge</button>}
               </div>
             </Card>
           );
         })}
       </div>
 
-      <H2 className="mb-[5px]" right={canEdit && <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, add: true })} className="text-[14.5px] text-mute-2 hover:text-ink">+ New type</button>}>Offer types</H2>
-      <p className="mb-[13px] mt-0 max-w-[62ch] text-[15px] text-mute-2">What the offer physically is. An audit and a paid engagement can both chase the same goal. Renaming a type moves its offers with it.</p>
-      <div className="mb-[38px] flex flex-wrap gap-2.5">
+      <H2 className="mb-1" right={canEdit && <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, add: true })} className="text-body text-mute-2 hover:text-ink">+ New type</button>}>Offer types</H2>
+      <p className="mb-3 mt-0 max-w-[62ch] text-body text-mute-2">What the offer physically is. An audit and a paid engagement can both chase the same goal. Renaming a type moves its offers with it.</p>
+      <div className="mb-9 flex flex-wrap gap-2.5">
         {offerTypesOf(b).map((t) => {
           const n = offers.filter((o) => o.offerType === t).length;
           return (
-            <div key={t} className="flex items-center gap-2.5 rounded-[11px] border border-line bg-white px-[15px] py-[11px]">
-              <span className="text-[15px] font-semibold">{t}</span>
-              <span className="text-[14px] font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
+            <div key={t} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-3">
+              <span className="text-body font-semibold">{t}</span>
+              <span className="text-meta font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
               {canEdit && (
                 <span className="ml-0.5 flex items-center gap-2.5 border-l border-line pl-2.5">
-                  <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, edit: t })} className="text-[14px] text-mute-2 hover:text-ink">Edit<span className="sr-only"> {t}</span></button>
+                  <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, edit: t })} className="text-meta text-mute-2 hover:text-ink">Edit<span className="sr-only"> {t}</span></button>
                   <RemoveOfferType brandId={b.id} type={t} />
                 </span>
               )}
@@ -423,13 +423,13 @@ function Strategy({ b }: { b: Brand }) {
         })}
       </div>
 
-      <H2 right={canEdit && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="text-[14.5px] text-mute-2 hover:text-ink">Edit segments</button>}>Segments</H2>
-      <div className="mb-[38px] flex flex-wrap gap-2.5">
+      <H2 right={canEdit && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="text-body text-mute-2 hover:text-ink">Edit segments</button>}>Segments</H2>
+      <div className="mb-9 flex flex-wrap gap-2.5">
         {b.segments.map((sg) => (
-          <Link key={sg.name} href={`${href.brand(b.id, "offers")}`} className="flex items-center gap-[11px] rounded-[11px] border border-line bg-white px-4 py-3 hover:border-mute-2">
-            <span className="h-[9px] w-[9px] rounded-[3px]" style={{ background: sg.color }} />
-            <span className="text-[15px] font-semibold">{sg.name}</span>
-            <span className="text-[15px] text-mute-2">{plural(offers.filter((o) => o.segment === sg.name).length, "offer")}</span>
+          <Link key={sg.name} href={`${href.brand(b.id, "offers")}`} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 hover:border-mute-2">
+            <span className="h-[9px] w-[9px] rounded-sm" style={{ background: sg.color }} />
+            <span className="text-body font-semibold">{sg.name}</span>
+            <span className="text-body text-mute-2">{plural(offers.filter((o) => o.segment === sg.name).length, "offer")}</span>
           </Link>
         ))}
       </div>
@@ -456,18 +456,18 @@ function Ctas({ b }: { b: Brand }) {
             ...ws.d.assets.filter((a) => a.ctaId === c.id).map((a) => a.name),
           ];
           return (
-            <Card key={c.id} className="flex flex-col gap-3.5 rounded-[13px] px-[22px] py-5">
-              <div className="flex items-center justify-center rounded-[9px] bg-wash-2 p-[18px]"><CtaButton id={c.id} size="lg" /></div>
+            <Card key={c.id} className="flex flex-col gap-3.5 rounded-xl px-5 py-5">
+              <div className="flex items-center justify-center rounded-lg bg-wash-2 p-4"><CtaButton id={c.id} size="lg" /></div>
               <div>
-                <div className="mb-[3px] break-all text-[15px] text-mute-2">{c.url || "No destination set"}</div>
-                <div className="text-[14px] font-medium" style={{ color: used.length ? "#46534D" : "#8A6A12" }}>{used.length ? `Used in ${plural(used.length, "place")}` : "Not used yet"}</div>
-                {used.length > 0 && <div className="mt-0.5 text-[14px] text-[#5A6862]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
+                <div className="mb-1 break-all text-body text-mute-2">{c.url || "No destination set"}</div>
+                <div className="text-meta font-medium" style={{ color: used.length ? "#46534D" : "#8A6A12" }}>{used.length ? `Used in ${plural(used.length, "place")}` : "Not used yet"}</div>
+                {used.length > 0 && <div className="mt-0.5 text-meta text-[#5A6862]">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
               </div>
-              <div className="flex gap-[7px] border-t border-divider pt-3">
+              <div className="flex gap-2 border-t border-divider pt-3">
                 {ws.canChange({ ownerId: null }) && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
                 {ws.can("del") && <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "cta", id: c.id, label: c.text })}>Delete</Btn>}
                 <span className="flex-1" />
-                <span className="self-center text-[13.5px] text-[#5A6862]">{c.style}</span>
+                <span className="self-center text-meta text-[#5A6862]">{c.style}</span>
               </div>
             </Card>
           );

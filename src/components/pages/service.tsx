@@ -115,7 +115,7 @@ export function ServicePage({ id }: { id: string }) {
           </>
         )}
       >
-        {v.description && <p className="m-0 max-w-[64ch] pb-8 pt-4 text-[16px] leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
+        {v.description && <p className="m-0 max-w-[64ch] pb-8 pt-4 text-lead leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
       </EntityHeader>
       {v.archived && <ArchivedNote className="mb-6">Archived. Its offers still exist and are reachable from the offers tab.</ArchivedNote>}
 
@@ -136,16 +136,16 @@ export function ServicePage({ id }: { id: string }) {
                   // Phones: three across, then two wider ones, so no row is left half empty.
                   "flex flex-col items-start rounded-xl border px-3.5 py-3 text-left transition-colors sm:col-span-1 sm:px-4 sm:py-3.5",
                   i < 3 ? "col-span-2" : "col-span-3",
-                  t.n ? "border-line bg-white hover:border-line-strong" : "border-line bg-transparent hover:bg-white",
+                  t.n ? "border-line bg-surface hover:border-line-strong" : "border-line bg-transparent hover:bg-surface",
                   FOCUS,
                 )}
               >
-                <span className={cx("block text-[26px] font-semibold leading-none tabular-nums tracking-[-0.02em]", t.n ? "text-ink" : "text-[#7D8B85]")}>{t.n}</span>
-                <span className="mt-1.5 block text-[13.5px] leading-[1.3] text-mute-3">{t.label}</span>
+                <span className={cx("block text-heading font-semibold leading-none tabular-nums tracking-[-0.02em]", t.n ? "text-ink" : "text-[#7D8B85]")}>{t.n}</span>
+                <span className="mt-1.5 block text-meta leading-[1.3] text-mute-3">{t.label}</span>
               </button>
             ))}
           </div>
-          <p className="m-0 mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-mute-3">
+          <p className="m-0 mt-3 flex flex-wrap gap-x-4 gap-y-1 text-meta text-mute-3">
             <span>{plural(stats.assets, "asset")} linked across {plural(stats.offers, "offer")}</span>
             {stats.updatedAt && (
               <span>
@@ -162,7 +162,7 @@ export function ServicePage({ id }: { id: string }) {
       )}
 
       {archivedOffers.length > 0 && (
-        <p className="mb-0 mt-6 text-[14.5px] text-mute-3">
+        <p className="mb-0 mt-6 text-body text-mute-3">
           {plural(archivedOffers.length, "archived offer")} hidden. Find {archivedOffers.length === 1 ? "it" : "them"} under <Link className="underline hover:text-ink" href={href.brand(v.brandId, "offers")}>Offers</Link>.
         </p>
       )}
@@ -171,7 +171,7 @@ export function ServicePage({ id }: { id: string }) {
       {ws.can("archive") && (
         <div className="mt-14 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line pt-5">
           <Btn onClick={() => run(setArchived, "service", v.id, !v.archived)}>{v.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{v.archived ? "Restore service" : "Archive service"}</Btn>
-          <span className="text-[14px] text-mute-3">Archiving hides the service. Its offers stay where they are.</span>
+          <span className="text-meta text-mute-3">Archiving hides the service. Its offers stay where they are.</span>
         </div>
       )}
     </Page>
@@ -183,8 +183,8 @@ function Block({ id, title, sub, children }: { id: Section; title: string; sub?:
   return (
     <section id={sectionId(id)} aria-labelledby={`${sectionId(id)}-h`} className="mt-14 scroll-mt-24">
       <div className="mb-4">
-        <h2 id={`${sectionId(id)}-h`} tabIndex={-1} className="m-0 rounded-sm text-[19px] font-semibold tracking-[-0.015em] text-ink">{title}</h2>
-        {sub && <p className="m-0 mt-1 text-[14.5px] text-mute-3 text-pretty">{sub}</p>}
+        <h2 id={`${sectionId(id)}-h`} tabIndex={-1} className="m-0 rounded-sm text-title font-semibold tracking-[-0.015em] text-ink">{title}</h2>
+        {sub && <p className="m-0 mt-1 text-body text-mute-3 text-pretty">{sub}</p>}
       </div>
       {children}
     </section>
@@ -211,7 +211,7 @@ function AllAssets({ assets, offers, kind, setKind, present }: {
         />
       )}
       {shown.length ? (
-        <ul className="m-0 list-none overflow-hidden rounded-xl border border-line bg-white p-0">
+        <ul className="m-0 list-none overflow-hidden rounded-xl border border-line bg-surface p-0">
           {shown.map((a) => {
             const st = assetStand(a);
             const serves = ws.linkedOffers(a.id).filter((o) => mine.has(o.id));
@@ -220,15 +220,15 @@ function AllAssets({ assets, offers, kind, setKind, present }: {
             return (
               <li key={a.id} className="flex items-center border-t border-divider transition-colors first:border-t-0 hover:bg-wash">
                 <button type="button" onClick={() => openAsset(a.id)} className="focus-inset flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left sm:gap-4 sm:pl-5">
-                  <span className="w-11 flex-none font-mono text-[11.5px] font-semibold tracking-[0.06em] text-mute-3 sm:w-12">{ws.codeOf(a)}</span>
+                  <span className="w-11 flex-none font-mono text-micro font-semibold tracking-[0.06em] text-mute-3 sm:w-12">{ws.codeOf(a)}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-medium text-ink" title={a.name}>{a.name}</span>
-                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13.5px] text-mute-3">
+                    <span className="block truncate text-body font-medium text-ink" title={a.name}>{a.name}</span>
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-meta text-mute-3">
                       <span className="flex flex-none items-center gap-1.5 sm:hidden"><Dot color={st.color} />{st.word}{servesText && <span aria-hidden>·</span>}</span>
                       {servesText && <span className="truncate">For {servesText}</span>}
                     </span>
                   </span>
-                  <span className="hidden w-[150px] flex-none items-center gap-2 text-[14px] text-mute-2 sm:flex"><Dot color={st.color} />{st.word}</span>
+                  <span className="hidden w-[150px] flex-none items-center gap-2 text-meta text-mute-2 sm:flex"><Dot color={st.color} />{st.word}</span>
                 </button>
                 <span className="flex flex-none justify-end pr-3 sm:w-[136px] sm:pr-5">
                   {get ? (
@@ -237,13 +237,13 @@ function AllAssets({ assets, offers, kind, setKind, present }: {
                       title={get.title}
                       aria-label={get.kind === "link" ? `Open link to ${a.name}` : get.kind === "zip" ? `Download all of ${a.name}` : `Download ${a.name}`}
                       {...(get.kind === "link" ? { target: "_blank", rel: "noreferrer" } : { download: "" })}
-                      className={cx("inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-2 py-1.5 text-[14px] font-medium text-ink-3 transition-colors hover:border-accent hover:text-accent sm:px-2.5", FOCUS)}
+                      className={cx("inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1.5 text-meta font-medium text-ink-3 transition-colors hover:border-accent hover:text-accent sm:px-2.5", FOCUS)}
                     >
                       {get.kind === "link" ? <ExternalLink aria-hidden size={15} /> : <Download aria-hidden size={15} />}
                       <span className="hidden sm:inline">{get.kind === "link" ? "Open link" : get.kind === "zip" ? "Download all" : "Download"}</span>
                     </a>
                   ) : (
-                    <span className="text-right text-[13px] text-mute-4"><span className="sr-only sm:not-sr-only">No files yet</span></span>
+                    <span className="text-right text-small text-mute-4"><span className="sr-only sm:not-sr-only">No files yet</span></span>
                   )}
                 </span>
               </li>
@@ -251,7 +251,7 @@ function AllAssets({ assets, offers, kind, setKind, present }: {
           })}
         </ul>
       ) : (
-        <p className="m-0 rounded-xl border border-dashed border-line-strong px-5 py-4 text-[15px] text-mute-3">
+        <p className="m-0 rounded-xl border border-dashed border-line-strong px-5 py-4 text-body text-mute-3">
           {assets.length ? "Nothing of that kind here." : "No assets linked yet. Link them from an offer and they show up here."}
         </p>
       )}
@@ -267,7 +267,7 @@ function Funnels({ groups }: { groups: FunnelGroup[] }) {
       <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {groups.map((g) => <FunnelRow key={g.entry?.id ?? "none"} g={g} />)}
       </ul>
-      <p className="m-0 mt-3.5 flex flex-wrap gap-x-5 gap-y-1.5 text-[13.5px] text-mute-3">
+      <p className="m-0 mt-3.5 flex flex-wrap gap-x-5 gap-y-1.5 text-meta text-mute-3">
         <span className="sr-only">Dot colours: </span>
         {LEGEND.map((l) => <span key={l.word} className="inline-flex items-center gap-1.5"><Dot color={l.color} />{l.word}</span>)}
       </p>
@@ -278,8 +278,8 @@ function Funnels({ groups }: { groups: FunnelGroup[] }) {
 function Col({ label, children, empty }: { label: string; children?: ReactNode; empty: boolean }) {
   return (
     <div className="min-w-0">
-      <div className="eyebrow mb-2.5 text-[11px]">{label}</div>
-      {empty ? <span className="text-[14px] text-mute-4">None linked</span> : children}
+      <div className="eyebrow mb-2.5 text-micro">{label}</div>
+      {empty ? <span className="text-meta text-mute-4">None linked</span> : children}
     </div>
   );
 }
@@ -293,26 +293,26 @@ function FunnelRow({ g }: { g: FunnelGroup }) {
     return (
       <li key={a.id} className="flex min-w-0 items-center gap-2">
         <Dot color={st.color} />
-        <button type="button" onClick={() => openAsset(a.id)} title={a.name} className="min-w-0 truncate rounded-sm text-left text-[15px] text-ink hover:underline">{a.name}</button>
+        <button type="button" onClick={() => openAsset(a.id)} title={a.name} className="min-w-0 truncate rounded-sm text-left text-body text-ink hover:underline">{a.name}</button>
         <span className="sr-only">{st.word}</span>
       </li>
     );
   };
   return (
-    <li className={cx("grid gap-x-8 gap-y-5 rounded-xl border p-5 sm:grid-cols-2 xl:grid-cols-[1fr_1.05fr_0.85fr_1.2fr]", e ? "border-line bg-white" : "border-[rgba(201,154,46,.4)] bg-[#FCF8EE]")}>
+    <li className={cx("grid gap-x-8 gap-y-5 rounded-xl border p-5 sm:grid-cols-2 xl:grid-cols-[1fr_1.05fr_0.85fr_1.2fr]", e ? "border-line bg-surface" : "border-[rgba(201,154,46,.4)] bg-[#FCF8EE]")}>
       <Col label="Entry" empty={false}>
         {e && est ? (
           <>
             <span className="flex min-w-0 items-start gap-2">
-              <span className="mt-[2px] flex-none rounded-[5px] bg-chip px-1.5 py-[2px] font-mono text-[11px] font-semibold tracking-[0.06em] text-mute-1">{ws.codeOf(e)}</span>
-              <button type="button" onClick={() => openAsset(e.id)} className="min-w-0 rounded-sm text-left text-[15.5px] font-semibold leading-[1.35] text-ink hover:underline">{e.name}</button>
+              <span className="mt-0.5 flex-none rounded-sm bg-chip px-1.5 py-0.5 font-mono text-micro font-semibold tracking-[0.06em] text-mute-1">{ws.codeOf(e)}</span>
+              <button type="button" onClick={() => openAsset(e.id)} className="min-w-0 rounded-sm text-left text-body font-semibold leading-[1.35] text-ink hover:underline">{e.name}</button>
             </span>
-            <span className="mt-1.5 flex items-center gap-1.5 text-[13.5px] text-mute-3"><Dot color={est.color} />{est.word}</span>
+            <span className="mt-1.5 flex items-center gap-1.5 text-meta text-mute-3"><Dot color={est.color} />{est.word}</span>
           </>
         ) : (
           <>
-            <span className="block text-[15.5px] font-semibold text-warn-text">No entry point</span>
-            <span className="mt-1 block max-w-[34ch] text-[14px] leading-[1.45] text-mute-2">These offers have no landing page or lead magnet linked.</span>
+            <span className="block text-body font-semibold text-warn-text">No entry point</span>
+            <span className="mt-1 block max-w-[34ch] text-meta leading-[1.45] text-mute-2">These offers have no landing page or lead magnet linked.</span>
           </>
         )}
       </Col>
@@ -325,10 +325,10 @@ function FunnelRow({ g }: { g: FunnelGroup }) {
               <li key={o.id} className="min-w-0">
                 <span className="flex min-w-0 items-center gap-2">
                   <Dot color={st.color} />
-                  <Link href={href.offer(o.id)} title={o.name} className="min-w-0 truncate rounded-sm text-[15px] text-ink hover:underline">{o.name}</Link>
+                  <Link href={href.offer(o.id)} title={o.name} className="min-w-0 truncate rounded-sm text-body text-ink hover:underline">{o.name}</Link>
                   <span className="sr-only">{st.word}</span>
                 </span>
-                <span className="mt-0.5 block pl-[15px] text-[13px] text-mute-3">{mapped ? "Funnel mapped" : "No funnel"}</span>
+                <span className="mt-0.5 block pl-4 text-small text-mute-3">{mapped ? "Funnel mapped" : "No funnel"}</span>
               </li>
             );
           })}
@@ -343,9 +343,9 @@ function FunnelRow({ g }: { g: FunnelGroup }) {
             const st = assetStand(a);
             return (
               <li key={a.id} className="min-w-0 max-w-full">
-                <button type="button" onClick={() => openAsset(a.id)} title={a.name} className={cx("inline-flex max-w-full items-center gap-1.5 rounded-[8px] border border-line bg-white px-2 py-[5px] text-left text-[13.5px] text-ink-3 transition-colors hover:border-line-strong hover:text-ink", FOCUS)}>
+                <button type="button" onClick={() => openAsset(a.id)} title={a.name} className={cx("inline-flex max-w-full items-center gap-1.5 rounded-lg border border-line bg-surface px-2 py-1 text-left text-meta text-ink-3 transition-colors hover:border-line-strong hover:text-ink", FOCUS)}>
                   <Dot color={st.color} />
-                  <span className="flex-none font-mono text-[11px] font-semibold tracking-[0.05em] text-mute-3">{ws.codeOf(a)}</span>
+                  <span className="flex-none font-mono text-micro font-semibold tracking-[0.05em] text-mute-3">{ws.codeOf(a)}</span>
                   <span className="truncate">{a.name}</span>
                   <span className="sr-only">, {st.word}</span>
                 </button>
@@ -374,9 +374,9 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer }: { offers: Offer
       <div className="flex flex-col gap-8">
         {groups.map((g) => (
           <div key={g.name}>
-            <h3 className="m-0 mb-3 flex items-center gap-2.5 text-[14.5px] font-normal text-mute-3">
+            <h3 className="m-0 mb-3 flex items-center gap-2.5 text-body font-normal text-mute-3">
               {/* On white, so the tint matches what the chip's text colour was worked out against. */}
-              <span className="rounded-[5px] bg-white"><Chip color={ws.segColor(g.name, brandId)} size="md">{g.name}</Chip></span>
+              <span className="rounded-sm bg-surface"><Chip color={ws.segColor(g.name, brandId)} size="md">{g.name}</Chip></span>
               <span aria-hidden>·</span>
               {plural(g.list.length, "offer")}
             </h3>
@@ -385,13 +385,13 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer }: { offers: Offer
         ))}
         {orphans.length > 0 && (
           <div>
-            <h3 className="m-0 mb-3 text-[14.5px] font-normal text-mute-3">Offers whose segment is no longer in the Brand Kit · {plural(orphans.length, "offer")}</h3>
+            <h3 className="m-0 mb-3 text-body font-normal text-mute-3">Offers whose segment is no longer in the Brand Kit · {plural(orphans.length, "offer")}</h3>
             <div className="grid gap-3.5 md:grid-cols-2">{orphans.map((o) => <OfferCard key={o.id} o={o} variant="service" />)}</div>
           </div>
         )}
       </div>
       {missing.length > 0 && (
-        <p className="m-0 mt-5 text-[14.5px] text-mute-3">
+        <p className="m-0 mt-5 text-body text-mute-3">
           Nothing written yet for{" "}
           {missing.map((s, i) => (
             <span key={s.name}>

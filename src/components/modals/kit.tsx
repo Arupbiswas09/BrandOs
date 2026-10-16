@@ -79,14 +79,14 @@ export function KitModal({ brandId }: { brandId: string }) {
 
   return (
     <Modal title="Edit the Brand Kit" sub={`${b.name}. Changes show up everywhere this brand's kit is used, including client share pages.`} width={780} onSubmit={save}
-      footer={<Footer saveLabel="Save kit" pending={pending} left={error ? <span role="alert" className="text-[13.5px] font-medium text-[#B42318]">{error}</span> : undefined} />} bodyClass="max-h-[64vh] overflow-y-auto pt-0">
-      <Tabs className="sticky top-0 z-10 -mx-6 mb-1 mt-0 pt-3 border-b border-line bg-white px-5 sm:-mx-7" items={TABS.map(([key, label]) => ({ key, label, active: tab === key, onClick: () => setTab(key) }))} />
+      footer={<Footer saveLabel="Save kit" pending={pending} left={error ? <span role="alert" className="text-meta font-medium text-[#B42318]">{error}</span> : undefined} />} bodyClass="max-h-[64vh] overflow-y-auto pt-0">
+      <Tabs className="sticky top-0 z-10 -mx-6 mb-1 mt-0 pt-3 border-b border-line bg-surface px-5 sm:-mx-7" items={TABS.map(([key, label]) => ({ key, label, active: tab === key, onClick: () => setTab(key) }))} />
 
       {tab === "colour" && (
         <section className="flex flex-col gap-3">
-          <p className="m-0 text-[14px] text-mute-2">HEX and RGB are for screens. Add CMYK and Pantone for print — leave CMYK empty and it is worked out from the hex.</p>
+          <p className="m-0 text-meta text-mute-2">HEX and RGB are for screens. Add CMYK and Pantone for print — leave CMYK empty and it is worked out from the hex.</p>
           {colours.map((c) => (
-            <div key={c.key} className="rounded-[11px] border border-line p-3">
+            <div key={c.key} className="rounded-xl border border-line p-3">
               <div className="grid gap-2 sm:grid-cols-[auto_1fr_140px_auto]">
                 <ColourInput label={c.name || "Colour"} value={c.hex} onChange={(v) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, hex: v } : x)))} />
                 <input required className="field" placeholder="Name, e.g. Mangrove" aria-label="Colour name" value={c.name} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, name: e.target.value } : x)))} />
@@ -95,8 +95,8 @@ export function KitModal({ brandId }: { brandId: string }) {
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-[1.6fr_1fr_1fr]">
                 <input className="field" placeholder="Where it is used" aria-label="Usage" value={c.usage} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, usage: e.target.value } : x)))} />
-                <input className="field font-code text-[13.5px]" placeholder={isHex(c.hex) ? cmykText(c.hex) : "CMYK"} title="CMYK — leave empty to use the value worked out from the hex" aria-label="CMYK" value={c.cmyk ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, cmyk: e.target.value } : x)))} />
-                <input className="field font-code text-[13.5px]" placeholder="Pantone, e.g. 7722 C" aria-label="Pantone" value={c.pantone ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, pantone: e.target.value } : x)))} />
+                <input className="field font-code text-meta" placeholder={isHex(c.hex) ? cmykText(c.hex) : "CMYK"} title="CMYK — leave empty to use the value worked out from the hex" aria-label="CMYK" value={c.cmyk ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, cmyk: e.target.value } : x)))} />
+                <input className="field font-code text-meta" placeholder="Pantone, e.g. 7722 C" aria-label="Pantone" value={c.pantone ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, pantone: e.target.value } : x)))} />
               </div>
             </div>
           ))}
@@ -110,7 +110,7 @@ export function KitModal({ brandId }: { brandId: string }) {
             <div className="label">Typefaces</div>
             <div className="flex flex-col gap-2">
               {fonts.map((f) => (
-                <div key={f.key} className="rounded-[11px] border border-line p-3">
+                <div key={f.key} className="rounded-xl border border-line p-3">
                   <div className="grid gap-2 sm:grid-cols-[1.3fr_1fr_auto]">
                     <input className="field" placeholder="Typeface, e.g. Inter" aria-label="Typeface" value={f.name} onChange={(e) => setFonts((l) => l.map((x) => (x.key === f.key ? { ...x, name: e.target.value } : x)))} />
                     <input className="field" placeholder="Role, e.g. Headings" aria-label="Role" value={f.role} onChange={(e) => setFonts((l) => l.map((x) => (x.key === f.key ? { ...x, role: e.target.value } : x)))} />
@@ -128,7 +128,7 @@ export function KitModal({ brandId }: { brandId: string }) {
           </div>
           <div>
             <div className="label">Type scale</div>
-            <div className="mb-1 hidden grid-cols-[1fr_1.2fr_70px_80px_70px_auto] gap-2 px-1 text-[12px] font-semibold text-mute-3 sm:grid"><span>Style</span><span>Typeface</span><span>Size px</span><span>Weight</span><span>Leading</span><span /></div>
+            <div className="mb-1 hidden grid-cols-[1fr_1.2fr_70px_80px_70px_auto] gap-2 px-1 text-micro font-semibold text-mute-3 sm:grid"><span>Style</span><span>Typeface</span><span>Size px</span><span>Weight</span><span>Leading</span><span /></div>
             <div className="flex flex-col gap-2">
               {scale.map((s) => (
                 <div key={s.key} className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1.2fr_70px_80px_70px_auto]">
@@ -148,7 +148,7 @@ export function KitModal({ brandId }: { brandId: string }) {
 
       {tab === "logo" && (
         <section className="flex flex-col gap-3">
-          <p className="m-0 text-[14px] text-mute-2">Upload the logo files themselves on the Brand Kit page (Add a logo file). Here are the rules for using them.</p>
+          <p className="m-0 text-meta text-mute-2">Upload the logo files themselves on the Brand Kit page (Add a logo file). Here are the rules for using them.</p>
           <Field label="Clear space" hint={<span className="font-normal text-mute-4">empty space kept around the logo</span>}><input className="field" value={t.clearSpace} onChange={set("clearSpace")} placeholder="The height of the Q on every side" /></Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Minimum size, screen"><input className="field" value={t.minDigital} onChange={set("minDigital")} placeholder="24 px tall" /></Field>
@@ -203,16 +203,16 @@ export function KitModal({ brandId }: { brandId: string }) {
 
       {tab === "segments" && (
         <section className="flex flex-col gap-2">
-          <p className="m-0 mb-1 text-[14px] text-mute-2">Who the brand talks to. Renaming a segment moves its offers with it.</p>
+          <p className="m-0 mb-1 text-meta text-mute-2">Who the brand talks to. Renaming a segment moves its offers with it.</p>
           {segments.map((s) => (
             <div key={s.key} className="flex items-center gap-2">
-              <input type="color" aria-label={`${s.name} colour`} value={s.color} onChange={(e) => setSegments((l) => l.map((x) => (x.key === s.key ? { ...x, color: e.target.value.toUpperCase() } : x)))} className="h-8 w-9 flex-none cursor-pointer rounded-md border border-line bg-white p-0.5" />
+              <input type="color" aria-label={`${s.name} colour`} value={s.color} onChange={(e) => setSegments((l) => l.map((x) => (x.key === s.key ? { ...x, color: e.target.value.toUpperCase() } : x)))} className="h-8 w-9 flex-none cursor-pointer rounded-md border border-line bg-surface p-0.5" />
               <input className="field flex-1" value={s.name} aria-label="Segment name" onChange={(e) => setSegments((l) => l.map((x) => (x.key === s.key ? { ...x, name: e.target.value } : x)))} />
-              <span className="w-[62px] flex-none text-right text-[14px] text-mute-3">{s.orig ? counts(s.orig) : 0} offers</span>
+              <span className="w-[62px] flex-none text-right text-meta text-mute-3">{s.orig ? counts(s.orig) : 0} offers</span>
               <button type="button" aria-label="Remove segment" disabled={!!s.orig && counts(s.orig) > 0} title={s.orig && counts(s.orig) > 0 ? "Offers still use this segment" : "Remove"} onClick={() => setSegments((l) => l.filter((x) => x.key !== s.key))} className="px-1.5 text-mute-5 hover:text-danger disabled:opacity-30">✕</button>
             </div>
           ))}
-          <div className="flex items-center gap-2 text-[14.5px] text-mute-3"><Chip color="#46534D">All segments</Chip> is always there for offers that speak to everyone.</div>
+          <div className="flex items-center gap-2 text-body text-mute-3"><Chip color="#46534D">All segments</Chip> is always there for offers that speak to everyone.</div>
           <Btn size="sm" className="self-start" onClick={() => setSegments((l) => [...l, keyed({ name: "", color: SEGMENT_PALETTE[l.length % SEGMENT_PALETTE.length], orig: "" })])}>+ Add segment</Btn>
         </section>
       )}

@@ -24,7 +24,7 @@ export function PageHead({
         <div className="min-w-0">
           {eyebrow && <Eyebrow className="mb-2">{eyebrow}</Eyebrow>}
           <h1 className="display m-0 text-ink" style={{ fontSize: Math.round(size * 1.3) }}>{title}</h1>
-          {sub && <p className="mb-0 mt-2 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
+          {sub && <p className="mb-0 mt-2 max-w-[68ch] text-body text-mute-2 text-pretty">{sub}</p>}
         </div>
         {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
       </div>
@@ -35,13 +35,13 @@ export function PageHead({
 }
 
 /** A section title inside the content area (under a header band that already exists). */
-export function SectionHead({ eyebrow, title, sub, actions, icon }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; icon?: ReactNode }) {
+export function SectionHead({ eyebrow, title, sub, actions, icon, as: H = "h2" }: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; icon?: ReactNode; /** "h1" when this is the page's title. */ as?: "h1" | "h2" }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow && <Eyebrow className="mb-1.5">{eyebrow}</Eyebrow>}
-        <h2 className="display m-0 flex items-center gap-2.5 text-[30px] text-ink sm:text-[34px]">{icon && <IconTile>{icon}</IconTile>}{title}</h2>
-        {sub && <p className="mb-0 mt-1.5 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
+        <H className="display m-0 flex items-center gap-2.5 text-display text-ink">{icon && <IconTile>{icon}</IconTile>}{title}</H>
+        {sub && <p className="mb-0 mt-1.5 max-w-[68ch] text-body text-mute-2 text-pretty">{sub}</p>}
       </div>
       {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
     </div>
@@ -63,12 +63,12 @@ export function FilterBar({ q, onQ, placeholder, selects, onClear, className }: 
   if (!onQ && !shown.length) return null;
   return (
     <div role="search" className={cx("mb-6 flex flex-wrap items-center gap-2", className)}>
-      {onQ && <input type="search" value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} className="field w-full max-w-[280px] py-2 text-[15px] sm:w-[280px]" />}
+      {onQ && <input type="search" value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} className="field w-full max-w-[280px] py-2 text-body sm:w-[280px]" />}
       {shown.map((x) => (
         <Select key={x.label} aria-label={x.label} value={x.value} onChange={x.onChange} options={x.options}
-          className={cx("w-auto py-2 pr-8 text-[14.5px]", x.value !== x.options[0]?.value && "border-accent font-semibold text-accent")} />
+          className={cx("w-auto py-2 pr-8 text-body", x.value !== x.options[0]?.value && "border-accent font-semibold text-accent")} />
       ))}
-      {active && onClear && <button type="button" onClick={onClear} className="px-1.5 text-[14px] font-medium text-mute-2 hover:text-ink hover:underline">Clear</button>}
+      {active && onClear && <button type="button" onClick={onClear} className="px-1.5 text-meta font-medium text-mute-2 hover:text-ink hover:underline">Clear</button>}
     </div>
   );
 }
@@ -78,7 +78,7 @@ export function Tabs({ items, className }: { items: { key: string; label: ReactN
   return (
     <div role="tablist" className={cx("mt-5 flex flex-none gap-1 overflow-x-auto", className)}>
       {items.map((t) => {
-        const cls = cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-md border-b-2 px-3 pb-3 pt-1.5 text-[14.5px] font-medium transition-colors duration-150", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink");
+        const cls = cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-md border-b-2 px-3 pb-3 pt-1.5 text-body font-medium transition-colors duration-150", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink");
         return t.href ? (
           <Link key={t.key} href={t.href} role="tab" aria-selected={t.active} className={cls} scroll={false}>{t.label}</Link>
         ) : (
@@ -95,7 +95,7 @@ export function IconTile({ children, className }: { children: ReactNode; classNa
 }
 
 export function H2({ children, className, right, icon }: { children: ReactNode; className?: string; right?: ReactNode; icon?: ReactNode }) {
-  const h = <h2 className={cx("m-0 text-[17px] font-semibold tracking-[-0.01em]", !!icon && "flex items-center gap-2.5", !right && !/(^|\s)mb-/.test(className ?? "") && "mb-3.5", !right && className)}>{icon && <IconTile>{icon}</IconTile>}{children}</h2>;
+  const h = <h2 className={cx("m-0 text-lead font-semibold tracking-[-0.01em]", !!icon && "flex items-center gap-2.5", !right && !/(^|\s)mb-/.test(className ?? "") && "mb-3.5", !right && className)}>{icon && <IconTile>{icon}</IconTile>}{children}</h2>;
   if (!right) return h;
   return (
     <div className={cx(!/(^|\s)mb-/.test(className ?? "") && "mb-3.5", "flex items-center justify-between gap-4", className)}>
@@ -106,7 +106,7 @@ export function H2({ children, className, right, icon }: { children: ReactNode; 
 }
 
 export function Page({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("mx-auto max-w-[1180px] animate-rise px-4 pb-12 pt-8 sm:px-8 sm:pt-10 lg:pb-[88px]", className)}>{children}</div>;
+  return <div className={cx("mx-auto max-w-[1180px] px-4 pb-12 pt-8 sm:px-8 sm:pt-10 lg:pb-22", className)}>{children}</div>;
 }
 
 /* ---------------------------------------------------------------- buttons */
@@ -115,36 +115,50 @@ type BtnVariant = "primary" | "secondary" | "ghost" | "danger" | "dark" | "appro
 type BtnProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: BtnVariant; size?: "sm" | "md" | "lg" };
 
 const variants: Record<BtnVariant, string> = {
-  primary: "border-0 bg-accent text-on-accent font-semibold hover:brightness-110 theme-fade",
-  secondary: "border border-line bg-white text-ink-3 font-medium hover:bg-wash hover:border-line-strong",
-  ghost: "border-0 bg-transparent text-mute-2 hover:text-ink",
-  danger: "border border-line bg-white text-danger font-medium hover:border-[#C99A8E]",
+  primary: "border border-transparent bg-accent text-on-accent font-semibold hover:brightness-110 theme-fade",
+  secondary: "border border-line bg-surface text-ink-3 font-medium hover:bg-wash hover:border-line-strong",
+  ghost: "border border-transparent bg-transparent text-mute-2 hover:text-ink",
+  danger: "border border-line bg-surface text-danger font-medium hover:border-[#C99A8E]",
   // Kept as a name for older call sites; one accent only, so it is the primary look.
-  dark: "border-0 bg-accent text-on-accent font-semibold hover:brightness-110",
-  approve: "border-0 bg-ok text-white font-semibold hover:brightness-110",
-  change: "border border-line bg-white text-change-ink font-medium hover:border-[#C99A8E]",
+  dark: "border border-transparent bg-accent text-on-accent font-semibold hover:brightness-110",
+  approve: "border border-transparent bg-ok text-white font-semibold hover:brightness-110",
+  change: "border border-line bg-surface text-change-ink font-medium hover:border-[#C99A8E]",
   link: "border-0 bg-transparent p-0 text-accent font-semibold hover:underline",
-  "outline-accent": "border border-accent bg-white text-accent font-semibold hover:bg-soft",
+  "outline-accent": "border border-accent bg-surface text-accent font-semibold hover:bg-soft",
 };
-const sizes = { sm: "rounded-[7px] px-[11px] py-[5px] text-[14px]", md: "rounded-[8px] px-[13px] py-[7px] text-[15px]", lg: "rounded-[9px] px-[15px] py-[9px] text-[15px]" };
+// Every variant has a 1px border (transparent when filled), so a primary and a secondary of the same size are the same height.
+const sizes = { sm: "h-8 rounded-lg px-3 text-meta", md: "h-9 rounded-lg px-3.5 text-body", lg: "h-10 rounded-lg px-4 text-body" };
 
 export const Btn = forwardRef<HTMLButtonElement, BtnProps>(function Btn({ variant = "secondary", size = "md", className, type = "button", ...rest }, ref) {
   return (
     <button
       ref={ref}
       type={type}
-      className={cx("inline-flex flex-none items-center justify-center gap-1.5 whitespace-nowrap transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 enabled:active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:flex-none", variant !== "link" && sizes[size], variants[variant], className)}
+      className={cx("inline-flex flex-none items-center justify-center gap-1.5 whitespace-nowrap transition-[background-color,border-color,color,box-shadow,filter,transform] duration-150 ease-snap enabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:flex-none", variant !== "link" && sizes[size], variants[variant], className)}
       {...rest}
     />
   );
 });
 
+/** A square icon-only button: one size and shape everywhere. `label` is required, because the icon alone says nothing to a screen reader. */
+export const IconBtn = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { label: string; size?: "sm" | "md" }>(
+  function IconBtn({ label, size = "md", className, type = "button", children, ...rest }, ref) {
+    return (
+      <button ref={ref} type={type} aria-label={label} title={label}
+        className={cx("inline-flex flex-none items-center justify-center rounded-lg text-mute-2 transition-[background-color,color,transform] duration-150 ease-snap hover:bg-hover hover:text-ink enabled:active:scale-[0.94] disabled:cursor-not-allowed disabled:opacity-50 [&>svg]:size-4", size === "sm" ? "size-7" : "size-8", className)}
+        {...rest}>
+        {children}
+      </button>
+    );
+  },
+);
+
 /* ---------------------------------------------------------------- chips and marks */
 
 export function Chip({ color, children, round, size = "sm", className, title }: { color: string; children: ReactNode; round?: boolean; size?: "xs" | "sm" | "md"; className?: string; title?: string }) {
-  const s = { xs: "px-1.5 py-[2px] text-[12.5px]", sm: "px-2 py-[3px] text-[13px]", md: "px-2.5 py-[3px] text-[14px]" }[size];
+  const s = { xs: "px-1.5 py-0.5 text-small", sm: "px-2 py-1 text-small", md: "px-2.5 py-1 text-meta" }[size];
   return (
-    <span title={title} className={cx("inline-block flex-none font-semibold leading-[1.35]", round ? "rounded-full" : size === "xs" ? "rounded-[4px]" : "rounded-[5px]", s, className)} style={{ background: hexA(color, 0.14), color: readable(color) }}>
+    <span title={title} className={cx("inline-block flex-none font-semibold leading-[1.35]", round ? "rounded-full" : size === "xs" ? "rounded-sm" : "rounded-sm", s, className)} style={{ background: hexA(color, 0.14), color: readable(color) }}>
       {children}
     </span>
   );
@@ -202,7 +216,7 @@ export function Blocks({ blocks, size = 12, gap = 3 }: { blocks: { id: string; c
 /* ---------------------------------------------------------------- surfaces */
 
 export function Card({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
-  return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(16,22,20,.04)] theme-fade", className)} style={style}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-surface shadow-card theme-fade", className)} style={style}>{children}</div>;
 }
 
 /**
@@ -211,9 +225,9 @@ export function Card({ children, className, style }: { children: ReactNode; clas
  */
 export function Empty({ title, body, children, compact }: { title?: string; body?: ReactNode; children?: ReactNode; compact?: boolean }) {
   return (
-    <div className={cx("rounded-[14px] border border-dashed border-line-strong bg-white/60 text-center", compact ? "px-6 py-7" : "px-6 py-10 sm:py-12")}>
-      {title && <div className="mb-1.5 text-[16px] font-semibold text-ink">{title}</div>}
-      {body && <div className="mx-auto mb-5 max-w-[46ch] text-[15px] leading-[1.55] text-mute-2 text-pretty">{body}</div>}
+    <div className={cx("rounded-xl border border-dashed border-line-strong bg-surface/60 text-center", compact ? "px-6 py-7" : "px-6 py-10 sm:py-12")}>
+      {title && <div className="mb-1.5 text-lead font-semibold text-ink">{title}</div>}
+      {body && <div className="mx-auto mb-5 max-w-[46ch] text-body leading-[1.55] text-mute-2 text-pretty">{body}</div>}
       {children && <div className="flex flex-wrap justify-center gap-2">{children}</div>}
     </div>
   );
@@ -221,33 +235,33 @@ export function Empty({ title, body, children, compact }: { title?: string; body
 
 export function ArchivedNote({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cx("flex items-center gap-[11px] rounded-[11px] border border-dashed border-line-strong bg-wash-2 px-4 py-[11px]", className)}>
-      <span className="eyebrow flex-none text-[12px] text-mute-1">Archived</span>
-      <span className="flex-1 text-[15px] text-mute-1">{children}</span>
+    <div className={cx("flex items-center gap-3 rounded-xl border border-dashed border-line-strong bg-wash-2 px-4 py-3", className)}>
+      <span className="eyebrow flex-none text-micro text-mute-1">Archived</span>
+      <span className="flex-1 text-body text-mute-1">{children}</span>
     </div>
   );
 }
 
 export function ChangeNote({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cx("rounded-[12px] border border-[rgba(194,65,18,.25)] bg-[rgba(194,65,18,.07)] px-[18px] py-[13px]", className)}>
-      <div className="eyebrow mb-[5px] text-change-ink">Changes requested</div>
-      <div className="max-w-[70ch] text-[15px] leading-[1.55] text-[#7A3211] text-pretty">{children}</div>
+    <div className={cx("rounded-xl border border-[rgba(194,65,18,.25)] bg-[rgba(194,65,18,.07)] px-4 py-3", className)}>
+      <div className="eyebrow mb-1 text-change-ink">Changes requested</div>
+      <div className="max-w-[70ch] text-body leading-[1.55] text-[#7A3211] text-pretty">{children}</div>
     </div>
   );
 }
 
 export function Warn({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cx("flex items-center gap-3 rounded-[11px] border border-[rgba(201,154,46,.35)] bg-[rgba(201,154,46,.08)] px-4 py-3", className)}>
+    <div className={cx("flex items-center gap-3 rounded-xl border border-[rgba(201,154,46,.35)] bg-[rgba(201,154,46,.08)] px-4 py-3", className)}>
       <span className="h-1.5 w-1.5 flex-none rounded-full bg-warn" />
-      <span className="flex-1 text-[15px] text-warn-ink">{children}</span>
+      <span className="flex-1 text-body text-warn-ink">{children}</span>
     </div>
   );
 }
 
 export function Hint({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cx("rounded-[11px] bg-wash px-[15px] py-[13px] text-[15px] leading-[1.55] text-[#46534D] text-pretty", className)}>{children}</div>;
+  return <div className={cx("rounded-xl bg-wash px-4 py-3 text-body leading-[1.55] text-[#46534D] text-pretty", className)}>{children}</div>;
 }
 
 /* ---------------------------------------------------------------- toggles */
@@ -270,12 +284,12 @@ export function Pills<T extends string>({
             aria-pressed={on}
             onClick={() => onChange(o.value)}
             className={cx(
-              "rounded-full border px-3 py-[5px] text-[14.5px] font-medium transition-colors duration-150",
-              on ? "border-accent bg-accent text-on-accent" : "border-line bg-white text-mute-1 hover:border-mute-4 hover:text-ink",
+              "rounded-full border px-3 py-1 text-body font-medium transition-colors duration-150",
+              on ? "border-accent bg-soft font-semibold text-accent" : "border-line bg-surface text-mute-1 hover:border-mute-4 hover:text-ink",
             )}
           >
             {o.label}
-            {o.count !== undefined && <span className={cx("ml-1.5 font-mono text-[13px]", on ? "" : "text-mute-4")}>{o.count}</span>}
+            {o.count !== undefined && <span className={cx("ml-1.5 tabular-nums text-small", on ? "" : "text-mute-4")}>{o.count}</span>}
           </button>
         );
       })}
@@ -297,10 +311,10 @@ export function Tick({ on, size = 17 }: { on: boolean; size?: number }) {
 
 export function CheckRow({ on, onClick, children, sub, className }: { on: boolean; onClick: () => void; children: ReactNode; sub?: ReactNode; className?: string }) {
   return (
-    <button type="button" role="checkbox" aria-checked={on} onClick={onClick} className={cx("flex w-full items-center gap-[11px] rounded-[10px] border border-line bg-white px-[13px] py-[11px] text-left hover:border-mute-2", className)}>
+    <button type="button" role="checkbox" aria-checked={on} onClick={onClick} className={cx("flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-3 py-3 text-left hover:border-mute-2", className)}>
       <Tick on={on} />
-      <span className="flex-1 text-[15px] font-medium">{children}</span>
-      {sub && <span className="flex-none text-[13px] text-mute-4">{sub}</span>}
+      <span className="flex-1 text-body font-medium">{children}</span>
+      {sub && <span className="flex-none text-small text-mute-4">{sub}</span>}
     </button>
   );
 }
@@ -319,14 +333,14 @@ export function Field({ label, children, hint, className, required, error }: { l
         {hint}
       </span>
       {children}
-      {error && <span role="alert" className="mt-1.5 block text-[13.5px] font-medium text-[#B42318]">{error}</span>}
+      {error && <span role="alert" className="mt-1.5 block text-meta font-medium text-[#B42318]">{error}</span>}
     </label>
   );
 }
 
 /** The "* Required" legend that sits at the top of forms with required fields. */
 export function RequiredNote({ className }: { className?: string }) {
-  return <p className={cx("m-0 text-[13px] text-mute-3", className)}><span aria-hidden className="text-[#DC2626]">*</span> Required</p>;
+  return <p className={cx("m-0 text-small text-mute-3", className)}><span aria-hidden className="text-[#DC2626]">*</span> Required</p>;
 }
 
 export function Select({ value, onChange, options, className, ...rest }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; className?: string } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange" | "value">) {
@@ -340,16 +354,16 @@ export function Select({ value, onChange, options, className, ...rest }: { value
 export function ArchExpander<T extends { id: string; name: string }>({ items, noun, onOpen }: { items: T[]; noun: string; onOpen: (x: T) => void }) {
   if (!items.length) return null;
   return (
-    <details className="group mt-[18px]">
-      <summary className="cursor-pointer list-none py-1.5 font-mono text-[14.5px] tracking-[0.04em] text-mute-3 hover:text-ink [&::-webkit-details-marker]:hidden">
+    <details className="group mt-4">
+      <summary className="cursor-pointer list-none py-1.5 font-mono text-body tracking-[0.04em] text-mute-3 hover:text-ink [&::-webkit-details-marker]:hidden">
         <span className="group-open:hidden">{items.length} archived {items.length === 1 ? noun : noun + "s"} ▾</span>
         <span className="hidden group-open:inline">Hide the {items.length} archived {items.length === 1 ? noun : noun + "s"} ▴</span>
       </summary>
       <div className="mt-1.5 flex flex-col gap-1.5">
         {items.map((x) => (
-          <button key={x.id} type="button" onClick={() => onOpen(x)} className="flex w-full items-center gap-[11px] rounded-[10px] border border-dashed border-line px-3.5 py-2.5 text-left hover:border-mute-3 hover:bg-white">
-            <span className="min-w-0 flex-1 truncate text-[15px] text-mute-1">{x.name}</span>
-            <span className="eyebrow flex-none text-[12px]">Archived</span>
+          <button key={x.id} type="button" onClick={() => onOpen(x)} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-line px-3.5 py-2.5 text-left hover:border-mute-3 hover:bg-surface">
+            <span className="min-w-0 flex-1 truncate text-body text-mute-1">{x.name}</span>
+            <span className="eyebrow flex-none text-micro">Archived</span>
           </button>
         ))}
       </div>

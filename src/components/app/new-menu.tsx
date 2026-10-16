@@ -79,21 +79,21 @@ export function NewMenu() {
       <button ref={button} type="button" aria-haspopup="menu" aria-expanded={shown} aria-controls={shown ? "new-menu" : undefined}
         onClick={() => setShown((v) => !v)}
         onKeyDown={(e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setShown(true); } }}
-        className="flex h-10 items-center gap-2 rounded-md bg-accent px-4 text-[14.5px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">
+        className="flex h-10 items-center gap-2 rounded-md bg-accent px-4 text-body font-semibold text-on-accent transition hover:brightness-110 theme-fade">
         <Plus aria-hidden className="h-4 w-4" /><span className="sr-only sm:not-sr-only">New</span>
       </button>
       {shown && (
         <div ref={list} id="new-menu" role="menu" aria-label="New" onKeyDown={onKey}
-          className="absolute right-0 top-full z-10 mt-1.5 w-[320px] max-w-[calc(100vw-24px)] animate-pop overflow-hidden rounded-xl border border-line bg-white p-1.5 shadow-[0_16px_48px_rgba(16,22,20,.18)]">
+          className="absolute right-0 top-full z-10 mt-1.5 w-[320px] max-w-[calc(100vw-24px)] animate-pop overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-card">
           {b && ws.can("edit") && <div aria-hidden className="eyebrow truncate px-2.5 pb-1 pt-1.5">New work goes into {b.name}</div>}
           {items.map((it) => (
             <button key={it.key} type="button" role="menuitem" tabIndex={-1}
               onClick={() => { hide(false); open(it.spec); }}
-              className={cx("flex w-full items-center gap-3 rounded-[9px] px-2.5 py-2 text-left outline-none transition-colors duration-100 hover:bg-hover focus-visible:bg-soft focus:bg-soft")}>
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-line bg-white text-mute-2"><it.icon aria-hidden className="h-4 w-4" /></span>
+              className={cx("flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-colors duration-100 hover:bg-hover focus-visible:bg-soft focus:bg-soft")}>
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-line bg-surface text-mute-2"><it.icon aria-hidden className="h-4 w-4" /></span>
               <span className="min-w-0 flex-1">
-                <span className="block text-[14.5px] font-medium leading-5 text-ink">{it.label}</span>
-                <span className="block truncate text-[12.5px] leading-4 text-mute-2">{it.hint}</span>
+                <span className="block text-body font-medium leading-5 text-ink">{it.label}</span>
+                <span className="block truncate text-small leading-4 text-mute-2">{it.hint}</span>
               </span>
             </button>
           ))}

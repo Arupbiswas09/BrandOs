@@ -378,20 +378,20 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
   const head = (
     <div className="mb-3.5 flex flex-wrap items-end justify-between gap-x-5 gap-y-1.5">
       <div className="min-w-0">
-        <h2 id={`${uid}-title`} className="m-0 mb-1 text-[17px] font-semibold">Funnel</h2>
-        <p className="m-0 max-w-[64ch] text-[14.5px] text-mute-2 text-pretty">
+        <h2 id={`${uid}-title`} className="m-0 mb-1 text-lead font-semibold">Funnel</h2>
+        <p className="m-0 max-w-[64ch] text-body text-mute-2 text-pretty">
           {editable
             ? "The whole path for this offer on one board. Drag boxes to arrange; select one to write in it, link it to a file, or draw an arrow from it."
             : "The whole path for this offer on one board. The ↗ on a linked box opens the file."}
         </p>
       </div>
-      {n > 0 && <span className="font-mono text-[14px] text-mute-3">{plural(n, "box", "boxes")} · {plural(m, "arrow")}</span>}
+      {n > 0 && <span className="font-mono text-meta text-mute-3">{plural(n, "box", "boxes")} · {plural(m, "arrow")}</span>}
     </div>
   );
 
   if (!n) {
     return (
-      <section aria-labelledby={`${uid}-title`} className="mb-[34px]">
+      <section aria-labelledby={`${uid}-title`} className="mb-8">
         {head}
         {editable ? (
           // One sentence and one way in: a draft when there is something to draft from, a blank board when not.
@@ -414,7 +414,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
             )}
           </Empty>
         ) : (
-          <div className="rounded-xl border border-dashed border-line-strong bg-white/60 px-5 py-6 text-[15px] text-mute-2">No funnel mapped yet.</div>
+          <div className="rounded-xl border border-dashed border-line-strong bg-surface/60 px-5 py-6 text-body text-mute-2">No funnel mapped yet.</div>
         )}
       </section>
     );
@@ -423,13 +423,13 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
   const saveNote = status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "error" ? "Not saved" : "";
 
   return (
-    <section aria-labelledby={`${uid}-title`} className="mb-[34px]" onKeyDown={onKeyDown}>
+    <section aria-labelledby={`${uid}-title`} className="mb-8" onKeyDown={onKeyDown}>
       {head}
       <Card className="overflow-hidden">
         {editable && (
           <div className="flex min-h-[54px] flex-wrap items-center gap-2 border-b border-line px-3 py-2.5 sm:px-4">
             {drawFrom ? (
-              <div role="status" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 rounded-[8px] bg-soft px-3 py-1.5 text-[14px] text-ink-2">
+              <div role="status" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-soft px-3 py-1.5 text-meta text-ink-2">
                 <Spline aria-hidden size={15} className="flex-none text-hl-ink" />
                 <span className="min-w-0 flex-1">Click the box this leads to — <span className="kbd">Esc</span> to cancel</span>
                 <Btn size="sm" variant="ghost" onClick={() => { const src = drawFrom; setDrawFrom(null); focusBox(src); }}>Cancel</Btn>
@@ -445,12 +445,12 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
                   groups={groups}
                   value=""
                   onChange={(v) => { const l = parseLinkValue(v); if (l) add("step", l); }}
-                  className="w-auto min-w-[160px] max-w-full flex-1 border-accent py-[5px] pl-2.5 pr-8 text-[14px] font-semibold text-hl-ink sm:max-w-[300px]"
+                  className="w-auto min-w-[160px] max-w-full flex-1 border-accent py-1 pl-2.5 pr-8 text-meta font-semibold text-hl-ink sm:max-w-[300px]"
                 />
                 <span className="ml-auto flex items-center gap-3">
-                  <span role="status" className={cx("text-[13px]", status === "error" ? "font-semibold text-danger" : "text-mute-3")}>{saveNote}</span>
+                  <span role="status" className={cx("text-small", status === "error" ? "font-semibold text-danger" : "text-mute-3")}>{saveNote}</span>
                   {status === "error" && <Btn size="sm" variant="link" onClick={() => void flush()}>Retry</Btn>}
-                  <span className="hidden text-[13px] text-mute-3 lg:inline">Delete key removes what is selected</span>
+                  <span className="hidden text-small text-mute-3 lg:inline">Delete key removes what is selected</span>
                 </span>
               </>
             )}
@@ -536,7 +536,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
               const on = sel?.kind === "arrow" && sel.id === a.id;
               const lab = a.label?.trim();
               // Labels sit above ordinary boxes so a tight gap never hides them; the selected box and the popover still win.
-              const chip = "absolute z-[4] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-white px-1.5 py-px text-[12px] font-medium leading-[1.5]";
+              const chip = "absolute z-[4] -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border bg-surface px-1.5 py-px text-micro font-medium leading-[1.5]";
               if (!editable) {
                 return lab ? <span key={a.id} className={cx(chip, "max-w-[180px] truncate border-line text-mute-1")} style={{ left: l.mx, top: l.my }}>{lab}</span> : null;
               }
@@ -552,7 +552,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => { setDrawFrom(null); setSel({ kind: "arrow", id: a.id }); }}
                   className={cx(
-                    lab ? cx(chip, "max-w-[180px] truncate") : "absolute z-[4] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-white",
+                    lab ? cx(chip, "max-w-[180px] truncate") : "absolute z-[4] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-surface",
                     on ? "border-accent text-ink" : lab ? "border-line text-mute-1 hover:border-line-strong" : "border-[#7B8798] opacity-0 hover:opacity-100 focus-visible:opacity-100",
                   )}
                   style={{ left: l.mx, top: l.my }}

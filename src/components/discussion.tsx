@@ -40,14 +40,14 @@ function useSegments() {
 export function CommentText({ c }: { c: Comment }) {
   const segs = useSegments()(c);
   return (
-    <div className="whitespace-pre-wrap text-[16px] leading-[1.6] text-ink-2 text-pretty">
+    <div className="whitespace-pre-wrap text-lead leading-[1.6] text-ink-2 text-pretty">
       {segs.map((s, i) =>
         s.chip ? (
           <span
             key={i}
             onClick={s.go}
             role={s.go ? "link" : undefined}
-            className={cx("mx-px inline rounded-[5px] px-1.5 py-px text-[15px] font-semibold", s.chip === "ref" ? "cursor-pointer bg-soft text-accent hover:underline" : "bg-avatar text-ink-3")}
+            className={cx("mx-px inline rounded-sm px-1.5 py-px text-body font-semibold", s.chip === "ref" ? "cursor-pointer bg-soft text-accent hover:underline" : "bg-avatar text-ink-3")}
           >
             {s.text}
           </span>
@@ -75,19 +75,19 @@ function Note({ c }: { c: Comment }) {
         borderColor: c.resolved ? "var(--bos-border)" : c.isChange ? "rgba(194,65,18,.28)" : "var(--bos-border)",
       }}
     >
-      <div className="mb-2 flex flex-wrap items-center gap-x-[9px] gap-y-1">
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <Avatar initials={ws.user(c.userId).initials} size={26} mono />
-        <span className="text-[15px] font-semibold">{ws.first(c.userId)}</span>
-        {c.isChange && <span className="eyebrow rounded bg-[rgba(194,65,18,.10)] px-[7px] py-[3px] text-change-ink">Change request</span>}
+        <span className="text-body font-semibold">{ws.first(c.userId)}</span>
+        {c.isChange && <span className="eyebrow rounded bg-[rgba(194,65,18,.10)] px-2 py-1 text-change-ink">Change request</span>}
         {isPinned(c) && <PinChip c={c} />}
         <span className="flex-1" />
-        <span className="font-mono text-[12.5px] text-mute-4">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
-        {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">Edit</button>}
+        <span className="font-mono text-small text-mute-4">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
+        {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className="px-1 py-0.5 text-small text-mute-3 hover:text-ink">Edit</button>}
         {(mine || ws.can("del")) && !editing && (
-          <button type="button" disabled={pending} onClick={() => { if (window.confirm("Delete this note?")) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-danger">Delete</button>
+          <button type="button" disabled={pending} onClick={() => { if (window.confirm("Delete this note?")) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-small text-mute-3 hover:text-danger">Delete</button>
         )}
         {ws.can("comment") && !editing && (
-          <button type="button" onClick={() => run(toggleResolve, c.id)} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
+          <button type="button" onClick={() => run(toggleResolve, c.id)} className="px-1 py-0.5 text-small text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
         )}
       </div>
       {editing ? (
@@ -115,7 +115,7 @@ function PinChip({ c }: { c: PinnedComment }) {
   const name = file?.name ?? "a removed image";
   return (
     <button type="button" onClick={() => (go ? go(c) : openAsset(c.itemId, "proof"))} aria-label={`Note ${n} on ${name}. Open it in the proof view`}
-      className="max-w-[220px] truncate rounded-[5px] bg-soft px-[7px] py-[2px] text-[13px] font-semibold text-accent hover:underline">
+      className="max-w-[220px] truncate rounded-sm bg-soft px-2 py-0.5 text-small font-semibold text-accent hover:underline">
       <MapPin aria-hidden size={13} className="mr-1 inline-block align-[-2px]" />on {name}
     </button>
   );
@@ -125,10 +125,10 @@ export function Thread({ kind, id }: { kind: "offer" | "asset"; id: string }) {
   const { ws } = useApp();
   const list = ws.commentsOf(kind, id);
   return (
-    <div className="flex flex-col gap-[9px]">
+    <div className="flex flex-col gap-2">
       {list.map((c) => <Note key={c.id} c={c} />)}
       {!list.length && (
-        <div className="rounded-xl border border-dashed border-line-strong p-[26px] text-center text-[15px] text-mute-2">No notes yet. Write down the thing you would otherwise say in a meeting.</div>
+        <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-body text-mute-2">No notes yet. Write down the thing you would otherwise say in a meeting.</div>
       )}
       {ws.can("comment") && <Composer kind={kind} id={id} />}
     </div>
@@ -190,7 +190,7 @@ function Composer({ kind, id }: { kind: "offer" | "asset"; id: string }) {
   };
 
   return (
-    <div className="relative mt-1 rounded-xl border border-line bg-white px-3.5 py-3">
+    <div className="relative mt-1 rounded-xl border border-line bg-surface px-3.5 py-3">
       <textarea
         ref={box}
         rows={2}
@@ -199,21 +199,21 @@ function Composer({ kind, id }: { kind: "offer" | "asset"; id: string }) {
         onKeyDown={onKey}
         placeholder="Add a note. Type # to tag an offer, @ to pull someone in"
         aria-label="Add a note"
-        className="w-full resize-y border-0 bg-transparent text-[16px] leading-[1.55] outline-none"
+        className="w-full resize-y border-0 bg-transparent text-lead leading-[1.55] outline-none"
       />
       {rows.length > 0 && (
-        <div className="absolute bottom-full left-2.5 right-2.5 z-20 mb-1.5 animate-pop rounded-[11px] border border-line bg-white p-1.5 shadow-[0_12px_32px_rgba(16,22,20,.16)]">
-          <div className="eyebrow px-2.5 pb-1 pt-1.5 text-[12px]">{tk?.sign === "#" ? "Offers" : "People"}</div>
+        <div className="absolute bottom-full left-2.5 right-2.5 z-20 mb-1.5 animate-pop rounded-xl border border-line bg-surface p-1.5 shadow-card">
+          <div className="eyebrow px-2.5 pb-1 pt-1.5 text-micro">{tk?.sign === "#" ? "Offers" : "People"}</div>
           {rows.map((r, i) => (
-            <button key={r.id} type="button" onMouseDown={(e) => { e.preventDefault(); pick(r); }} className={cx("flex w-full items-baseline gap-[9px] rounded-lg px-2.5 py-[7px] text-left", i === sel ? "bg-hover" : "hover:bg-hover")}>
-              <span className="flex-none text-[15px] font-semibold">{r.sign}{r.label}</span>
-              <span className="min-w-0 flex-1 truncate text-[14px] text-mute-3">{r.sub}</span>
+            <button key={r.id} type="button" onMouseDown={(e) => { e.preventDefault(); pick(r); }} className={cx("flex w-full items-baseline gap-2 rounded-lg px-2.5 py-2 text-left", i === sel ? "bg-hover" : "hover:bg-hover")}>
+              <span className="flex-none text-body font-semibold">{r.sign}{r.label}</span>
+              <span className="min-w-0 flex-1 truncate text-meta text-mute-3">{r.sub}</span>
             </button>
           ))}
         </div>
       )}
       <div className="mt-2 flex items-center gap-2.5 border-t border-divider pt-2.5">
-        <span className="flex-1 text-[14px] text-[#5A6862]">Everyone on the team sees this · ⌘↵ to post</span>
+        <span className="flex-1 text-meta text-[#5A6862]">Everyone on the team sees this · ⌘↵ to post</span>
         <Btn variant="primary" onClick={post} disabled={pending || !text.trim()}>Post note</Btn>
       </div>
     </div>

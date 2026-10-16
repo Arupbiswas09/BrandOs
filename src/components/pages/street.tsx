@@ -109,52 +109,52 @@ export function Street() {
     <Page>
       <div className="head-band -mt-8 mb-6 pb-6 pt-8 sm:-mt-10 sm:pt-10">
         <Eyebrow className="mb-2">Dashboard</Eyebrow>
-        <h1 className="display m-0 mb-1.5 text-[32px] sm:text-[36px]">{greeting}</h1>
-        <p className="m-0 max-w-[62ch] text-[15.5px] text-mute-2 text-pretty">{summary}</p>
+        <h1 className="display m-0 mb-1.5 text-display sm:text-display">{greeting}</h1>
+        <p className="m-0 max-w-[62ch] text-body text-mute-2 text-pretty">{summary}</p>
       </div>
 
       <div className="grid items-start gap-5 lg:grid-cols-[1.35fr_1fr]">
         <Card className="px-5 pb-3 pt-4">
           <div className="mb-0.5 flex items-baseline justify-between gap-3">
-            <h2 className="m-0 flex items-center gap-2.5 text-[16px] font-semibold"><IconTile><Inbox /></IconTile>Waiting on you</h2>
-            <span className="text-[14px] text-mute-3">{rows.length ? `${rows.length} on you` : "Clear"}</span>
+            <h2 className="m-0 flex items-center gap-2.5 text-lead font-semibold"><IconTile><Inbox /></IconTile>Waiting on you</h2>
+            <span className="text-meta text-mute-3">{rows.length ? `${rows.length} on you` : "Clear"}</span>
           </div>
-          <p className="m-0 mb-2 text-[14px] text-mute-3">{rows.length ? (mentioned ? "Assigned to you by name, or mentioning you" : "Assigned to you by name") : "Nothing is assigned to you"}{others ? `. ${plural(others, "thing")} with other people.` : "."}</p>
+          <p className="m-0 mb-2 text-meta text-mute-3">{rows.length ? (mentioned ? "Assigned to you by name, or mentioning you" : "Assigned to you by name") : "Nothing is assigned to you"}{others ? `. ${plural(others, "thing")} with other people.` : "."}</p>
           {rows.slice(0, LIMIT).map((r) => (
-            <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[8px] border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
+            <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-3 rounded-lg border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
               <span aria-hidden className="h-2 w-2 flex-none rounded-full" style={{ background: r.tone }} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-medium">{r.label}</span>
-                <span className="mt-px block truncate text-[13.5px] text-mute-2">{r.sub}</span>
+                <span className="block truncate text-body font-medium">{r.label}</span>
+                <span className="mt-px block truncate text-meta text-mute-2">{r.sub}</span>
                 {/* How long it has been stuck, instead of a deadline. */}
-                <span className={cx("mt-0.5 block text-[13px]", r.stuck ? "font-semibold text-[#8A5300]" : "text-mute-3")}>{r.waited}</span>
+                <span className={cx("mt-0.5 block text-small", r.stuck ? "font-semibold text-[#8A5300]" : "text-mute-3")}>{r.waited}</span>
               </span>
-              <span className="flex-none rounded-[5px] px-[7px] py-[3px] text-[12.5px] font-semibold" style={{ background: hexA(r.tone, 0.13), color: readable(r.tone, 0.13) }}>{r.badge}</span>
+              <span className="flex-none rounded-sm px-2 py-1 text-small font-semibold" style={{ background: hexA(r.tone, 0.13), color: readable(r.tone, 0.13) }}>{r.badge}</span>
             </button>
           ))}
           {!rows.length && (
             <div className="border-t border-divider py-6 text-center">
-              <div className="text-[15px] font-medium">You are all caught up</div>
-              <div className="text-[14px] text-mute-3">Work sent to you for review or changes, and notes that @mention you, show up here.</div>
+              <div className="text-body font-medium">You are all caught up</div>
+              <div className="text-meta text-mute-3">Work sent to you for review or changes, and notes that @mention you, show up here.</div>
             </div>
           )}
           {rows.length > LIMIT && <MoreLink onClick={() => setInbox(true)}>See all {rows.length} in your inbox</MoreLink>}
         </Card>
 
         <Card className="px-5 pb-3 pt-4">
-          <h2 className="m-0 mb-0.5 flex items-center gap-2.5 text-[16px] font-semibold"><IconTile><History /></IconTile>Continue where you left off</h2>
-          <p className="m-0 mb-2 text-[14px] text-mute-3">The last places you were working.</p>
+          <h2 className="m-0 mb-0.5 flex items-center gap-2.5 text-lead font-semibold"><IconTile><History /></IconTile>Continue where you left off</h2>
+          <p className="m-0 mb-2 text-meta text-mute-3">The last places you were working.</p>
           {continueItems.map((r) => (
-            <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-[11px] rounded-[8px] border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md font-mono text-[11px] font-bold tracking-[0.04em]" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
+            <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-3 rounded-lg border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
+              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md font-mono text-micro font-bold tracking-[0.04em]" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-medium">{r.title}</span>
-                <span className="block truncate text-[13.5px] text-mute-2">{r.sub}</span>
+                <span className="block truncate text-body font-medium">{r.title}</span>
+                <span className="block truncate text-meta text-mute-2">{r.sub}</span>
               </span>
               <ArrowRight aria-hidden className="h-4 w-4 flex-none text-mute-4" />
             </button>
           ))}
-          {!continueItems.length && <div className="border-t border-divider py-5 text-[14.5px] text-mute-3">Open a brand, an offer or an asset and it will show up here.</div>}
+          {!continueItems.length && <div className="border-t border-divider py-5 text-body text-mute-3">Open a brand, an offer or an asset and it will show up here.</div>}
         </Card>
       </div>
 
@@ -163,8 +163,8 @@ export function Street() {
           <div className="flex items-start gap-4 border-b border-divider px-5 py-4">
             <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-soft text-accent"><Sparkles className="h-[18px] w-[18px]" /></span>
             <div className="min-w-0 flex-1">
-              <h2 className="m-0 text-[16px] font-semibold">Get set up</h2>
-              <p className="m-0 mt-0.5 text-[14px] text-mute-2">{doneSteps} of {steps.length} done.</p>
+              <h2 className="m-0 text-lead font-semibold">Get set up</h2>
+              <p className="m-0 mt-0.5 text-meta text-mute-2">{doneSteps} of {steps.length} done.</p>
             </div>
             <button type="button" onClick={() => setHideSetup("1")} aria-label="Hide the setup guide" className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-mute-3 hover:bg-hover hover:text-ink"><X className="h-4 w-4" /></button>
           </div>
@@ -173,8 +173,8 @@ export function Street() {
               <button key={s.label} type="button" onClick={s.go} disabled={s.done} className="flex items-start gap-2.5 border-b border-divider px-5 py-3.5 text-left last:border-b-0 hover:bg-wash disabled:cursor-default disabled:hover:bg-transparent lg:border-b-0 lg:border-r lg:last:border-r-0">
                 {s.done ? <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] flex-none text-ok" /> : <Circle className="mt-0.5 h-[18px] w-[18px] flex-none text-mute-4" />}
                 <span className="min-w-0">
-                  <span className={cx("block text-[14.5px] font-medium", s.done && "text-mute-3 line-through")}>{s.label}</span>
-                  <span className="block text-[13px] text-mute-3">{s.hint}</span>
+                  <span className={cx("block text-body font-medium", s.done && "text-mute-3 line-through")}>{s.label}</span>
+                  <span className="block text-small text-mute-3">{s.hint}</span>
                 </span>
               </button>
             ))}
@@ -184,8 +184,8 @@ export function Street() {
 
       <div className="mt-10">
         <div className="mb-3.5 flex items-baseline justify-between gap-4">
-          <h2 className="m-0 flex items-center gap-2.5 text-[17px] font-semibold"><IconTile><Building2 /></IconTile>Clients</h2>
-          {ws.can("structure") && <button type="button" onClick={() => open({ kind: "client" })} className="text-[14.5px] font-medium text-accent hover:underline">+ Add client</button>}
+          <h2 className="m-0 flex items-center gap-2.5 text-lead font-semibold"><IconTile><Building2 /></IconTile>Clients</h2>
+          {ws.can("structure") && <button type="button" onClick={() => open({ kind: "client" })} className="text-body font-medium text-accent hover:underline">+ Add client</button>}
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {clients.map((c) => {
@@ -194,16 +194,16 @@ export function Street() {
             const os = live(ws.d.offers).filter((o) => ids.has(o.brandId)).length;
             const as = live(ws.d.assets).filter((a) => a.brandId && ids.has(a.brandId)).length;
             return (
-              <Link key={c.id} href={href.client(c.id)} className="lift flex flex-col gap-3.5 rounded-[14px] border border-line bg-white p-5 text-left">
-                <span className="flex gap-[5px]">
-                  {bs.map((b) => <span key={b.id} className="flex h-7 w-7 items-center justify-center rounded-[7px] text-[11.5px] font-bold" style={{ background: b.primary, color: onColor(b.primary) }}>{b.mark}</span>)}
-                  {!bs.length && <span className="flex h-7 w-7 items-center justify-center rounded-[7px] border border-dashed border-line-strong text-[13.5px] text-mute-4">+</span>}
+              <Link key={c.id} href={href.client(c.id)} className="lift flex flex-col gap-3.5 rounded-xl border border-line bg-surface p-5 text-left">
+                <span className="flex gap-1">
+                  {bs.map((b) => <span key={b.id} className="flex h-7 w-7 items-center justify-center rounded-lg text-micro font-bold" style={{ background: b.primary, color: onColor(b.primary) }}>{b.mark}</span>)}
+                  {!bs.length && <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-line-strong text-meta text-mute-4">+</span>}
                 </span>
                 <span className="block">
-                  <span className="block text-[16px] font-semibold tracking-[-0.01em]">{c.name}</span>
-                  <span className="mt-[3px] block text-[14.5px] text-mute-2">{c.kind}</span>
+                  <span className="block text-lead font-semibold tracking-[-0.01em]">{c.name}</span>
+                  <span className="mt-1 block text-body text-mute-2">{c.kind}</span>
                 </span>
-                <span className="block border-t border-divider pt-3 font-mono text-[11.5px] uppercase tracking-[0.08em] text-mute-2">
+                <span className="block border-t border-divider pt-3 font-mono text-micro uppercase tracking-[0.08em] text-mute-2">
                   {plural(bs.length, "brand")} · {plural(os, "offer")} · {plural(as, "asset")}
                 </span>
               </Link>
@@ -211,8 +211,8 @@ export function Street() {
           })}
         </div>
         {!clients.length && (
-          <div className="rounded-[14px] border border-dashed border-line-strong bg-white/60 p-8 text-center">
-            <div className="text-[15px] text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>
+          <div className="rounded-xl border border-dashed border-line-strong bg-surface/60 p-8 text-center">
+            <div className="text-body text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>
           </div>
         )}
       </div>
@@ -220,18 +220,18 @@ export function Street() {
       {!ws.isGuest && (
         <div className="mt-10 grid items-start gap-5 md:grid-cols-[1.4fr_1fr]">
           <div>
-            <h2 className="m-0 mb-3.5 text-[17px] font-semibold">Recent activity</h2>
+            <h2 className="m-0 mb-3.5 text-lead font-semibold">Recent activity</h2>
             <Card className="px-5 py-1.5">
               {activity.map((a) => <ActivityRow key={a.id} a={a} onOpen={openActivity(a)} />)}
-              {!activity.length && <div className="py-6 text-center text-[15px] text-mute-3">Nothing has happened yet.</div>}
+              {!activity.length && <div className="py-6 text-center text-body text-mute-3">Nothing has happened yet.</div>}
             </Card>
           </div>
           <div>
-            <h2 className="m-0 mb-3.5 text-[17px] font-semibold">Shared across every client</h2>
-            <Link href="/library" className="lift block rounded-[14px] border border-dashed border-line-strong bg-white p-5 text-left">
-              <span className="mb-1 flex items-center gap-2 text-[15.5px] font-semibold"><BookOpen aria-hidden className="h-[18px] w-[18px] text-accent" />Global Library</span>
-              <span className="block text-[14.5px] leading-[1.5] text-mute-2 text-pretty">Checklists, prompts, templates, SOPs and ad creatives. Nothing in here belongs to one brand.</span>
-              <span className="mt-3 inline-flex items-center gap-1 text-[14.5px] font-semibold text-accent">Open the library<ArrowRight aria-hidden className="h-4 w-4" /></span>
+            <h2 className="m-0 mb-3.5 text-lead font-semibold">Shared across every client</h2>
+            <Link href="/library" className="lift block rounded-xl border border-dashed border-line-strong bg-surface p-5 text-left">
+              <span className="mb-1 flex items-center gap-2 text-body font-semibold"><BookOpen aria-hidden className="h-[18px] w-[18px] text-accent" />Global Library</span>
+              <span className="block text-body leading-[1.5] text-mute-2 text-pretty">Checklists, prompts, templates, SOPs and ad creatives. Nothing in here belongs to one brand.</span>
+              <span className="mt-3 inline-flex items-center gap-1 text-body font-semibold text-accent">Open the library<ArrowRight aria-hidden className="h-4 w-4" /></span>
             </Link>
           </div>
         </div>
@@ -242,7 +242,7 @@ export function Street() {
 
 function MoreLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="mt-1 flex w-full items-center justify-center gap-1.5 border-t border-divider pt-3 text-[14px] font-medium text-accent hover:underline">
+    <button type="button" onClick={onClick} className="mt-1 flex w-full items-center justify-center gap-1.5 border-t border-divider pt-3 text-meta font-medium text-accent hover:underline">
       {children}<ArrowRight aria-hidden className="h-4 w-4" />
     </button>
   );

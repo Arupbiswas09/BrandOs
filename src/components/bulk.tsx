@@ -91,9 +91,9 @@ export function BulkBar({ s, shown, library = false }: { s: Selection; shown: As
   const run = async (op: BulkOp, payload?: BulkPayload) => { if (await go(ids, op, payload)) setPanel(null); };
 
   return (
-    <div role="region" aria-label="Bulk actions" className="sticky bottom-3 z-30 mt-5 rounded-[14px] border border-line bg-white/95 px-3 py-2.5 shadow-[0_12px_32px_rgba(16,22,20,.16)] backdrop-blur-[8px] sm:px-4">
+    <div role="region" aria-label="Bulk actions" className="sticky bottom-3 z-30 mt-5 rounded-xl border border-line bg-surface/95 px-3 py-2.5 shadow-card  sm:px-4">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-        <span className="text-[15px] font-semibold" aria-live="polite">{picked.length} selected</span>
+        <span className="text-body font-semibold" aria-live="polite">{picked.length} selected</span>
         <Btn size="sm" variant="ghost" disabled={!shown.length} onClick={() => s.set(all ? [] : shown.map((a) => a.id))}>
           {all ? "Clear selection" : `Select all shown (${shown.length})`}
         </Btn>
@@ -114,19 +114,19 @@ export function BulkBar({ s, shown, library = false }: { s: Selection; shown: As
         <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-divider pt-2.5">
           {panel === "status" && (
             <>
-              <span className="text-[14px] text-mute-2">Mark {ids.length} as</span>
+              <span className="text-meta text-mute-2">Mark {ids.length} as</span>
               {(["Draft", "Ready", "Live"] as const).filter((k) => k !== "Live" || p.publish).map((k) => (
                 <button key={k} type="button" disabled={pending} onClick={() => run("status", { status: k })}
-                  className="rounded-[7px] border border-line bg-white px-2.5 py-1 text-[14px] font-medium hover:border-mute-2 disabled:opacity-50">
+                  className="rounded-lg border border-line bg-surface px-2.5 py-1 text-meta font-medium hover:border-mute-2 disabled:opacity-50">
                   <span className="mr-1.5 inline-block h-2 w-2 rounded-full align-middle" style={{ background: ASSET_STATUS[k] }} />{k}
                 </button>
               ))}
-              {!p.publish && <span className="text-[13.5px] text-mute-3">Marking Live needs a role that can publish.</span>}
+              {!p.publish && <span className="text-meta text-mute-3">Marking Live needs a role that can publish.</span>}
             </>
           )}
           {panel === "tag" && (
             <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); if (tag.trim()) void run("tag", { tag: tag.trim() }).then(() => setTag("")); }}>
-              <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={40} placeholder="Tag" aria-label="Tag to add to the selected assets" className="field w-[180px] py-1 text-[14px]" />
+              <input value={tag} onChange={(e) => setTag(e.target.value)} maxLength={40} placeholder="Tag" aria-label="Tag to add to the selected assets" className="field w-[180px] py-1 text-meta" />
               <Btn size="sm" type="submit" variant="primary" disabled={pending || !tag.trim()}>Add tag</Btn>
             </form>
           )}

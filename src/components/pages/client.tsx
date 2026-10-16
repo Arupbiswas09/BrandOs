@@ -63,7 +63,7 @@ export function ClientPage({ id }: { id: string }) {
           </>
         )}
       >
-        {c.note && <p className="m-0 max-w-[64ch] pb-8 pt-4 text-[16px] leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
+        {c.note && <p className="m-0 max-w-[64ch] pb-8 pt-4 text-lead leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
       </EntityHeader>
       {c.archived && <ArchivedNote className="mb-6">Archived. Hidden from the street and from search unless you go looking.</ArchivedNote>}
 
@@ -71,55 +71,55 @@ export function ClientPage({ id }: { id: string }) {
       <Card className="flex flex-wrap items-stretch overflow-hidden">
         {stats.map((st) => (
           <div key={st.label} className="min-w-[100px] flex-1 border-b border-r border-divider px-5 py-4 sm:border-b-0">
-            <span className="block text-[24px] font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
-            <span className="mt-1 block text-[13.5px] font-medium text-mute-3">{st.label}</span>
+            <span className="block text-heading font-semibold leading-[1.1] tabular-nums tracking-[-0.02em] text-ink">{st.value}</span>
+            <span className="mt-1 block text-meta font-medium text-mute-3">{st.label}</span>
           </div>
         ))}
         <div className="min-w-[180px] flex-[1.3] border-b border-r border-divider px-5 py-4 sm:border-b-0">
-          <time dateTime={updated.toISOString()} title={fmtDateTime(updated)} suppressHydrationWarning className="block text-[24px] font-semibold leading-[1.1] tracking-[-0.02em] text-ink">{fmtMonthShort(updated)}</time>
-          <span className="mt-1 block text-[13.5px] font-medium text-mute-3" suppressHydrationWarning>Updated · client since {clientSince(c)}</span>
+          <time dateTime={updated.toISOString()} title={fmtDateTime(updated)} suppressHydrationWarning className="block text-heading font-semibold leading-[1.1] tracking-[-0.02em] text-ink">{fmtMonthShort(updated)}</time>
+          <span className="mt-1 block text-meta font-medium text-mute-3" suppressHydrationWarning>Updated · client since {clientSince(c)}</span>
         </div>
         <div className="flex min-w-[200px] flex-[1.4] items-center gap-3 px-5 py-4">
           {contact ? (
             <>
               <Avatar initials={contact.initials} size={36} />
               <span className="min-w-0">
-                <span className="block truncate text-[16px] font-semibold text-ink">{contact.name}</span>
-                <span className="block text-[13.5px] font-medium text-mute-3">Primary contact</span>
+                <span className="block truncate text-lead font-semibold text-ink">{contact.name}</span>
+                <span className="block text-meta font-medium text-mute-3">Primary contact</span>
               </span>
             </>
           ) : (
-            <span className="text-[14px] text-mute-3">No primary contact yet{ws.can("structure") ? " — set one with Edit." : "."}</span>
+            <span className="text-meta text-mute-3">No primary contact yet{ws.can("structure") ? " — set one with Edit." : "."}</span>
           )}
         </div>
       </Card>
 
       <div className="mt-10">
-        <H2 right={ws.can("structure") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-[14.5px] text-mute-2 hover:text-ink">+ Add brand</button>}>Brands</H2>
+        <H2 right={ws.can("structure") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-body text-mute-2 hover:text-ink">+ Add brand</button>}>Brands</H2>
         <div className="grid gap-4 md:grid-cols-2">
           {tops.map((b) => {
             const subs = live(ws.subBrands(b.id));
             return (
-              <Card key={b.id} className="overflow-hidden transition duration-200 hover:shadow-[0_10px_24px_-12px_rgba(16,22,20,.18)]">
+              <Card key={b.id} className="overflow-hidden transition duration-200 hover:shadow-card">
                 <span aria-hidden className="block h-[3px]" style={{ background: b.primary }} />
-                <Link href={href.brand(b.id)} className="group flex w-full items-center gap-[15px] p-5 text-left focus-visible:outline-offset-[-2px]" style={{ background: hexA(b.primary, 0.06) }}>
+                <Link href={href.brand(b.id)} className="group flex w-full items-center gap-4 p-5 text-left focus-visible:outline-offset-[-2px]" style={{ background: hexA(b.primary, 0.06) }}>
                   <Mark mark={b.mark} color={b.primary} size={48} radius={12} />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[18px] font-semibold tracking-[-0.015em]">{b.name}</span>
-                    {b.tagline && <span className="mt-0.5 block text-[15px] text-mute-1">{b.tagline}</span>}
+                    <span className="block text-lead font-semibold tracking-[-0.015em]">{b.name}</span>
+                    {b.tagline && <span className="mt-0.5 block text-body text-mute-1">{b.tagline}</span>}
                   </span>
                   <ChevronRight aria-hidden size={18} className="flex-none text-mute-3 transition group-hover:translate-x-0.5 group-hover:text-ink" />
                 </Link>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3 text-[14px] text-mute-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3 text-meta text-mute-2">
                   <MetaItem icon={Megaphone}>{plural(live(ws.offersOf(b.id)).length, "offer")}</MetaItem>
                   <MetaItem icon={FolderOpen}>{plural(live(ws.assetsOf(b.id)).length, "asset")}</MetaItem>
                   {subs.length > 0 && <MetaItem icon={GitBranch}>{plural(subs.length, "sub-brand")}</MetaItem>}
                 </div>
                 {subs.map((sb) => (
-                  <Link key={sb.id} href={href.brand(sb.id)} className="flex w-full items-center gap-2.5 border-t border-divider px-5 py-[11px] text-left hover:bg-wash focus-visible:outline-offset-[-2px]">
+                  <Link key={sb.id} href={href.brand(sb.id)} className="flex w-full items-center gap-2.5 border-t border-divider px-5 py-3 text-left hover:bg-wash focus-visible:outline-offset-[-2px]">
                     <Mark mark={sb.mark} color={sb.primary} size={22} radius={6} />
-                    <span className="flex-1 text-[15px] font-medium">{sb.name}</span>
-                    <span className="text-[13px] text-mute-4">Sub-brand</span>
+                    <span className="flex-1 text-body font-medium">{sb.name}</span>
+                    <span className="text-small text-mute-4">Sub-brand</span>
                   </Link>
                 ))}
               </Card>
@@ -141,11 +141,11 @@ export function ClientPage({ id }: { id: string }) {
             {recent.map((a) => {
               const col = ws.colorOf(a);
               return (
-                <button key={a.id} type="button" onClick={() => openAsset(a.id)} className={cx("flex items-start gap-[11px] rounded-xl border border-line bg-white p-3.5 text-left", LIFT, FOCUS)}>
-                  <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-[9px] font-mono text-[12px] font-bold tracking-[0.04em]" style={{ background: hexA(col, 0.12), color: readable(col, 0.12) }}>{ws.codeOf(a)}</span>
+                <button key={a.id} type="button" onClick={() => openAsset(a.id)} className={cx("flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5 text-left", LIFT, FOCUS)}>
+                  <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg font-mono text-micro font-bold tracking-[0.04em]" style={{ background: hexA(col, 0.12), color: readable(col, 0.12) }}>{ws.codeOf(a)}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold leading-[1.35]">{a.name}</span>
-                    <span className="mt-[3px] block text-[14.5px] text-mute-2">{ws.brand(a.brandId)?.name} · {ws.ago(a.updatedAt)}</span>
+                    <span className="block text-body font-semibold leading-[1.35]">{a.name}</span>
+                    <span className="mt-1 block text-body text-mute-2">{ws.brand(a.brandId)?.name} · {ws.ago(a.updatedAt)}</span>
                   </span>
                 </button>
               );
@@ -155,11 +155,11 @@ export function ClientPage({ id }: { id: string }) {
         </div>
         <div>
           <H2>Activity</H2>
-          <Card className="px-[18px] py-1">
+          <Card className="px-4 py-1">
             {acts.map((a) => (
               <ActivityRow key={a.id} a={a} onOpen={a.type === "asset" ? () => openAsset(a.itemId) : a.type === "offer" ? () => router.push(href.offer(a.itemId)) : a.type === "brand" ? () => router.push(href.brand(a.itemId)) : undefined} />
             ))}
-            {!acts.length && <div className="py-5 text-center text-[15px] text-mute-3">Quiet so far.</div>}
+            {!acts.length && <div className="py-5 text-center text-body text-mute-3">Quiet so far.</div>}
           </Card>
         </div>
       </div>

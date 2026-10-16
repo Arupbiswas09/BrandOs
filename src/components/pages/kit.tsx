@@ -69,40 +69,40 @@ export function BrandKit({ b }: { b: Brand }) {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="eyebrow mb-1.5">Brand guidelines{k.version ? ` · v${k.version}` : ""}</div>
-              <h2 className="m-0 text-[22px] font-semibold tracking-[-0.015em]">{b.name} Brand Kit</h2>
-              <p className="mb-0 mt-1.5 max-w-[60ch] text-[15px] leading-[1.55] text-mute-2 text-pretty">{k.mission || b.description || "The rules that keep every piece of work looking and sounding like this brand."}</p>
+              <h2 className="m-0 text-title font-semibold tracking-[-0.015em]">{b.name} Brand Kit</h2>
+              <p className="mb-0 mt-1.5 max-w-[60ch] text-body leading-[1.55] text-mute-2 text-pretty">{k.mission || b.description || "The rules that keep every piece of work looking and sounding like this brand."}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               {canEdit && <Btn variant="primary" onClick={() => open({ kind: "kit", brandId: b.id })}><Pencil className="h-4 w-4" />Edit kit</Btn>}
-              <a href={`/guidelines/${b.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-[8px] border border-line bg-white px-[13px] py-[7px] text-[15px] font-medium text-ink-3 hover:bg-wash"><Printer className="h-4 w-4" />Export brand kit</a>
+              <a href={`/guidelines/${b.id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-body font-medium text-ink-3 hover:bg-wash"><Printer className="h-4 w-4" />Export brand kit</a>
             </div>
           </div>
           {!!k.values?.length && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {k.values.map((v) => <span key={v} className="rounded-full bg-soft px-3 py-1 text-[13.5px] font-medium text-accent">{v}</span>)}
+              {k.values.map((v) => <span key={v} className="rounded-full bg-soft px-3 py-1 text-meta font-medium text-accent">{v}</span>)}
             </div>
           )}
           <nav aria-label="Brand Kit sections" className="mt-5 flex flex-wrap gap-1.5 border-t border-divider pt-4">
-            {SECTIONS.map(([id, label]) => <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 text-[13.5px] font-medium text-mute-1 hover:border-accent hover:text-accent">{label}</a>)}
+            {SECTIONS.map(([id, label]) => <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 text-meta font-medium text-mute-1 hover:border-accent hover:text-accent">{label}</a>)}
           </nav>
         </Card>
         <Card className="px-6 py-5">
           <div className="flex items-center gap-4">
             <Ring pct={score.pct} />
             <div>
-              <div className="text-[16px] font-semibold">Kit completeness</div>
-              <div className="text-[14px] text-mute-2">{score.done} of {score.total} sections that professional guidelines include.</div>
+              <div className="text-lead font-semibold">Kit completeness</div>
+              <div className="text-meta text-mute-2">{score.done} of {score.total} sections that professional guidelines include.</div>
             </div>
           </div>
           <ul className="m-0 mt-4 grid list-none grid-cols-2 gap-x-3 gap-y-1.5 p-0">
             {score.checks.map((c) => (
-              <li key={c.key} className="flex items-center gap-1.5 text-[13.5px]" title={c.hint}>
+              <li key={c.key} className="flex items-center gap-1.5 text-meta" title={c.hint}>
                 {c.done ? <CheckCircle2 className="h-4 w-4 flex-none text-ok" /> : <Circle className="h-4 w-4 flex-none text-mute-5" />}
                 <span className={c.done ? "text-mute-1" : "text-mute-3"}>{c.label}</span>
               </li>
             ))}
           </ul>
-          {canEdit && missing.length > 0 && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="mt-3 text-[14px] font-medium text-accent hover:underline">Fill in {missing[0].label.toLowerCase()} →</button>}
+          {canEdit && missing.length > 0 && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="mt-3 text-meta font-medium text-accent hover:underline">Fill in {missing[0].label.toLowerCase()} →</button>}
         </Card>
       </div>
 
@@ -125,23 +125,23 @@ export function BrandKit({ b }: { b: Brand }) {
                     ? <img src={logoPreview} alt={`${b.name} logo`} className="max-h-[60%] max-w-[70%] object-contain" />
                     : <LogoMark b={b} bg={t.bg} />}
                 </div>
-                <div className="mt-1.5 text-center text-[13px] text-mute-3">{t.label}</div>
+                <div className="mt-1.5 text-center text-small text-mute-3">{t.label}</div>
               </div>
             ))}
           </div>
           <Card className="px-5 py-4">
             <ClearSpace b={b} />
-            <dl className="m-0 mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[14px]">
+            <dl className="m-0 mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-meta">
               <dt className="font-semibold text-mute-1">Clear space</dt><dd className="m-0 text-ink-3">{k.logo?.clearSpace || <Missing />}</dd>
               <dt className="font-semibold text-mute-1">Minimum, screen</dt><dd className="m-0 text-ink-3">{k.logo?.minDigital || <Missing />}</dd>
               <dt className="font-semibold text-mute-1">Minimum, print</dt><dd className="m-0 text-ink-3">{k.logo?.minPrint || <Missing />}</dd>
             </dl>
-            {k.logo?.notes && <p className="mb-0 mt-3 text-[14px] leading-[1.5] text-mute-1">{k.logo.notes}</p>}
+            {k.logo?.notes && <p className="mb-0 mt-3 text-meta leading-[1.5] text-mute-1">{k.logo.notes}</p>}
           </Card>
         </div>
         {!!k.logo?.misuse?.length && (
           <div className="mt-4">
-            <div className="mb-2 text-[14px] font-semibold text-mute-1">Never</div>
+            <div className="mb-2 text-meta font-semibold text-mute-1">Never</div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {k.logo.misuse.map((m) => <Rule key={m} bad>{m}</Rule>)}
             </div>
@@ -150,8 +150,8 @@ export function BrandKit({ b }: { b: Brand }) {
         <div className="mt-4 grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
           {logos.map((a) => <AssetCard key={a.id} a={a} variant="kit" />)}
           {canEdit && (
-            <button type="button" onClick={() => open({ kind: "asset", draft: { brandId: b.id, type: "Logo", status: "Ready", offerIds: [] }, step: 3 })} className="flex min-h-[120px] flex-col items-center justify-center gap-1 rounded-[13px] border border-dashed border-line-strong text-[14px] font-medium text-mute-2 hover:border-accent hover:text-accent">
-              <span className="text-[20px]">+</span>Add a logo file
+            <button type="button" onClick={() => open({ kind: "asset", draft: { brandId: b.id, type: "Logo", status: "Ready", offerIds: [] }, step: 3 })} className="flex min-h-[120px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-line-strong text-meta font-medium text-mute-2 hover:border-accent hover:text-accent">
+              <span className="text-title">+</span>Add a logo file
             </button>
           )}
         </div>
@@ -174,9 +174,9 @@ export function BrandKit({ b }: { b: Brand }) {
             <Card key={f.name + f.role} className="flex gap-4 px-5 py-4">
               <div className="flex h-[84px] w-[84px] flex-none items-center justify-center rounded-xl bg-wash text-[40px] text-ink" style={{ fontFamily: fontStack(f.name, f.fallback) }}>Aa</div>
               <div className="min-w-0">
-                <div className="text-[17px] font-semibold" style={{ fontFamily: fontStack(f.name, f.fallback) }}>{f.name}</div>
-                <div className="text-[14px] text-mute-2">{f.role}</div>
-                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] text-mute-3">
+                <div className="text-lead font-semibold" style={{ fontFamily: fontStack(f.name, f.fallback) }}>{f.name}</div>
+                <div className="text-meta text-mute-2">{f.role}</div>
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-small text-mute-3">
                   {f.weights && <span>Weights {f.weights}</span>}
                   {f.fallback && <span>Fallback {f.fallback}</span>}
                   {f.source && <span>{f.source}</span>}
@@ -189,14 +189,14 @@ export function BrandKit({ b }: { b: Brand }) {
         </div>
         <Card className="mt-4 overflow-hidden">
           <div className="flex items-center justify-between border-b border-divider bg-wash-2 px-5 py-2.5">
-            <span className="text-[13px] font-semibold uppercase tracking-[0.05em] text-mute-2">Type scale</span>
-            {!k.typeScale?.length && <span className="text-[13px] text-mute-3">Suggested — edit the kit to set your own</span>}
+            <span className="text-small font-semibold uppercase tracking-[0.05em] text-mute-2">Type scale</span>
+            {!k.typeScale?.length && <span className="text-small text-mute-3">Suggested — edit the kit to set your own</span>}
           </div>
           {scale.map((t) => (
             <div key={t.name} className="flex flex-col gap-1 border-b border-divider px-5 py-3 last:border-b-0 md:flex-row md:items-center md:gap-6">
               <div className="w-[170px] flex-none">
-                <div className="text-[14px] font-semibold">{t.name}</div>
-                <div className="font-code text-[12.5px] text-mute-3">{t.size}px / {t.lineHeight} · {t.weight}{t.tracking ? ` · ${t.tracking}em` : ""}</div>
+                <div className="text-meta font-semibold">{t.name}</div>
+                <div className="font-code text-small text-mute-3">{t.size}px / {t.lineHeight} · {t.weight}{t.tracking ? ` · ${t.tracking}em` : ""}</div>
               </div>
               <div className="min-w-0 flex-1 truncate text-ink" style={{ fontFamily: fontStack(t.font), fontSize: Math.min(t.size, 56), fontWeight: t.weight, lineHeight: t.lineHeight, letterSpacing: t.tracking ? `${t.tracking}em` : undefined }}>
                 {t.sample || (t.size >= 24 ? b.tagline || b.name : "The quick brown fox jumps over the lazy dog.")}
@@ -209,7 +209,7 @@ export function BrandKit({ b }: { b: Brand }) {
       {/* ---------- voice */}
       <Section id="kit-voice" title="Voice and tone" sub="How the brand sounds. The voice stays the same; the tone shifts with the moment.">
         <Card className="mb-4 px-5 py-4">
-          <p className="m-0 text-[16px] leading-[1.6] text-ink-3 text-pretty">{b.voice || <Missing />}</p>
+          <p className="m-0 text-lead leading-[1.6] text-ink-3 text-pretty">{b.voice || <Missing />}</p>
         </Card>
         <div className="grid gap-4 md:grid-cols-2">
           <ListCard title="We are" items={k.weAre} tone="good" />
@@ -219,30 +219,30 @@ export function BrandKit({ b }: { b: Brand }) {
         </div>
         {!!k.voiceExamples?.length && (
           <Card className="mt-4 overflow-hidden">
-            <div className="grid grid-cols-[140px_1fr_1fr] border-b border-divider bg-wash-2 px-5 py-2.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-mute-2 max-md:hidden">
+            <div className="grid grid-cols-[140px_1fr_1fr] border-b border-divider bg-wash-2 px-5 py-2.5 text-small font-semibold uppercase tracking-[0.05em] text-mute-2 max-md:hidden">
               <span>Where</span><span>Say this</span><span>Not this</span>
             </div>
             {k.voiceExamples.map((e, i) => (
               <div key={i} className="grid gap-2 border-b border-divider px-5 py-3 last:border-b-0 md:grid-cols-[140px_1fr_1fr] md:gap-4">
-                <span className="text-[13.5px] font-semibold text-mute-1">{e.context}</span>
-                <span className="flex gap-2 text-[14.5px] text-ink-3"><Check className="mt-0.5 h-4 w-4 flex-none text-ok" />{e.say}</span>
-                <span className="flex gap-2 text-[14.5px] text-mute-2 line-through decoration-[#DC2626]/40"><X className="mt-0.5 h-4 w-4 flex-none text-[#DC2626]" />{e.dont}</span>
+                <span className="text-meta font-semibold text-mute-1">{e.context}</span>
+                <span className="flex gap-2 text-body text-ink-3"><Check className="mt-0.5 h-4 w-4 flex-none text-ok" />{e.say}</span>
+                <span className="flex gap-2 text-body text-mute-2 line-through decoration-[#DC2626]/40"><X className="mt-0.5 h-4 w-4 flex-none text-[#DC2626]" />{e.dont}</span>
               </div>
             ))}
           </Card>
         )}
         <Card className="mt-4 px-5 py-4">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[14px] font-semibold text-mute-1">Boilerplate</span>
-            {b.boilerplate && <button type="button" onClick={() => copy(b.boilerplate, "Boilerplate")} className="inline-flex items-center gap-1 text-[13.5px] font-medium text-accent hover:underline"><Copy className="h-3.5 w-3.5" />Copy</button>}
+            <span className="text-meta font-semibold text-mute-1">Boilerplate</span>
+            {b.boilerplate && <button type="button" onClick={() => copy(b.boilerplate, "Boilerplate")} className="inline-flex items-center gap-1 text-meta font-medium text-accent hover:underline"><Copy className="h-3.5 w-3.5" />Copy</button>}
           </div>
-          <p className="m-0 text-[15px] leading-[1.6] text-ink-3 text-pretty">{b.boilerplate || <Missing />}</p>
+          <p className="m-0 text-body leading-[1.6] text-ink-3 text-pretty">{b.boilerplate || <Missing />}</p>
         </Card>
       </Section>
 
       {/* ---------- imagery */}
       <Section id="kit-imagery" title="Imagery" sub="What photography and illustration should look like.">
-        <Card className="mb-4 px-5 py-4"><p className="m-0 text-[15px] leading-[1.6] text-ink-3 text-pretty">{k.imagery || <Missing />}</p></Card>
+        <Card className="mb-4 px-5 py-4"><p className="m-0 text-body leading-[1.6] text-ink-3 text-pretty">{k.imagery || <Missing />}</p></Card>
         <div className="grid gap-4 md:grid-cols-2">
           <ListCard title="Look for" items={k.imageryDo} tone="good" />
           <ListCard title="Avoid" items={k.imageryDont} tone="bad" />
@@ -348,7 +348,7 @@ function GuidelinesPdf({ b }: { b: Brand }) {
   );
   // The guidelines' own version when the kit records one, otherwise the asset's.
   const version = b.kit?.version ? `v${b.kit.version}` : shown?.asset ? `v${shown.asset.version}` : "";
-  const linkBtn = "inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-[7px] border border-line bg-white px-[11px] py-[5px] text-[14px] font-medium text-ink-3 transition-colors hover:border-line-strong hover:bg-wash";
+  const linkBtn = "inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-surface px-3 py-1 text-meta font-medium text-ink-3 transition-colors hover:border-line-strong hover:bg-wash";
 
   return (
     <Section id="kit-pdf" title="Guidelines PDF" sub="The full guidelines document, readable here without downloading it.">
@@ -359,10 +359,10 @@ function GuidelinesPdf({ b }: { b: Brand }) {
       {shown ? (
         <Card className="overflow-hidden">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-divider px-4 py-3.5 sm:px-5">
-            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-soft text-accent"><FileText aria-hidden className="h-5 w-5" /></span>
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-xl bg-soft text-accent"><FileText aria-hidden className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[16px] font-semibold tracking-[-0.01em]">{shown.asset?.name ?? shown.file.name.replace(/\.pdf$/i, "")}</span>
-              <span className="block truncate text-[13px] text-mute-3" suppressHydrationWarning>
+              <span className="block truncate text-lead font-semibold tracking-[-0.01em]">{shown.asset?.name ?? shown.file.name.replace(/\.pdf$/i, "")}</span>
+              <span className="block truncate text-small text-mute-3" suppressHydrationWarning>
                 {[version, shown.asset && `Updated ${fmtDate(shown.asset.updatedAt)}`, shown.file.name, shown.file.size].filter(Boolean).join(" · ")}
               </span>
             </span>
@@ -374,8 +374,8 @@ function GuidelinesPdf({ b }: { b: Brand }) {
           <iframe key={shown.file.key} src={`${shown.file.url}?inline=1`} title={`${b.name} guidelines: ${shown.file.name}`} className="block h-[520px] w-full border-0 bg-wash sm:h-[78vh]" />
         </Card>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-[13px] border border-dashed border-line-strong px-6 py-8 text-center">
-          <p className="m-0 max-w-[52ch] text-[15px] text-mute-1 text-pretty">There is no guidelines PDF for {b.name} yet{canUpload ? "" : ". Someone who can upload files can add it"}.</p>
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line-strong px-6 py-8 text-center">
+          <p className="m-0 max-w-[52ch] text-body text-mute-1 text-pretty">There is no guidelines PDF for {b.name} yet{canUpload ? "" : ". Someone who can upload files can add it"}.</p>
           {canUpload && uploadBtn("Upload the guidelines PDF", true)}
         </div>
       )}
@@ -386,16 +386,16 @@ function GuidelinesPdf({ b }: { b: Brand }) {
         </div>
       )}
       {others.length > 0 && (
-        <div className={cx("rounded-[13px] border border-line bg-white", !shown && "mt-3")}>
+        <div className={cx("rounded-xl border border-line bg-surface", !shown && "mt-3")}>
           {others.map((g, i) => (
             <div key={`${g.asset?.id ?? "brand"}-${g.file.key ?? g.file.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-divider px-4 py-2.5 first:border-t-0 sm:px-5">
               <FileText aria-hidden className="h-4 w-4 flex-none text-mute-4" />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14.5px] font-medium">{g.file.name}</span>
-                <span className="block truncate text-[13px] text-mute-3">{[g.asset?.name ?? "Kept on the brand", g.file.size].filter(Boolean).join(" · ")}</span>
+                <span className="block truncate text-body font-medium">{g.file.name}</span>
+                <span className="block truncate text-small text-mute-3">{[g.asset?.name ?? "Kept on the brand", g.file.size].filter(Boolean).join(" · ")}</span>
               </span>
               {!g.file.url ? (
-                <span className="text-[13px] text-mute-3">Not uploaded yet</span>
+                <span className="text-small text-mute-3">Not uploaded yet</span>
               ) : (
                 <span className="flex items-center gap-1.5">
                   {embeddable(g.file) && <Btn size="sm" variant="ghost" onClick={() => { setPick(g.file.key ?? null); document.getElementById("kit-pdf")?.scrollIntoView({ block: "start" }); }}>Show here</Btn>}
@@ -415,8 +415,8 @@ function GuidelinesPdf({ b }: { b: Brand }) {
 function Section({ id, title, sub, children }: { id: string; title: string; sub: string; children: ReactNode }) {
   return (
     <section id={id} className="mb-10 scroll-mt-24">
-      <h2 className="m-0 text-[20px] font-semibold tracking-[-0.015em]">{title}</h2>
-      <p className="mb-4 mt-1 text-[15px] text-mute-2">{sub}</p>
+      <h2 className="m-0 text-title font-semibold tracking-[-0.015em]">{title}</h2>
+      <p className="mb-4 mt-1 text-body text-mute-2">{sub}</p>
       {children}
     </section>
   );
@@ -428,7 +428,7 @@ function Missing() {
 
 function EmptyBlock({ text }: { text: string }) {
   return (
-    <div className="col-span-full rounded-[13px] border border-dashed border-line-strong px-6 py-6 text-center text-[14.5px] text-mute-2">{text}</div>
+    <div className="col-span-full rounded-xl border border-dashed border-line-strong px-6 py-6 text-center text-body text-mute-2">{text}</div>
   );
 }
 
@@ -449,8 +449,8 @@ function LogoMark({ b, bg }: { b: Brand; bg: string }) {
   const text = bg === "#FFFFFF" ? onColor(b.primary) : onPrimary ? b.primary : "#101614";
   return (
     <span className="flex items-center gap-2">
-      <span className="flex h-10 w-10 items-center justify-center rounded-[10px] text-[15px] font-bold" style={{ background: fill, color: text }}>{b.mark}</span>
-      <span className="text-[15px] font-semibold max-sm:hidden" style={{ color: bg === "#FFFFFF" ? "#101614" : fill }}>{b.name}</span>
+      <span className="flex h-10 w-10 items-center justify-center rounded-xl text-body font-bold" style={{ background: fill, color: text }}>{b.mark}</span>
+      <span className="text-body font-semibold max-sm:hidden" style={{ color: bg === "#FFFFFF" ? "#101614" : fill }}>{b.name}</span>
     </span>
   );
 }
@@ -478,18 +478,18 @@ function Swatch({ c, copy }: { c: BrandColour; copy: (v: string, what?: string) 
   return (
     <Card className="overflow-hidden">
       <div className="flex h-[104px] flex-col justify-between p-3" style={{ background: c.hex, color: onColor(c.hex) }}>
-        <span className="self-start rounded-full px-2 py-0.5 text-[11.5px] font-semibold uppercase tracking-[0.05em]" style={{ background: onColor(c.hex), color: c.hex === onColor(c.hex) ? "#FFFFFF" : c.hex }}>{c.role ?? "Colour"}</span>
-        <span className="text-[26px] font-semibold leading-none">Aa</span>
+        <span className="self-start rounded-full px-2 py-0.5 text-micro font-semibold uppercase tracking-[0.05em]" style={{ background: onColor(c.hex), color: c.hex === onColor(c.hex) ? "#FFFFFF" : c.hex }}>{c.role ?? "Colour"}</span>
+        <span className="text-heading font-semibold leading-none">Aa</span>
       </div>
       <div className="px-4 pb-3 pt-3">
-        <div className="text-[15.5px] font-semibold">{c.name}</div>
-        {c.usage && <div className="mb-2 mt-0.5 text-[13.5px] leading-[1.4] text-mute-2">{c.usage}</div>}
+        <div className="text-body font-semibold">{c.name}</div>
+        {c.usage && <div className="mb-2 mt-0.5 text-meta leading-[1.4] text-mute-2">{c.usage}</div>}
         <dl className="m-0">
           {rows.map(([k, v]) => (
             <div key={k} className="flex items-center justify-between border-t border-divider py-1">
-              <dt className="text-[12px] font-semibold uppercase tracking-[0.05em] text-mute-3">{k}</dt>
+              <dt className="text-micro font-semibold uppercase tracking-[0.05em] text-mute-3">{k}</dt>
               <dd className="m-0">
-                {v ? <button type="button" onClick={() => copy(v, `${k} ${v}`)} className="font-code text-[12.5px] text-ink-3 hover:text-accent" title={k === "CMYK" && !c.cmyk ? "Worked out from the hex — confirm with your printer" : `Copy ${k}`}>{v}{k === "CMYK" && !c.cmyk ? "*" : ""}</button> : <span className="text-[12.5px] text-mute-4">—</span>}
+                {v ? <button type="button" onClick={() => copy(v, `${k} ${v}`)} className="font-code text-small text-ink-3 hover:text-accent" title={k === "CMYK" && !c.cmyk ? "Worked out from the hex — confirm with your printer" : `Copy ${k}`}>{v}{k === "CMYK" && !c.cmyk ? "*" : ""}</button> : <span className="text-small text-mute-4">—</span>}
               </dd>
             </div>
           ))}
@@ -505,7 +505,7 @@ function Swatch({ c, copy }: { c: BrandColour; copy: (v: string, what?: string) 
 function Grade({ label, g }: { label: string; g: ReturnType<typeof wcag> }) {
   const ok = g.grade !== "Fail";
   return (
-    <span title={`Contrast ${g.ratio.toFixed(2)}:1 ${label}`} className={cx("rounded px-1.5 py-0.5 text-[11.5px] font-semibold", ok ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#FEE4E2] text-[#B42318]")}>
+    <span title={`Contrast ${g.ratio.toFixed(2)}:1 ${label}`} className={cx("rounded px-1.5 py-0.5 text-micro font-semibold", ok ? "bg-[#DCFCE7] text-[#166534]" : "bg-[#FEE4E2] text-[#B42318]")}>
       {g.grade} {label}
     </span>
   );
@@ -516,26 +516,26 @@ function ContrastGrid({ colours }: { colours: BrandColour[] }) {
   const bgs = [...colours, { name: "White", hex: "#FFFFFF", usage: "" }];
   return (
     <Card className="mt-4 overflow-hidden">
-      <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-[13px] font-semibold uppercase tracking-[0.05em] text-mute-2">Accessible pairings (WCAG 2.2)</div>
+      <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-small font-semibold uppercase tracking-[0.05em] text-mute-2">Accessible pairings (WCAG 2.2)</div>
       <div className="overflow-x-auto p-4" data-scroll>
         <table className="border-separate border-spacing-1.5">
           <thead>
             <tr>
-              <th className="px-2 text-left text-[12px] font-semibold text-mute-3" scope="col">Text ↓ / Background →</th>
-              {bgs.map((b) => <th key={b.hex + b.name} scope="col" className="px-1 text-[12px] font-semibold text-mute-2">{b.name}</th>)}
+              <th className="px-2 text-left text-micro font-semibold text-mute-3" scope="col">Text ↓ / Background →</th>
+              {bgs.map((b) => <th key={b.hex + b.name} scope="col" className="px-1 text-micro font-semibold text-mute-2">{b.name}</th>)}
             </tr>
           </thead>
           <tbody>
             {colours.map((fg) => (
               <tr key={fg.hex + fg.name}>
-                <th scope="row" className="px-2 text-left text-[12.5px] font-semibold text-mute-1">{fg.name}</th>
+                <th scope="row" className="px-2 text-left text-small font-semibold text-mute-1">{fg.name}</th>
                 {bgs.map((bg) => {
                   if (fg.hex.toLowerCase() === bg.hex.toLowerCase()) return <td key={bg.hex + bg.name} className="h-11 w-[84px] rounded-md bg-wash" />;
                   const g = wcag(fg.hex, bg.hex);
                   return (
                     <td key={bg.hex + bg.name} data-contrast-sample className="h-11 w-[84px] rounded-md text-center" style={{ background: bg.hex, color: fg.hex, boxShadow: "inset 0 0 0 1px #E1E7E4" }} title={`${g.ratio.toFixed(2)}:1`}>
-                      <span className="block text-[13px] font-bold leading-none">Aa</span>
-                      <span className="mt-0.5 block text-[10.5px] font-semibold leading-none" style={{ color: onColor(bg.hex) }}>{g.grade === "Fail" ? "✕ " : ""}{g.ratio.toFixed(1)}</span>
+                      <span className="block text-small font-bold leading-none">Aa</span>
+                      <span className="mt-0.5 block text-micro font-semibold leading-none" style={{ color: onColor(bg.hex) }}>{g.grade === "Fail" ? "✕ " : ""}{g.ratio.toFixed(1)}</span>
                     </td>
                   );
                 })}
@@ -543,7 +543,7 @@ function ContrastGrid({ colours }: { colours: BrandColour[] }) {
             ))}
           </tbody>
         </table>
-        <p className="mb-0 mt-2 text-[12.5px] text-mute-3">4.5 or more passes AA for body text; 3 or more passes for large text (24px, or 19px bold). * CMYK values worked out from the hex.</p>
+        <p className="mb-0 mt-2 text-small text-mute-3">4.5 or more passes AA for body text; 3 or more passes for large text (24px, or 19px bold). * CMYK values worked out from the hex.</p>
       </div>
     </Card>
   );
@@ -552,7 +552,7 @@ function ContrastGrid({ colours }: { colours: BrandColour[] }) {
 /** One logo rule on a plain card; only the small mark carries the colour. */
 function Rule({ children, bad }: { children: ReactNode; bad?: boolean }) {
   return (
-    <div className="flex items-start gap-2 rounded-[11px] border border-line bg-white px-3.5 py-2.5 text-[14px] text-ink-3">
+    <div className="flex items-start gap-2 rounded-xl border border-line bg-surface px-3.5 py-2.5 text-meta text-ink-3">
       {bad ? <X aria-hidden className="mt-0.5 h-4 w-4 flex-none text-danger" /> : <Check aria-hidden className="mt-0.5 h-4 w-4 flex-none text-ok" />}
       <span>{children}</span>
     </div>
@@ -562,12 +562,12 @@ function Rule({ children, bad }: { children: ReactNode; bad?: boolean }) {
 function ListCard({ title, items, tone }: { title: string; items?: string[]; tone: "good" | "bad" }) {
   return (
     <Card className="px-5 py-4">
-      <div className={cx("mb-2 flex items-center gap-2 text-[14px] font-semibold", tone === "good" ? "text-[#166534]" : "text-[#B42318]")}>
+      <div className={cx("mb-2 flex items-center gap-2 text-meta font-semibold", tone === "good" ? "text-[#166534]" : "text-[#B42318]")}>
         {tone === "good" ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}{title}
       </div>
       {items?.length ? (
         <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
-          {items.map((x) => <li key={x} className="text-[14.5px] leading-[1.45] text-ink-3">{x}</li>)}
+          {items.map((x) => <li key={x} className="text-body leading-[1.45] text-ink-3">{x}</li>)}
         </ul>
       ) : <Missing />}
     </Card>
@@ -577,10 +577,10 @@ function ListCard({ title, items, tone }: { title: string; items?: string[]; ton
 function WordCard({ title, items, tone }: { title: string; items?: string[]; tone: "good" | "bad" }) {
   return (
     <Card className="px-5 py-4">
-      <div className={cx("mb-2 text-[14px] font-semibold", tone === "good" ? "text-[#166534]" : "text-[#B42318]")}>{title}</div>
+      <div className={cx("mb-2 text-meta font-semibold", tone === "good" ? "text-[#166534]" : "text-[#B42318]")}>{title}</div>
       {items?.length ? (
         <div className="flex flex-wrap gap-1.5">
-          {items.map((x) => <span key={x} className={cx("rounded-md px-2 py-0.5 text-[13.5px]", tone === "good" ? "bg-[#F0FDF4] text-[#14532D]" : "bg-[#FEF2F2] text-[#7F1D1D] line-through decoration-[#DC2626]/50")}>{x}</span>)}
+          {items.map((x) => <span key={x} className={cx("rounded-md px-2 py-0.5 text-meta", tone === "good" ? "bg-[#F0FDF4] text-[#14532D]" : "bg-[#FEF2F2] text-[#7F1D1D] line-through decoration-[#DC2626]/50")}>{x}</span>)}
         </div>
       ) : <Missing />}
     </Card>

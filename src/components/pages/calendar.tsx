@@ -63,12 +63,12 @@ export function Calendar() {
 
   const Row = ({ x }: { x: (typeof items)[number] }) => (
     <button type="button" onClick={() => router.push(href.offer(x.id))} className="focus-inset flex w-full items-center gap-3 border-t border-divider px-5 py-3 text-left transition-colors first:border-t-0 hover:bg-wash">
-      <span className="h-2.5 w-2.5 flex-none rounded-[3px]" style={{ background: x.color }} />
+      <span className="h-2.5 w-2.5 flex-none rounded-sm" style={{ background: x.color }} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-medium">{x.name}</span>
-        <span className="block truncate text-[13.5px] text-mute-2">{x.sub}</span>
+        <span className="block truncate text-body font-medium">{x.name}</span>
+        <span className="block truncate text-meta text-mute-2">{x.sub}</span>
       </span>
-      <span className="flex-none text-[13.5px] font-medium text-mute-1" suppressHydrationWarning>{when(x.at)}</span>
+      <span className="flex-none text-meta font-medium text-mute-1" suppressHydrationWarning>{when(x.at)}</span>
     </button>
   );
 
@@ -104,7 +104,7 @@ export function Calendar() {
       </div>
       <Card className="overflow-hidden">
         <div className="grid grid-cols-7 border-b border-line bg-wash-2">
-          {DAYS.map((d) => <div key={d} className="px-2 py-2 text-center text-[12.5px] font-semibold text-mute-2">{d}</div>)}
+          {DAYS.map((d) => <div key={d} className="px-2 py-2 text-center text-small font-semibold text-mute-2">{d}</div>)}
         </div>
         <div className="grid grid-cols-7">
           {weeks.map((d, i) => {
@@ -115,12 +115,12 @@ export function Calendar() {
             return (
               <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-label={`${fmtLongDate(d)}, ${plural(list.length, "launch", "launches")}`}
                 className={cx("focus-inset flex min-h-[60px] flex-col items-stretch gap-1 border-b border-r border-divider p-1.5 text-left transition-colors hover:bg-wash sm:min-h-[96px]", !inMonth && "bg-wash-2", selected === k && "bg-soft outline-2 -outline-offset-2 outline-accent")}>
-                <span className={cx("self-start rounded-full px-1.5 text-[13px]", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-5")}>{d.getDate()}</span>
+                <span className={cx("self-start rounded-full px-1.5 text-small", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-5")}>{d.getDate()}</span>
                 <span className="hidden flex-col gap-1 sm:flex">
                   {list.slice(0, 3).map((x) => (
-                    <span key={x.id} className="truncate rounded px-1.5 py-0.5 text-[12px] font-medium" style={{ background: hexA(x.color, 0.12), color: readable(x.color, 0.3) }}>{x.name}</span>
+                    <span key={x.id} className="truncate rounded px-1.5 py-0.5 text-micro font-medium" style={{ background: hexA(x.color, 0.12), color: readable(x.color, 0.3) }}>{x.name}</span>
                   ))}
-                  {list.length > 3 && <span className="px-1 text-[12px] text-mute-3">+{list.length - 3} more</span>}
+                  {list.length > 3 && <span className="px-1 text-micro text-mute-3">+{list.length - 3} more</span>}
                 </span>
                 {list.length > 0 && (
                   <span className="flex gap-0.5 sm:hidden">{list.slice(0, 4).map((x) => <span key={x.id} className="h-1.5 w-1.5 rounded-full" style={{ background: x.color }} />)}</span>
@@ -146,9 +146,9 @@ export function Calendar() {
 }
 
 function Count({ n }: { n: number }) {
-  return <span className="rounded-full bg-chip px-2 py-px text-[12.5px] font-semibold text-mute-2">{n}</span>;
+  return <span className="rounded-full bg-chip px-2 py-px text-small font-semibold text-mute-2">{n}</span>;
 }
 
 function Quiet({ children }: { children: React.ReactNode }) {
-  return <div className="px-5 py-6 text-center text-[14.5px] text-mute-3">{children}</div>;
+  return <div className="px-5 py-6 text-center text-body text-mute-3">{children}</div>;
 }

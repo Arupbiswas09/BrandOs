@@ -135,14 +135,14 @@ export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={keys}
-        className="relative w-full max-w-[400px] animate-pop rounded-2xl border border-line bg-white p-5 shadow-[0_24px_64px_rgba(16,22,20,.22)] outline-none"
+        className="relative w-full max-w-[400px] animate-pop rounded-2xl border border-line bg-surface p-5 shadow-card outline-none"
       >
         <div className="mb-3.5 flex items-start gap-3">
           <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="m-0 text-[17px] font-semibold tracking-[-0.01em] text-ink">Change thumbnail</h2>
-            <p className="m-0 mt-0.5 truncate text-[14px] text-mute-2">{subject}</p>
+            <h2 id={titleId} className="m-0 text-lead font-semibold tracking-[-0.01em] text-ink">Change thumbnail</h2>
+            <p className="m-0 mt-0.5 truncate text-meta text-mute-2">{subject}</p>
           </div>
-          <button type="button" aria-label="Close" onClick={onClose} className="-mr-1.5 -mt-1 flex h-8 w-8 flex-none items-center justify-center rounded-[8px] text-mute-3 transition-colors hover:bg-hover hover:text-ink">
+          <button type="button" aria-label="Close" onClick={onClose} className="-mr-1.5 -mt-1 flex h-8 w-8 flex-none items-center justify-center rounded-lg text-mute-3 transition-colors hover:bg-hover hover:text-ink">
             <X aria-hidden size={17} />
           </button>
         </div>
@@ -158,12 +158,12 @@ export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel
             <img src={preview} alt="" className="h-full w-full object-cover" />
           ) : fallback}
           {(busy || drag) && (
-            <span className="absolute inset-0 flex items-center justify-center bg-white/85 text-[14.5px] font-semibold text-ink-3">
+            <span className="absolute inset-0 flex items-center justify-center bg-surface/85 text-body font-semibold text-ink-3">
               {busy ? "Saving…" : "Drop to use this image"}
             </span>
           )}
         </div>
-        <p className="m-0 mt-2.5 text-[14.5px] leading-[1.5] text-ink-3">
+        <p className="m-0 mt-2.5 text-body leading-[1.5] text-ink-3">
           Paste a screenshot with <kbd className="kbd">{mac ? "⌘" : "Ctrl"}</kbd> <kbd className="kbd">V</kbd>, or drop an image on the preview.
         </p>
 
@@ -171,7 +171,7 @@ export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel
           <Btn variant="primary" size="sm" disabled={busy || !imagesOk} onClick={() => input.current?.click()}><ImagePlus aria-hidden size={15} />Choose image</Btn>
           {custom && <Btn size="sm" disabled={busy} onClick={async () => { if (await reset()) onClose(); }}><RotateCcw aria-hidden size={14} />{resetLabel}</Btn>}
         </div>
-        <p className="m-0 mt-3 text-[13px] text-mute-3">
+        <p className="m-0 mt-3 text-small text-mute-3">
           {imagesOk ? `${THUMB_KINDS}, up to ${sizeLabel(limits.kinds.image.maxBytes)}.` : "Image uploads are switched off for you. Ask an admin if you need them."}
         </p>
         <input ref={input} type="file" accept={ACCEPT} hidden onChange={(e) => { const f = e.currentTarget.files?.[0] ?? null; e.currentTarget.value = ""; void take(f); }} />

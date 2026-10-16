@@ -12,15 +12,15 @@ export function InviteForm({ token, email, reset }: { token: string; email: stri
       <input type="hidden" name="token" value={token} />
       <label className="block">
         <Req>Email</Req>
-        <input name="email" type="email" autoComplete="email" required defaultValue={state?.email ?? email} className="field text-[16px]" />
+        <input name="email" type="email" autoComplete="email" required defaultValue={state?.email ?? email} className="field text-lead" />
       </label>
       <label className="block">
         <Req>{reset ? "New password" : "Choose a password"}</Req>
-        <PasswordInput name="password" autoComplete="new-password" minLength={10} required className="text-[16px]" autoFocus />
-        <span className="mt-1.5 block text-[14px] text-[#5A6862]">At least ten characters.</span>
+        <PasswordInput name="password" autoComplete="new-password" minLength={10} required className="text-lead" autoFocus />
+        <span className="mt-1.5 block text-meta text-[#5A6862]">At least ten characters.</span>
       </label>
-      {state?.error && <div role="alert" className="rounded-[9px] bg-[rgba(194,65,18,.07)] px-3 py-2 text-[15px] text-[#A63A12]">{state.error}</div>}
-      <button type="submit" disabled={pending} className="rounded-[9px] bg-[#2D4A5C] px-4 py-2.5 text-[15px] font-semibold text-white hover:brightness-110 disabled:opacity-60">
+      {state?.error && <div role="alert" className="rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-body text-[#A63A12]">{state.error}</div>}
+      <button type="submit" disabled={pending} className="rounded-lg bg-[#2D4A5C] px-4 py-2.5 text-body font-semibold text-white hover:brightness-110 disabled:opacity-60">
         {pending ? "Saving…" : reset ? "Save and sign in" : "Join the team"}
       </button>
     </form>

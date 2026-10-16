@@ -126,7 +126,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
           saveLabel="Save offer"
           pending={pending}
           disabled={!d.name.trim()}
-          left={<span className="text-[13.5px] text-mute-3">Only the name is required.{draft.id ? "" : " New offers start in Ideation."}</span>}
+          left={<span className="text-meta text-mute-3">Only the name is required.{draft.id ? "" : " New offers start in Ideation."}</span>}
         />
       }
     >
@@ -141,10 +141,10 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
       )}
       {/* aria-required rather than required: Save stays disabled until there is a name, and the footer says what is required. */}
       <Field label="Offer name" required>
-        <input data-autofocus aria-required="true" className="field text-[16px]" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" />
+        <input data-autofocus aria-required="true" className="field text-lead" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Google Ads Grant Growth" />
       </Field>
       <Field label={<>What is it, in one sentence? <Aside>Someone who has never heard of it should get it</Aside></>}>
-        <textarea rows={2} className="field text-[16px] leading-[1.55]" value={d.positioning} onChange={(e) => set("positioning", e.target.value)} placeholder="One sentence a stranger would understand." />
+        <textarea rows={2} className="field text-lead leading-[1.55]" value={d.positioning} onChange={(e) => set("positioning", e.target.value)} placeholder="One sentence a stranger would understand." />
       </Field>
       {(showService || showSegment) && (
         <div className={cx("grid gap-3", showService && showSegment && "sm:grid-cols-2")}>
@@ -159,12 +159,12 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
             const on = d.goals.includes(g.name);
             return (
               <button key={g.name} type="button" aria-pressed={on} title={g.description} onClick={() => set("goals", on ? d.goals.filter((x) => x !== g.name) : [...d.goals, g.name])}
-                className={cx("rounded-full border px-[13px] py-[5px] text-[14.5px] font-medium transition", on ? "border-accent bg-soft text-accent" : "border-line bg-white text-mute-1 hover:border-mute-4")}>
+                className={cx("rounded-full border px-3 py-1 text-body font-medium transition", on ? "border-accent bg-soft text-accent" : "border-line bg-surface text-mute-1 hover:border-mute-4")}>
                 {g.name}
               </button>
             );
           })}
-          {!(b?.goals ?? []).length && <span className="text-[15px] text-mute-3">This brand has no goals yet. Add them on its Strategy tab.</span>}
+          {!(b?.goals ?? []).length && <span className="text-body text-mute-3">This brand has no goals yet. Add them on its Strategy tab.</span>}
         </div>
       </div>
 
@@ -176,12 +176,12 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
           onClick={() => setMore((m) => !m)}
           className="group flex w-full items-center gap-3 rounded-lg py-3 text-left"
         >
-          <span aria-hidden className="w-3 flex-none text-center text-[17px] leading-none text-mute-3">{more ? "−" : "+"}</span>
-          <span className="min-w-0 flex-1 text-[15px] text-ink-3">
+          <span aria-hidden className="w-3 flex-none text-center text-lead leading-none text-mute-3">{more ? "−" : "+"}</span>
+          <span className="min-w-0 flex-1 text-body text-ink-3">
             <span className="font-semibold text-ink group-hover:underline">{more ? "Less detail" : "More detail"}</span>
             {!more && <span className="font-medium"> — {filled ? `${filled} filled` : "promise, proof, CTAs, type"}</span>}
           </span>
-          <span className="flex-none font-code text-[13px] text-mute-3">optional</span>
+          <span className="flex-none font-code text-small text-mute-3">optional</span>
         </button>
         <div
           id={moreId}
@@ -193,10 +193,10 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
             <div className="flex flex-col gap-4 pb-1 pt-1.5">
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label={<>Promise <Aside>What they get</Aside></>}>
-                  <textarea rows={3} className="field text-[15px] leading-[1.5]" value={d.promise} onChange={(e) => set("promise", e.target.value)} placeholder="What the reader gets, with a number." />
+                  <textarea rows={3} className="field text-body leading-[1.5]" value={d.promise} onChange={(e) => set("promise", e.target.value)} placeholder="What the reader gets, with a number." />
                 </Field>
                 <Field label={<>Proof <Aside>Why believe it</Aside></>}>
-                  <textarea rows={3} className="field text-[15px] leading-[1.5]" value={d.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Why they should believe it." />
+                  <textarea rows={3} className="field text-body leading-[1.5]" value={d.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Why they should believe it." />
                 </Field>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -214,9 +214,9 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
               {/* Full width, so the label the card would use in its place has room to show. */}
               <Field
                 label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
-                hint={<span aria-hidden className="font-code text-[13px] font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#5A6862" }}>{shortLen}/30</span>}
+                hint={<span aria-hidden className="font-code text-small font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#5A6862" }}>{shortLen}/30</span>}
               >
-                <input className="field text-[15px]" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card, under the name" />
+                <input className="field text-body" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card, under the name" />
               </Field>
               {/* The last field, inside a clipped panel: suggestions open upwards. */}
               <TagInput above value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="grant, church, search" />
@@ -261,8 +261,8 @@ function NewCta({ brand, slot, onDone }: { brand: Brand; slot: CtaSlot; onDone: 
   return (
     <div role="group" aria-labelledby={`${uid}-title`} onKeyDown={keys} className="animate-pop rounded-xl border border-line bg-wash-2 p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <div id={`${uid}-title`} className="text-[15px] font-semibold">New CTA for {SLOT_LABEL[slot]}</div>
-        <span aria-hidden className="inline-block max-w-full truncate rounded-[7px] px-3.5 py-[6px] text-[14px] font-semibold" style={{ background: bg, color: onColor(bg) }}>{text.trim() || "Button text"}</span>
+        <div id={`${uid}-title`} className="text-body font-semibold">New CTA for {SLOT_LABEL[slot]}</div>
+        <span aria-hidden className="inline-block max-w-full truncate rounded-lg px-3.5 py-1.5 text-meta font-semibold" style={{ background: bg, color: onColor(bg) }}>{text.trim() || "Button text"}</span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Button text" required>

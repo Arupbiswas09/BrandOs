@@ -12,7 +12,7 @@ import { cx } from "./ui";
  */
 
 /** The hover lift every clickable card shares. */
-export const LIFT = "transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_10px_24px_-12px_rgba(16,22,20,.18)] motion-reduce:hover:translate-y-0";
+export const LIFT = "transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-card motion-reduce:hover:translate-y-0";
 
 /** A visible focus ring for cards and tiles (the base outline would square their corners off). */
 export const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";
@@ -22,7 +22,7 @@ export function IconTile({ icon: Icon, color, size = 36, className }: { icon: Lu
   return (
     <span
       aria-hidden
-      className={cx("flex flex-none items-center justify-center rounded-[10px] theme-fade", !color && "bg-soft text-hl-ink", className)}
+      className={cx("flex flex-none items-center justify-center rounded-xl theme-fade", !color && "bg-soft text-hl-ink", className)}
       style={{ width: size, height: size, ...(color && { background: hexA(color, 0.12), color: readable(color, 0.12) }) }}
     >
       <Icon size={Math.round(size * 0.5)} strokeWidth={2} />
@@ -41,7 +41,7 @@ export function IconTabs({ items, className, label }: {
       {items.map((t) => {
         const Icon = t.icon;
         const cls = cx(
-          "-mb-px inline-flex flex-none items-center gap-2 whitespace-nowrap border-b-2 px-3 pb-3 pt-1.5 text-[14.5px] transition-colors",
+          "-mb-px inline-flex flex-none items-center gap-2 whitespace-nowrap border-b-2 px-3 pb-3 pt-1.5 text-body transition-colors",
           t.active ? "border-accent font-semibold text-ink" : "border-transparent font-medium text-mute-3 hover:text-ink",
         );
         const body = (
@@ -50,7 +50,7 @@ export function IconTabs({ items, className, label }: {
             {t.label}
             {t.count !== undefined && " "}
             {t.count !== undefined && (
-              <span className={cx("rounded-full px-1.5 py-px text-[12px] font-semibold tabular-nums leading-[1.5]", t.active ? "bg-accent text-on-accent" : "bg-chip text-mute-3")}>{t.count}</span>
+              <span className={cx("rounded-full px-1.5 py-px text-micro font-semibold tabular-nums leading-[1.5]", t.active ? "bg-accent text-on-accent" : "bg-chip text-mute-3")}>{t.count}</span>
             )}
           </>
         );
@@ -79,8 +79,8 @@ export function EntityHeader({ eyebrow, lead, title, sub, meta, actions, decor, 
           {lead}
           <div className="min-w-0 flex-1">
             {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
-            <h1 className="display m-0 text-[32px] text-ink sm:text-[36px]">{title}</h1>
-            {sub && <p className="m-0 mt-1 max-w-[70ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
+            <h1 className="display m-0 text-display text-ink sm:text-display">{title}</h1>
+            {sub && <p className="m-0 mt-1 max-w-[70ch] text-body text-mute-2 text-pretty">{sub}</p>}
             {meta && <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-2">{meta}</div>}
           </div>
         </div>
@@ -94,7 +94,7 @@ export function EntityHeader({ eyebrow, lead, title, sub, meta, actions, decor, 
 /** A quiet item in a header meta row: icon plus text. */
 export function MetaItem({ icon: Icon, children, className }: { icon?: LucideIcon; children: ReactNode; className?: string }) {
   return (
-    <span className={cx("inline-flex items-center gap-1.5 text-[14px] text-mute-2", className)}>
+    <span className={cx("inline-flex items-center gap-1.5 text-meta text-mute-2", className)}>
       {Icon && <Icon aria-hidden size={15} strokeWidth={2} className="text-mute-4" />}
       {children}
     </span>

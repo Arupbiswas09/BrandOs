@@ -254,12 +254,12 @@ export function HeaderSearch() {
         // Open, the box takes the room it needs, up to its widest.
         "relative flex h-10 min-w-0 max-w-2xl transition-[flex-grow] duration-200", open ? "flex-[4]" : "flex-1",
         // Phones: open, the box widens over the whole header row.
-        open && "max-sm:fixed max-sm:inset-x-0 max-sm:top-0 max-sm:z-[2] max-sm:h-header max-sm:max-w-none max-sm:items-center max-sm:gap-2 max-sm:bg-white max-sm:px-3 max-sm:pt-[env(safe-area-inset-top)]",
+        open && "max-sm:fixed max-sm:inset-x-0 max-sm:top-0 max-sm:z-[2] max-sm:h-header max-sm:max-w-none max-sm:items-center max-sm:gap-2 max-sm:bg-surface max-sm:px-3 max-sm:pt-[env(safe-area-inset-top)]",
       )}
     >
       <div className={cx(
-        "flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-[14.5px] transition-colors duration-150",
-        open ? "border-accent bg-white shadow-[0_0_0_3px_color-mix(in_srgb,var(--bos-accent)_14%,transparent)]" : "border-line bg-wash hover:border-line-strong hover:bg-white",
+        "flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-body transition-colors duration-150",
+        open ? "border-accent bg-surface shadow-card" : "border-line bg-wash hover:border-line-strong hover:bg-surface",
       )}>
         <Search aria-hidden className="h-[18px] w-[18px] flex-none text-mute-5" />
         {open && inBrand && <ScopeChip onClear={widen} label={`In ${brandName}`} clearLabel={`Search everything, not only ${brandName}`} />}
@@ -285,13 +285,13 @@ export function HeaderSearch() {
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="min-w-[6ch] flex-1 border-0 bg-transparent py-1 text-[15px] text-ink outline-none placeholder:text-mute-4"
+          className="min-w-[6ch] flex-1 border-0 bg-transparent py-1 text-body text-ink outline-none placeholder:text-mute-4"
         />
         {open
           ? <button type="button" onClick={done} className="kbd hidden h-6 flex-none px-1.5 text-mute-2 hover:text-ink sm:inline-flex">Esc<span className="sr-only"> (close search)</span></button>
           : <kbd aria-hidden className="kbd hidden flex-none sm:inline-flex">⌘K</kbd>}
       </div>
-      {open && <button type="button" onClick={done} className="flex-none px-1 text-[14.5px] font-medium text-accent sm:hidden">Cancel</button>}
+      {open && <button type="button" onClick={done} className="flex-none px-1 text-body font-medium text-accent sm:hidden">Cancel</button>}
       <span id="search-help" className="sr-only">
         Searches everything you can see as you type. Every word has to match. Use the up and down arrows to move through results and Enter to open one.{open && inBrand ? ` Results are only from ${brandName}; press Tab to search everything.` : ""}
       </span>
@@ -300,7 +300,7 @@ export function HeaderSearch() {
         <div
           // Clicks inside the results keep the typing focus in the box.
           onMouseDown={(e) => { if (!(e.target as HTMLElement).closest("input")) e.preventDefault(); }}
-          className="absolute left-0 top-full z-10 mt-1.5 flex max-h-[70vh] min-w-full w-[min(640px,calc(100vw-5rem))] animate-pop flex-col overflow-hidden rounded-xl border border-line bg-white shadow-[0_16px_48px_rgba(16,22,20,.18)] max-sm:right-0 max-sm:mt-0 max-sm:max-h-[calc(100dvh-60px-env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-none max-sm:border-x-0"
+          className="absolute left-0 top-full z-10 mt-1.5 flex max-h-[70vh] min-w-full w-[min(640px,calc(100vw-5rem))] animate-pop flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card max-sm:right-0 max-sm:mt-0 max-sm:max-h-[calc(100dvh-60px-env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-none max-sm:border-x-0"
         >
           {searching && hits.length > 0 && (
             <div data-scroll className="flex flex-none items-center gap-1 overflow-x-auto border-b border-line px-2.5 py-1.5" role="group" aria-label="Show">
@@ -333,28 +333,28 @@ export function HeaderSearch() {
                       aria-selected={on}
                       onMouseMove={() => { if (sel !== idx) setSel(idx); }}
                       onClick={r.run}
-                      className={cx("flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-[9px] px-2.5 py-1 text-left transition-colors duration-100", on ? "bg-soft" : "hover:bg-hover")}
+                      className={cx("flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1 text-left transition-colors duration-100", on ? "bg-soft" : "hover:bg-hover")}
                     >
                       <RowMark row={r} />
                       <span className="min-w-0 flex-1">
                         <span className="flex min-w-0 items-center gap-1.5">
                           {r.status && <span aria-hidden title={r.status} className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: ASSET_STATUS[r.status as keyof typeof ASSET_STATUS] ?? NEUTRAL }} />}
-                          <span className={cx("truncate text-[14.5px] leading-5", r.more ? "font-semibold text-accent" : "text-ink")}><Marked parts={r.title} /></span>
+                          <span className={cx("truncate text-body leading-5", r.more ? "font-semibold text-accent" : "text-ink")}><Marked parts={r.title} /></span>
                           {r.status && <span className="sr-only">, {r.status}</span>}
                         </span>
                         {(r.type || r.sub) && (
-                          <span className="block truncate text-[12.5px] leading-4 text-mute-2">
-                            {r.type && <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.08em] text-mute-3">{r.type}</span>}
+                          <span className="block truncate text-small leading-4 text-mute-2">
+                            {r.type && <span className="font-mono text-micro font-medium uppercase tracking-[0.08em] text-mute-3">{r.type}</span>}
                             {r.type && r.sub && " · "}{r.sub}
                           </span>
                         )}
                         {r.snippet && (
-                          <span className="block truncate text-[12.5px] leading-4 text-mute-2">
+                          <span className="block truncate text-small leading-4 text-mute-2">
                             <span className="text-mute-4">{r.field}: </span><Marked parts={r.snippet} />
                           </span>
                         )}
                       </span>
-                      {r.archived && <span className="flex-none rounded-full bg-chip px-2 py-0.5 text-[12px] font-medium text-mute-2">Archived</span>}
+                      {r.archived && <span className="flex-none rounded-full bg-chip px-2 py-0.5 text-micro font-medium text-mute-2">Archived</span>}
                       {on && <span aria-hidden className="kbd hidden flex-none gap-1 px-1.5 sm:inline-flex"><CornerDownLeft className="h-3 w-3" /></span>}
                     </div>
                   );
@@ -364,8 +364,8 @@ export function HeaderSearch() {
             </div>}
             {searching && total === 0 && (
               <div className="flex flex-col items-center px-6 py-8 text-center">
-                <div className="text-[15px] font-semibold text-ink">{q.trim() ? <>Nothing {inBrand ? `in ${brandName} ` : ""}matches &ldquo;{q.trim()}&rdquo;</> : `${ownerName} owns nothing you can see${inBrand ? ` in ${brandName}` : ""}`}</div>
-                <div className="mt-1 max-w-[46ch] text-[14px] text-mute-2">
+                <div className="text-body font-semibold text-ink">{q.trim() ? <>Nothing {inBrand ? `in ${brandName} ` : ""}matches &ldquo;{q.trim()}&rdquo;</> : `${ownerName} owns nothing you can see${inBrand ? ` in ${brandName}` : ""}`}</div>
+                <div className="mt-1 max-w-[46ch] text-meta text-mute-2">
                   {inBrand && outside > 0 ? <><button type="button" onClick={widen} className="font-semibold text-accent hover:underline">Search everywhere</button>: {outside} more outside {brandName}.</>
                     : inBrand ? "Nothing outside it either. Every word has to match somewhere."
                     : owner ? <>Searching only {ownerName.split(" ")[0]}&apos;s work. <button type="button" onClick={() => setOwner(null)} className="font-semibold text-accent hover:underline">Search everyone&apos;s</button></>
@@ -374,7 +374,7 @@ export function HeaderSearch() {
               </div>
             )}
           </div>
-          <div className="hidden flex-none items-center gap-4 whitespace-nowrap border-t border-line bg-wash-2 px-3.5 py-2 text-[12.5px] text-mute-3 sm:flex">
+          <div className="hidden flex-none items-center gap-4 whitespace-nowrap border-t border-line bg-wash-2 px-3.5 py-2 text-small text-mute-3 sm:flex">
             <Hint keys={["↑", "↓"]}>move</Hint>
             <Hint keys={["↵"]}>open</Hint>
             {inBrand && <Hint keys={["Tab"]}>search everywhere</Hint>}
@@ -392,10 +392,10 @@ export function HeaderSearch() {
 /** "In Quokka For Good ×": what the results are narrowed to, removable in one click. */
 function ScopeChip({ label, clearLabel, onClear, icon }: { label: string; clearLabel: string; onClear: () => void; icon?: boolean }) {
   return (
-    <span className="inline-flex min-w-0 max-w-[45%] flex-none items-center gap-1 rounded-full bg-soft py-0.5 pl-2.5 pr-1 text-[13px] font-medium text-ink">
+    <span className="inline-flex min-w-0 max-w-[45%] flex-none items-center gap-1 rounded-full bg-soft py-0.5 pl-2.5 pr-1 text-small font-medium text-ink">
       {icon && <User aria-hidden className="h-3.5 w-3.5 flex-none text-mute-3" />}
       <span className="truncate">{label}</span>
-      <button type="button" onClick={onClear} aria-label={clearLabel} className="flex h-5 w-5 flex-none items-center justify-center rounded-full text-mute-3 hover:bg-white hover:text-ink">
+      <button type="button" onClick={onClear} aria-label={clearLabel} className="flex h-5 w-5 flex-none items-center justify-center rounded-full text-mute-3 hover:bg-surface hover:text-ink">
         <X aria-hidden className="h-3.5 w-3.5" />
       </button>
     </span>
@@ -405,8 +405,8 @@ function ScopeChip({ label, clearLabel, onClear, icon }: { label: string; clearL
 function Chip({ on, onClick, label, n }: { on: boolean; onClick: () => void; label: string; n: number }) {
   return (
     <button type="button" aria-pressed={on} onClick={onClick}
-      className={cx("focus-inset flex-none rounded-full px-2.5 py-0.5 text-[13px] font-medium transition-colors duration-150", on ? "bg-ink text-white" : "text-mute-2 hover:bg-hover hover:text-ink")}>
-      {label}<span className={cx("ml-1.5 font-mono text-[11px]", on ? "text-white/75" : "text-mute-4")}>{n}</span>
+      className={cx("focus-inset flex-none rounded-full px-2.5 py-0.5 text-small font-medium transition-colors duration-150", on ? "bg-ink text-white" : "text-mute-2 hover:bg-hover hover:text-ink")}>
+      {label}<span className={cx("ml-1.5 font-mono text-micro", on ? "text-white/75" : "text-mute-4")}>{n}</span>
     </button>
   );
 }
@@ -422,12 +422,12 @@ function Marked({ parts }: { parts: Part[] }) {
 function RowMark({ row }: { row: Row }) {
   if (row.icon) {
     const Icon = row.icon;
-    return <span className="flex h-6 w-8 flex-none items-center justify-center rounded-[6px] border border-line bg-white text-mute-2"><Icon aria-hidden className="h-3.5 w-3.5" /></span>;
+    return <span className="flex h-6 w-8 flex-none items-center justify-center rounded-lg border border-line bg-surface text-mute-2"><Icon aria-hidden className="h-3.5 w-3.5" /></span>;
   }
   if (row.avatar) return <span className="flex h-6 w-8 flex-none items-center justify-center"><Avatar initials={row.code} size={24} /></span>;
   // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file
-  if (row.thumb) return <img src={row.thumb} alt="" className="h-6 w-8 flex-none rounded-[6px] border border-line object-cover" />;
-  return <span className="flex h-6 w-8 flex-none items-center justify-center rounded-[6px] font-mono text-[9.5px] font-bold tracking-[0.02em]" style={{ background: hexA(row.color, 0.12), color: readable(row.color) }}>{row.code}</span>;
+  if (row.thumb) return <img src={row.thumb} alt="" className="h-6 w-8 flex-none rounded-lg border border-line object-cover" />;
+  return <span className="flex h-6 w-8 flex-none items-center justify-center rounded-lg font-mono text-micro font-bold tracking-[0.02em]" style={{ background: hexA(row.color, 0.12), color: readable(row.color) }}>{row.code}</span>;
 }
 
 function Hint({ keys, children }: { keys: string[]; children: ReactNode }) {

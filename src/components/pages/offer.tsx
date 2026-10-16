@@ -46,7 +46,7 @@ export function OfferPage({ id }: { id: string }) {
     <Page>
       <EntityHeader
         eyebrow={<>Offer{b ? <> · <Link href={href.brand(b.id, "offers")} className="hover:text-ink hover:underline">{b.name}</Link></> : null}</>}
-        lead={<IconTile icon={Megaphone} color={b?.primary} size={48} className="rounded-[13px]" />}
+        lead={<IconTile icon={Megaphone} color={b?.primary} size={48} className="rounded-xl" />}
         title={o.name}
         sub={o.short}
         meta={
@@ -54,11 +54,11 @@ export function OfferPage({ id }: { id: string }) {
             <Chip color={OFFER_STATUS[o.status]} size="sm">{o.status}</Chip>
             <Chip color={ws.segColor(o.segment, o.brandId)} size="sm">{o.segment}</Chip>
             {sv ? (
-              <Link href={href.service(sv.id)} className="inline-flex items-center gap-1 rounded-[5px] border border-line bg-white px-2 py-[2px] text-[13px] font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
+              <Link href={href.service(sv.id)} className="inline-flex items-center gap-1 rounded-sm border border-line bg-surface px-2 py-0.5 text-small font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
                 <Layers aria-hidden size={13} />{sv.name}
               </Link>
             ) : (
-              <span className="rounded-[5px] border border-dashed border-line-strong px-2 py-[2px] text-[13px] font-semibold text-mute-3">Standalone</span>
+              <span className="rounded-sm border border-dashed border-line-strong px-2 py-0.5 text-small font-semibold text-mute-3">Standalone</span>
             )}
             <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
             <MetaItem icon={Clock}><span>Updated {ws.ago(o.updatedAt)}</span></MetaItem>
@@ -85,17 +85,17 @@ export function OfferPage({ id }: { id: string }) {
       <Card className="mb-5 overflow-hidden">
         <div className="flex items-center gap-2 border-b border-divider px-5 py-3">
           <Workflow aria-hidden size={16} className="text-mute-4" />
-          <h2 className="m-0 text-[15px] font-semibold">Workflow</h2>
+          <h2 className="m-0 text-body font-semibold">Workflow</h2>
         </div>
         <div className="flex flex-wrap items-start gap-x-8 gap-y-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             <div className="eyebrow mb-2">Status</div>
             <div className="flex flex-wrap items-center gap-1.5">
-              {!canEdit && <Chip color={OFFER_STATUS[o.status]} size="md" className="rounded-[7px] px-[11px] py-1">{o.status}</Chip>}
+              {!canEdit && <Chip color={OFFER_STATUS[o.status]} size="md" className="rounded-lg px-3 py-1">{o.status}</Chip>}
               {canEdit && (Object.keys(OFFER_STATUS) as Offer["status"][]).map((k) => {
                 const on = o.status === k; const c = OFFER_STATUS[k];
                 return (
-                  <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="inline-flex items-center gap-1.5 rounded-[8px] border px-3 py-[5px] text-[14px] font-medium transition hover:border-line-strong"
+                  <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-meta font-medium transition hover:border-line-strong"
                     style={{ borderColor: on ? hexA(c, 0.45) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#56645E" }}>
                     <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c }} />{k}
                   </button>
@@ -108,9 +108,9 @@ export function OfferPage({ id }: { id: string }) {
             <div className="flex flex-wrap items-center gap-2.5">
               {canEdit ? (
                 <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
-                  onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-[8px] border border-line bg-white px-2.5 py-[5px] text-[14px]" />
+                  onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-lg border border-line bg-surface px-2.5 py-1 text-meta" />
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-[15px] text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? fmtDate(o.dueAt) : "Not scheduled"}</span>
+                <span className="inline-flex items-center gap-1.5 text-body text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? fmtDate(o.dueAt) : "Not scheduled"}</span>
               )}
             </div>
           </div>
@@ -122,48 +122,48 @@ export function OfferPage({ id }: { id: string }) {
       {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mb-5">{o.changeNote}</ChangeNote>}
 
       {missing.length > 0 && o.status !== "Archived" && (
-        <div className="mb-3 rounded-xl border border-dashed border-[rgba(201,154,46,.45)] bg-[rgba(201,154,46,.06)] px-[18px] py-3 text-[15px] text-warn-ink">
+        <div className="mb-3 rounded-xl border border-dashed border-[rgba(201,154,46,.45)] bg-[rgba(201,154,46,.06)] px-4 py-3 text-body text-warn-ink">
           Before this goes out: {missing.join(", ")}.
         </div>
       )}
 
-      <div className="mb-[34px] overflow-hidden rounded-2xl border border-line bg-white">
-        <div className="border-b border-line px-6 py-[26px] sm:px-7">
+      <div className="mb-8 overflow-hidden rounded-2xl border border-line bg-surface">
+        <div className="border-b border-line px-6 py-6 sm:px-7">
           <Eyebrow className="mb-2.5">Positioning</Eyebrow>
-          <p className="m-0 max-w-[52ch] text-[19px] font-medium leading-[1.45] tracking-[-0.012em] text-ink text-pretty sm:text-[20px]">
+          <p className="m-0 max-w-[52ch] text-title font-medium leading-[1.45] tracking-[-0.012em] text-ink text-pretty sm:text-title">
             {o.positioning || <span className="text-mute-4">No positioning written yet.</span>}
           </p>
         </div>
         <div className="grid md:grid-cols-3">
-          <div className="border-b border-line px-6 py-[22px] sm:px-7 md:border-b-0 md:border-r">
-            <Eyebrow className="mb-[9px]">Goals</Eyebrow>
+          <div className="border-b border-line px-6 py-5 sm:px-7 md:border-b-0 md:border-r">
+            <Eyebrow className="mb-2">Goals</Eyebrow>
             <div className="mb-3">
-              {o.goals.length ? <GoalChips ws={ws} o={o} size="md" /> : <span className="text-[15px] text-warn-text">No goal set, so this offer is not comparable to anything.</span>}
+              {o.goals.length ? <GoalChips ws={ws} o={o} size="md" /> : <span className="text-body text-warn-text">No goal set, so this offer is not comparable to anything.</span>}
             </div>
-            {o.offerType && <div className="text-[15px] text-mute-2">Offer type · <span className="font-medium text-ink-3">{o.offerType}</span></div>}
+            {o.offerType && <div className="text-body text-mute-2">Offer type · <span className="font-medium text-ink-3">{o.offerType}</span></div>}
           </div>
-          <div className="border-b border-line px-6 py-[22px] sm:px-7 md:border-b-0 md:border-r">
+          <div className="border-b border-line px-6 py-5 sm:px-7 md:border-b-0 md:border-r">
             <Eyebrow className="mb-2">Promise</Eyebrow>
-            <p className="m-0 text-[16px] leading-[1.55] text-ink-3 text-pretty">{o.promise || <span className="text-mute-4">Not written yet.</span>}</p>
+            <p className="m-0 text-lead leading-[1.55] text-ink-3 text-pretty">{o.promise || <span className="text-mute-4">Not written yet.</span>}</p>
           </div>
-          <div className="px-6 py-[22px] sm:px-7">
+          <div className="px-6 py-5 sm:px-7">
             <Eyebrow className="mb-2">Proof</Eyebrow>
-            <p className="m-0 text-[16px] leading-[1.55] text-ink-3 text-pretty">{o.proof || <span className="text-mute-4">Not written yet.</span>}</p>
+            <p className="m-0 text-lead leading-[1.55] text-ink-3 text-pretty">{o.proof || <span className="text-mute-4">Not written yet.</span>}</p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3 border-t border-line bg-wash-2 px-6 py-[18px] sm:px-7">
+        <div className="flex flex-wrap items-center gap-3 border-t border-line bg-wash-2 px-6 py-4 sm:px-7">
           <Eyebrow>Calls to action</Eyebrow>
           {o.primaryCtaId && <CtaButton id={o.primaryCtaId} />}
           {o.secondaryCtaId && <CtaButton id={o.secondaryCtaId} />}
-          {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-[15px] text-warn-text">None set — readers do not know what to do next.</span>}
+          {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-body text-warn-text">None set — readers do not know what to do next.</span>}
         </div>
       </div>
 
       <FunnelBoard key={o.id} offer={o} />
 
       {nudgeAsset && (
-        <div className="mb-[18px] flex animate-pop flex-wrap items-center gap-3.5 rounded-xl border border-accent bg-soft px-[18px] py-[15px]">
-          <span className="min-w-[240px] flex-1 text-[15px] leading-[1.5] text-ink-2">
+        <div className="mb-4 flex animate-pop flex-wrap items-center gap-3.5 rounded-xl border border-accent bg-soft px-4 py-4">
+          <span className="min-w-[240px] flex-1 text-body leading-[1.5] text-ink-2">
             {nudgeAsset.name} is now linked to this offer. The same asset, not a copy. <span className="text-mute-1">Need a version written specifically for this offer?</span>
           </span>
           <Btn variant="primary" onClick={() => open({ kind: "clone", srcId: nudgeAsset.id, brandId: nudgeAsset.brandId ?? o.brandId, name: `${nudgeAsset.name} — ${o.name}`, offerIds: [o.id] })}>Clone and adapt</Btn>
@@ -175,15 +175,15 @@ export function OfferPage({ id }: { id: string }) {
 
       <div id="discussion" className="mt-11 max-w-[720px] scroll-mt-24">
         <div className="mb-1 flex items-baseline justify-between gap-4">
-          <h2 className="m-0 text-[17px] font-semibold">Discussion</h2>
-          <span className="font-mono text-[14.5px] text-mute-3">{openNotes ? `${openNotes} open note${openNotes === 1 ? "" : "s"}` : "Nothing open"}</span>
+          <h2 className="m-0 text-lead font-semibold">Discussion</h2>
+          <span className="font-mono text-body text-mute-3">{openNotes ? `${openNotes} open note${openNotes === 1 ? "" : "s"}` : "Nothing open"}</span>
         </div>
-        <p className="mb-3.5 mt-0 text-[15px] text-mute-3">
+        <p className="mb-3.5 mt-0 text-body text-mute-3">
           Decisions about this offer live here, not in a thread somebody has to go find. Type <span className="font-mono text-mute-1">#</span> to tag another offer, <span className="font-mono text-mute-1">@</span> to pull someone in.
         </p>
         {mentions.length > 0 && (
           <div className="mb-3.5 rounded-xl border border-line bg-[#F7F9F8] px-4 py-3.5">
-            <div className="eyebrow mb-2.5 text-[12px]">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
+            <div className="eyebrow mb-2.5 text-micro">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
             <div className="flex flex-col gap-2">
               {mentions.map((m) => {
                 const where = m.kind === "asset" ? ws.asset(m.itemId)?.name : ws.offer(m.itemId)?.name;
@@ -192,14 +192,14 @@ export function OfferPage({ id }: { id: string }) {
                     <Avatar initials={ws.user(m.userId).initials} size={22} mono className="mt-px" />
                     <span className="min-w-0 flex-1">
                       <CommentText c={m} />
-                      <span className="mt-[3px] block text-[13.5px] text-mute-4">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
+                      <span className="mt-1 block text-meta text-mute-4">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
                     </span>
                   </>
                 );
                 return m.kind === "asset" ? (
-                  <button key={m.id} type="button" onClick={() => openAsset(m.itemId, "discussion")} className="-m-1.5 flex w-[calc(100%+12px)] items-start gap-2.5 rounded-[9px] p-1.5 text-left hover:bg-chip">{body}</button>
+                  <button key={m.id} type="button" onClick={() => openAsset(m.itemId, "discussion")} className="-m-1.5 flex w-[calc(100%+12px)] items-start gap-2.5 rounded-lg p-1.5 text-left hover:bg-chip">{body}</button>
                 ) : (
-                  <Link key={m.id} href={href.offer(m.itemId) + "#discussion"} className="-m-1.5 flex items-start gap-2.5 rounded-[9px] p-1.5 text-left hover:bg-chip">{body}</Link>
+                  <Link key={m.id} href={href.offer(m.itemId) + "#discussion"} className="-m-1.5 flex items-start gap-2.5 rounded-lg p-1.5 text-left hover:bg-chip">{body}</Link>
                 );
               })}
             </div>

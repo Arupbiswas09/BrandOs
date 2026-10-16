@@ -22,7 +22,7 @@ export default async function Invite({ params }: PageProps<"/invite/[token]">) {
         {row.purpose === "invite" && row.email && googleEnabled() && (
           <>
             <GoogleButton label="Join with Google" />
-            <p className="mb-0 mt-2 text-center text-[13.5px] text-mute-2">Use the Google account for {row.email}.</p>
+            <p className="mb-0 mt-2 text-center text-meta text-mute-2">Use the Google account for {row.email}.</p>
             <OrRule />
           </>
         )}
@@ -30,7 +30,7 @@ export default async function Invite({ params }: PageProps<"/invite/[token]">) {
       </AuthShell>
     ) : (
       <AuthShell title="This link has expired" sub="Invite and reset links work once and do not last forever. Ask whoever sent it for a fresh one.">
-        <a href="/sign-in" className="text-[14px] font-medium text-accent hover:underline">← Back to sign in</a>
+        <a href="/sign-in" className="text-meta font-medium text-accent hover:underline">← Back to sign in</a>
       </AuthShell>
     )
   );

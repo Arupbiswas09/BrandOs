@@ -101,7 +101,7 @@ export function ProofView({ a, fileKey: startFile, pinId: startPin }: { a: Asset
                 onPick={() => { setDraft(null); setActive(active === c.id ? null : c.id); }} onHover={setHover} />
             ))}
             {!shown.length && !draft && (
-              <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-[15px] text-mute-2">
+              <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-body text-mute-2">
                 {pins.length === 0 ? (canPin ? "No notes on this image yet. Click or tap the spot you want to talk about." : "No notes on this image yet.")
                   : filter === "open" ? "Every note here is resolved." : "No resolved notes yet."}
               </div>
@@ -109,7 +109,7 @@ export function ProofView({ a, fileKey: startFile, pinId: startPin }: { a: Asset
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-dashed border-line-strong p-9 text-center text-[15px] text-mute-2">Upload a PNG, JPG, GIF or WebP to pin notes on it.</div>
+        <div className="rounded-xl border border-dashed border-line-strong p-9 text-center text-body text-mute-2">Upload a PNG, JPG, GIF or WebP to pin notes on it.</div>
       )}
 
       {file && (
@@ -121,14 +121,14 @@ export function ProofView({ a, fileKey: startFile, pinId: startPin }: { a: Asset
       )}
 
       {pdfs.length > 0 && (
-        <div className="rounded-xl border border-line px-[18px] py-1">
+        <div className="rounded-xl border border-line px-4 py-1">
           {pdfs.map((f) => (
             <div key={f.key ?? f.name} className="flex flex-wrap items-center gap-3 border-t border-divider py-3 first:border-t-0">
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-medium">{f.name}</span>
-                <span className="block text-[13.5px] text-mute-3">PDFs cannot be pinned here. Download it, then leave notes in the discussion.</span>
+                <span className="block truncate text-body font-medium">{f.name}</span>
+                <span className="block text-meta text-mute-3">PDFs cannot be pinned here. Download it, then leave notes in the discussion.</span>
               </span>
-              <a href={f.url} download={f.name} className="flex-none rounded-[7px] border border-line bg-white px-[11px] py-[5px] text-[14px] font-semibold text-accent hover:border-accent">Download to review</a>
+              <a href={f.url} download={f.name} className="flex-none rounded-lg border border-line bg-surface px-3 py-1 text-meta font-semibold text-accent hover:border-accent">Download to review</a>
             </div>
           ))}
         </div>
@@ -138,11 +138,11 @@ export function ProofView({ a, fileKey: startFile, pinId: startPin }: { a: Asset
 
   if (!full) return body;
   return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-white" role="dialog" aria-modal="true" aria-label={`Proof ${file?.name ?? a.name}`}>
+    <div className="fixed inset-0 z-[70] flex flex-col bg-surface" role="dialog" aria-modal="true" aria-label={`Proof ${file?.name ?? a.name}`}>
       <div className="flex flex-none items-center gap-3 border-b border-line px-4 py-3 sm:px-6">
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[16px] font-semibold">{a.name}</span>
-          <span className="block truncate text-[13.5px] text-mute-3">{file?.name}</span>
+          <span className="block truncate text-lead font-semibold">{a.name}</span>
+          <span className="block truncate text-meta text-mute-3">{file?.name}</span>
         </span>
         <Btn size="sm" autoFocus onClick={() => setFull(false)}>Close</Btn>
       </div>
@@ -188,7 +188,7 @@ function Stage({ src, name, pins, number, active, hover, canPin, draft, onPlace,
               onFocus={() => onHover(c.id)}
               onBlur={() => onHover(null)}
               className={cx(
-                "absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-mono text-[13px] font-bold shadow-[0_2px_8px_rgba(16,22,20,.35)] transition",
+                "absolute flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white font-mono text-small font-bold shadow-card transition",
                 c.resolved ? "bg-[#93A09A] text-white opacity-75" : "bg-accent text-on-accent",
                 on && "z-[2] scale-125 opacity-100 ring-4 ring-accent/30",
               )}
@@ -211,7 +211,7 @@ function Stage({ src, name, pins, number, active, hover, canPin, draft, onPlace,
               e.preventDefault();
               onMove({ ...draft, x: clamp(draft.x + d[0]), y: clamp(draft.y + d[1]) });
             }}
-            className="absolute z-[3] flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 animate-pop items-center justify-center rounded-full border-2 border-dashed border-white bg-ink font-bold text-white shadow-[0_2px_10px_rgba(16,22,20,.45)]"
+            className="absolute z-[3] flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 animate-pop items-center justify-center rounded-full border-2 border-dashed border-white bg-ink font-bold text-white shadow-card"
             style={{ left: `${draft.x}%`, top: `${draft.y}%` }}
           >
             +
@@ -231,10 +231,10 @@ function DraftNote({ a, fileKey, spot, n, onDone }: { a: Asset; fileKey: string;
     if (r.ok) onDone();
   };
   return (
-    <div className="rounded-xl border border-accent bg-white px-3.5 py-3 ring-1 ring-accent">
+    <div className="rounded-xl border border-accent bg-surface px-3.5 py-3 ring-1 ring-accent">
       <div className="mb-1.5 flex items-center gap-2">
-        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-ink font-mono text-[12.5px] font-bold text-white">{n}</span>
-        <span className="text-[14.5px] font-semibold">New note on this spot</span>
+        <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-ink font-mono text-small font-bold text-white">{n}</span>
+        <span className="text-body font-semibold">New note on this spot</span>
       </div>
       <textarea
         rows={3}
@@ -247,7 +247,7 @@ function DraftNote({ a, fileKey, spot, n, onDone }: { a: Asset; fileKey: string;
         className="field leading-[1.55]"
       />
       <div className="mt-2 flex items-center justify-end gap-2">
-        <span className="mr-auto text-[13px] text-mute-3">⌘↵ to post · Esc to cancel</span>
+        <span className="mr-auto text-small text-mute-3">⌘↵ to post · Esc to cancel</span>
         <Btn size="sm" onClick={onDone}>Cancel</Btn>
         <Btn size="sm" variant="primary" disabled={pending || !text.trim()} onClick={post}>Pin note</Btn>
       </div>
@@ -264,23 +264,23 @@ function PinNote({ c, n, on, onPick, onHover }: { c: PinnedComment; n: number; o
       id={`note-${c.id}`}
       onMouseEnter={() => onHover(c.id)}
       onMouseLeave={() => onHover(null)}
-      className={cx("rounded-xl border px-3.5 py-3 transition", on ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-white", c.resolved && !on && "bg-[#F7F9F8] opacity-70")}
+      className={cx("rounded-xl border px-3.5 py-3 transition", on ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-surface", c.resolved && !on && "bg-[#F7F9F8] opacity-70")}
     >
       <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
         <button type="button" onClick={onPick} aria-pressed={on} aria-label={`Show note ${n} on the image`}
-          className={cx("flex h-6 w-6 flex-none items-center justify-center rounded-full font-mono text-[12.5px] font-bold", c.resolved ? "bg-[#93A09A] text-white" : "bg-accent text-on-accent")}>
+          className={cx("flex h-6 w-6 flex-none items-center justify-center rounded-full font-mono text-small font-bold", c.resolved ? "bg-[#93A09A] text-white" : "bg-accent text-on-accent")}>
           {n}
         </button>
         <Avatar initials={ws.user(c.userId).initials} size={22} mono />
-        <span className="text-[14.5px] font-semibold">{ws.first(c.userId)}</span>
-        {c.resolved && <span className="eyebrow text-[11.5px]">Resolved</span>}
+        <span className="text-body font-semibold">{ws.first(c.userId)}</span>
+        {c.resolved && <span className="eyebrow text-micro">Resolved</span>}
         <span className="flex-1" />
-        <span className="font-mono text-[12.5px] text-mute-4">{ws.ago(c.createdAt)}</span>
+        <span className="font-mono text-small text-mute-4">{ws.ago(c.createdAt)}</span>
         {ws.can("comment") && (
-          <button type="button" disabled={pending} onClick={() => run(toggleResolve, c.id)} aria-label={`${c.resolved ? "Reopen" : "Resolve"} note ${n}`} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
+          <button type="button" disabled={pending} onClick={() => run(toggleResolve, c.id)} aria-label={`${c.resolved ? "Reopen" : "Resolve"} note ${n}`} className="px-1 py-0.5 text-small text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
         )}
         {(mine || ws.can("del")) && (
-          <button type="button" disabled={pending} onClick={() => { if (window.confirm(`Delete note ${n}?`)) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-[13px] text-mute-3 hover:text-danger">Delete</button>
+          <button type="button" disabled={pending} onClick={() => { if (window.confirm(`Delete note ${n}?`)) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-small text-mute-3 hover:text-danger">Delete</button>
         )}
       </div>
       <div onClick={onPick} className="cursor-pointer">
