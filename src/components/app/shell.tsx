@@ -424,7 +424,7 @@ function UserMenu({ onClose }: { onClose: (refocus?: boolean) => void }) {
         </div>
         <div className="mx-1 mb-1 h-px bg-divider" />
         <Link href="/settings" onClick={() => onClose(false)} className={row} role="menuitem"><Settings aria-hidden />Settings</Link>
-        <Link href="/settings#appearance" onClick={() => onClose(false)} className={row} role="menuitem"><PaletteIcon aria-hidden /><span className="flex-1">Appearance</span><span className="text-small text-mute-3">In Settings</span></Link>
+        <Link href="/settings?section=appearance" onClick={() => onClose(false)} className={row} role="menuitem"><PaletteIcon aria-hidden /><span className="flex-1">Appearance</span><span className="text-small text-mute-3">In Settings</span></Link>
         <button type="button" role="menuitem" onClick={() => { onClose(false); open({ kind: "shortcuts" }); }} className={row}><Keyboard aria-hidden /><span className="flex-1">Keyboard shortcuts</span><kbd className="kbd">?</kbd></button>
         <InstallItem onDone={() => onClose(false)} className={row} />
         {demo && (

@@ -1,6 +1,7 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore, type KeyboardEvent } from "react";
+import Link from "next/link";
 import { Plus, UserPlus } from "lucide-react";
 import { PERM_INFO } from "@/lib/access";
 import { plural } from "@/lib/ws";
@@ -10,12 +11,12 @@ import { createInvite } from "@/app/auth-actions";
 import { resetTeammateTwoFactor, signOutTeammateEverywhere } from "@/app/security-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
-import { Avatar, Btn, Card, Empty, Page, PageHead, Tabs, cx } from "@/components/ui";
+import { Avatar, Btn, Card, Empty, Page, PageHead, cx } from "@/components/ui";
 import { useStored } from "@/lib/stored";
 import { AccessMap, RoleChip, RoleMatrix } from "./access";
-import { UploadLimits } from "./limits";
 
-const TEAM_TABS = [["people", "People"], ["roles", "Roles and permissions"], ["map", "Who sees what"], ["groups", "Groups"], ["limits", "Upload limits"]] as const;
+// Upload limits live in Settings (one editor, one place); People links there.
+const TEAM_TABS = [["people", "People"], ["roles", "Roles and permissions"], ["map", "Who sees what"], ["groups", "Groups"]] as const;
 type TeamTab = (typeof TEAM_TABS)[number][0];
 const TEAM_KEYS = TEAM_TABS.map((t) => t[0]);
 
@@ -35,7 +36,6 @@ export function Team() {
   const { ws, open } = useApp();
   const canAccess = ws.can("access");
   const [tab, setTab] = useStored<TeamTab>("bos:team-tab", "people", TEAM_KEYS);
-  const tabs = TEAM_TABS.filter(([k]) => k !== "limits" || canAccess);
   return (
     <Page>
       <PageHead
@@ -43,21 +43,51 @@ export function Team() {
         title="Team and access"
         actions={canAccess && <Btn variant="primary" onClick={() => open({ kind: "person" })}><UserPlus aria-hidden className="size-4" />Invite someone</Btn>}
         sub={<>A <b className="font-semibold text-ink">role</b> says what someone can do; their <b className="font-semibold text-ink">scope</b> says which clients they can see. The server checks both on every change.</>}
-        tabs={<Tabs items={tabs.map(([k, l]) => ({ key: k, label: l, active: tab === k, onClick: () => setTab(k) }))} />}
+        tabs={<TeamTabs active={tab} onChange={setTab} />}
       />
 
-      {tab === "people" && <People />}
-      {tab === "roles" && <RoleMatrix />}
-      {tab === "map" && <AccessMap />}
-      {tab === "groups" && <Groups />}
-      {tab === "limits" && <UploadLimits />}
+      <div role="tabpanel" id="team-panel" aria-labelledby={`team-tab-${tab}`}>
+        {tab === "people" && <People />}
+        {tab === "roles" && <RoleMatrix />}
+        {tab === "map" && <AccessMap />}
+        {tab === "groups" && <Groups />}
+      </div>
     </Page>
+  );
+}
+
+/** Underline tabs under the header: one tab stop, arrow keys move between them. */
+function TeamTabs({ active, onChange }: { active: TeamTab; onChange: (k: TeamTab) => void }) {
+  const refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const onKey = (e: KeyboardEvent, i: number) => {
+    const n = TEAM_TABS.length;
+    const to = ({ ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: n - 1 } as Record<string, number>)[e.key];
+    if (to === undefined) return;
+    e.preventDefault();
+    const next = TEAM_TABS[(to + n) % n][0];
+    refs.current[next]?.focus();
+    onChange(next);
+  };
+  return (
+    <div role="tablist" aria-label="Team" data-scroll className="mt-5 flex flex-none gap-1 overflow-x-auto">
+      {TEAM_TABS.map(([k, label], i) => {
+        const on = k === active;
+        return (
+          <button key={k} ref={(el) => { refs.current[k] = el; }} type="button" role="tab" id={`team-tab-${k}`} aria-selected={on} aria-controls="team-panel" tabIndex={on ? 0 : -1}
+            onClick={() => onChange(k)} onKeyDown={(e) => onKey(e, i)}
+            className={cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-lg border-b-2 px-3 pb-3 pt-1.5 text-body font-medium transition-colors duration-150", on ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink")}>
+            {label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
 function People() {
   const { ws } = useApp();
   return (
+    <>
     <Card className="overflow-hidden">
       <div aria-hidden className={cx("hidden border-b border-line bg-wash-2 px-4 py-2 text-small font-semibold text-mute-2", COLS)}>
         <span>Name</span><span>Role</span><span>Sees</span><span className="text-right">Waiting</span><span />
@@ -66,6 +96,12 @@ function People() {
         {ws.d.users.map((u) => <PersonRow key={u.id} u={u} />)}
       </ul>
     </Card>
+    {ws.can("access") && (
+      <p className="m-0 mt-3 text-meta text-mute-2">
+        <Link href="/settings?section=uploads" className="font-medium text-accent hover:underline">Upload limits are in Settings</Link>
+      </p>
+    )}
+    </>
   );
 }
 

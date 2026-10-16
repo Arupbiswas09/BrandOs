@@ -22,7 +22,7 @@ test.describe("desktop", () => {
     await page.locator("header").getByRole("button", { name: /Priya Raman/ }).click();
     const menu = page.getByRole("menu", { name: "Your account" });
     await expect(menu.getByRole("menuitem", { name: "Settings", exact: true })).toBeVisible();
-    await expect(menu.getByRole("menuitem", { name: /Appearance/ })).toHaveAttribute("href", "/settings#appearance");
+    await expect(menu.getByRole("menuitem", { name: /Appearance/ })).toHaveAttribute("href", "/settings?section=appearance");
     await expect(menu.getByRole("menuitem", { name: /Keyboard shortcuts/ })).toBeVisible();
     await expect(menu.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
     await expect(menu.getByRole("radiogroup")).toHaveCount(0);
