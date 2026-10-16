@@ -64,11 +64,12 @@ export function WorkspaceProvider({ data, children }: { data: Workspace; childre
     return pathname + (q ? `?${q}` : "");
   }, [params, pathname]);
 
+  // The drawer's own section is `assetTab`; `tab` belongs to the page underneath, so opening and closing an asset never changes it.
   const openAsset = useCallback((id: string, tab?: string) => {
     setModal(null); setCmdk(false); setInbox(false); setNav(false);
-    router.push(withParam("asset", id, { tab: tab ?? null }), { scroll: false });
+    router.push(withParam("asset", id, { assetTab: tab ?? null }), { scroll: false });
   }, [router, withParam]);
-  const closeAsset = useCallback(() => router.push(withParam("asset", null, { tab: null }), { scroll: false }), [router, withParam]);
+  const closeAsset = useCallback(() => router.push(withParam("asset", null, { assetTab: null }), { scroll: false }), [router, withParam]);
 
   const value: Ctx = {
     ws, modal, open: (m) => { setCmdk(false); setModal(m); }, close: () => setModal(null),

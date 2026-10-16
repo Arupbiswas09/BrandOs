@@ -56,7 +56,7 @@ test("pin a note on an image, find it in the discussion, and jump back to it", a
 
 test("keyboard users can drop and move a pin", async ({ page }) => {
   await signIn(page);
-  await page.goto("/brands/br1/assets?asset=as1&tab=proof");
+  await page.goto("/brands/br1/assets?asset=as1&assetTab=proof");
   await settle(page);
   const drawer = page.getByRole("dialog", { name: "Free Audit Landing Page" });
   test.skip(!(await drawer.getByRole("button", { name: "+ Pin a note" }).count()), "needs an uploaded image from the test above");

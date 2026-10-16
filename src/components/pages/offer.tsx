@@ -48,33 +48,27 @@ export function OfferPage({ id }: { id: string }) {
 
 /**
  * The open tab, kept in the URL (`?tab=funnel`) so links and reloads keep it.
- * While an asset is open, `?tab=` belongs to its drawer; the page keeps its
- * own tab and puts it back in the URL when the drawer closes.
+ * An open asset keeps its own section in `?assetTab=`, so opening and closing
+ * one never changes this.
  */
 function useOfferTab(): [OfferTab, (t: OfferTab) => void] {
   const params = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const asset = params.get("asset");
   const asked = params.get("tab");
-  const fromUrl = !asset && isTab(asked) ? asked : null;
-  const [tab, setTabState] = useState<OfferTab>(fromUrl ?? "assets");
-  const [seen, setSeen] = useState({ asset, asked });
-  if (seen.asset !== asset || seen.asked !== asked) {
-    setSeen({ asset, asked });
-    if (fromUrl) setTabState(fromUrl);
-    // A plain link to the offer opens on Assets; a drawer that just closed leaves the tab alone.
-    else if (!asset && !seen.asset) setTabState("assets");
+  const fromUrl: OfferTab = isTab(asked) ? asked : "assets";
+  // Shown at once on a click; the address follows a moment later, and back/forward or a link moves it again.
+  const [tab, setTabState] = useState<OfferTab>(fromUrl);
+  const [seen, setSeen] = useState(asked);
+  if (seen !== asked) {
+    setSeen(asked);
+    setTabState(fromUrl);
   }
   const urlFor = useCallback((t: OfferTab) => {
     const next = new URLSearchParams(params.toString());
-    next.delete("asset");
     next.set("tab", t);
     return `${pathname}?${next}`;
   }, [params, pathname]);
-  useEffect(() => {
-    if (!asset && !asked && tab !== "assets") router.replace(urlFor(tab), { scroll: false });
-  }, [asset, asked, tab, router, urlFor]);
   // Search, the inbox and mentions link to "#discussion": open that tab.
   useEffect(() => {
     const check = () => { if (window.location.hash === "#discussion") router.replace(urlFor("discussion"), { scroll: false }); };
@@ -84,7 +78,7 @@ function useOfferTab(): [OfferTab, (t: OfferTab) => void] {
   }, [router, urlFor]);
   const setTab = (t: OfferTab) => {
     setTabState(t);
-    if (!asset) router.replace(urlFor(t), { scroll: false });
+    router.replace(urlFor(t), { scroll: false });
   };
   return [tab, setTab];
 }

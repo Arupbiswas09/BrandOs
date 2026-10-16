@@ -2,7 +2,7 @@
 
 import { FILE_KINDS, checkBatch, kindOf, sizeLabel, type FileKind, type MyUploadLimits } from "@/lib/upload-policy";
 import { useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Archive, ArchiveRestore, Copy, CopyPlus, Download, ExternalLink, File as FileIcon, FileArchive, FileAudio, FileImage, FileText, FileType, FileVideo, ImagePlus,
@@ -61,6 +61,7 @@ function Drawer({ a }: { a: Asset }) {
   const [run] = useAction();
   const copy = useCopyLink();
   const params = useSearchParams();
+  const pathname = usePathname();
   useEffect(() => { void trackVisit("asset", a.id); }, [a.id]);
 
   const b = ws.brand(a.brandId);
@@ -90,8 +91,11 @@ function Drawer({ a }: { a: Asset }) {
     { key: "discussion", label: "Discussion", count: openNotes || undefined },
     { key: "history", label: "History" },
   ];
-  // ?tab= opens a section; the old Files and Client tabs (and an offer page's own tabs) land on the overview.
-  const asked = params.get("tab");
+  // ?assetTab= opens a section (?tab= belongs to the page underneath). Older links said ?tab=; that still
+  // works when it names one of these sections, except on an offer page, whose own tabs include Discussion.
+  // The old Files and Client tabs land on the overview.
+  const legacy = params.get("tab");
+  const asked = params.get("assetTab") ?? (legacy === "discussion" && pathname.startsWith("/offers/") ? null : legacy);
   const [tab, setTab] = useState<Tab>(() => (tabs.some((t) => t.key === asked) ? (asked as Tab) : "overview"));
   // Which pin the proof view opens on. A new `n` remounts it, so a pinned note in the discussion can jump straight there.
   const [proofAt, setProofAt] = useState<{ fileKey?: string; pinId?: string; n: number }>(() => ({ pinId: params.get("pin") ?? undefined, n: 0 }));

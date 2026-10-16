@@ -64,7 +64,7 @@ test("a discussion note opens the item at its discussion", async ({ page }) => {
   await expect(note).toContainText("old logo lockup");
   await note.click();
   await expect(page).toHaveURL(/asset=as36/);
-  await expect(page).toHaveURL(/tab=discussion/);
+  await expect(page).toHaveURL(/assetTab=discussion/);
   await expect(page.getByRole("dialog", { name: /LinkedIn Carousel/ }).getByText("Slide four has the old logo lockup")).toBeVisible();
 });
 

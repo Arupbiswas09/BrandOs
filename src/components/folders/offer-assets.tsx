@@ -20,7 +20,7 @@ import { Btn, Empty, cx } from "@/components/ui";
  */
 
 /* Columns follow the space the grid actually has (it shares the row with the summary column on wide screens). */
-const GRID = "grid grid-cols-2 gap-3 @lg:grid-cols-3 @2xl:grid-cols-4";
+const GRID = "grid grid-cols-1 gap-3 @sm:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-cols-4";
 const HEAD = "m-0 text-small font-medium text-mute-2";
 const QUIET = cx("flex size-8 items-center justify-center rounded-lg text-mute-2 transition-colors hover:bg-hover hover:text-ink", FOCUS);
 const carriesAsset = (e: DragEvent) => e.dataTransfer.types.includes(ASSET_DRAG);

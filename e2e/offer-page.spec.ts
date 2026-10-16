@@ -50,9 +50,10 @@ test("offer tabs: arrow keys, the URL and links to the discussion", async ({ pag
   await expect(page).toHaveURL(/\?tab=funnel$/);
   await expect(page.getByRole("tabpanel", { name: "Funnel" })).toBeVisible();
 
-  // Opening a box's asset and closing it again keeps the board.
+  // Opening a box's asset and closing it again keeps the board: the drawer's own section is ?assetTab=.
   await page.getByRole("tabpanel", { name: "Funnel" }).getByRole("button", { name: /^Open Free Audit Landing Page/ }).first().click();
-  await expect(page).toHaveURL(/asset=as1/);
+  await expect(page).toHaveURL(/\?tab=funnel&asset=as1$/);
+  await expect(page.getByRole("tab", { name: "Funnel" })).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page).toHaveURL(/\?tab=funnel$/);
@@ -63,6 +64,18 @@ test("offer tabs: arrow keys, the URL and links to the discussion", async ({ pag
   await page.reload();
   await settle(page);
   await expect(page.getByRole("tab", { name: /^Discussion/ })).toHaveAttribute("aria-selected", "true");
+
+  // A link can name both: the page's tab and the drawer's section.
+  await page.goto("/offers/of1?tab=funnel&asset=as1&assetTab=history");
+  await settle(page);
+  await expect(page.getByRole("tab", { name: "Funnel" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("dialog").getByRole("tab", { name: "History" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+  await expect(page).toHaveURL(/\/offers\/of1\?tab=funnel$/);
+  // On an offer page ?tab=discussion is the page's tab, so an asset opened there starts on its overview.
+  await page.goto("/offers/of1?tab=discussion&asset=as1");
+  await settle(page);
+  await expect(page.getByRole("dialog").getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
 
   // Search and the inbox link to "#discussion".
   await page.goto("/offers/of1#discussion");
@@ -99,7 +112,7 @@ test("the asset drawer leads with what you came for", async ({ page }) => {
   await expect(flow.getByRole("link", { name: "Open", exact: true })).toHaveCount(0);
 });
 
-test("resolved notes fold away", async ({ page }) => {
+test("resolved notes fold away (and an old ?tab= link still opens the drawer's section)", async ({ page }) => {
   await signIn(page);
   await page.goto("/brands/br1/assets?asset=as38&tab=discussion");
   await settle(page);
