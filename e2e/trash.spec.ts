@@ -3,27 +3,27 @@ import { settle, signIn } from "./helpers";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
-test("a deleted offer comes back from the recycle bin with its assets still linked", async ({ page }) => {
+test("a deleted asset comes back from the recycle bin with its links", async ({ page }) => {
   await signIn(page);
-  await page.goto("/offers/of19");
+  await page.goto("/offers/of19?asset=as24");
   await settle(page);
-  await page.getByRole("button", { name: "More offer actions" }).click();
-  await page.getByRole("menuitem", { name: "Delete offer" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
-  await page.waitForURL(/\/brands\/br3\/offers$/);
-  await expect(page.getByRole("link", { name: /Thursday Night Sign-ups/ })).toHaveCount(0);
+  const drawer = page.getByRole("dialog", { name: "Youth Instagram Set" });
+  await drawer.getByRole("button", { name: "More asset actions" }).click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page.getByRole("dialog", { name: "Delete Youth Instagram Set?" }).getByRole("button", { name: "Delete" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByText("Youth Instagram Set")).toHaveCount(0);
 
   await page.goto("/trash");
   await settle(page);
-  await expect(page.getByText("Thursday Night Sign-ups")).toBeVisible();
-  await page.getByRole("button", { name: "Restore" }).first().click();
-  await expect(page.getByText("Thursday Night Sign-ups is back")).toBeVisible();
+  await expect(page.getByText("Youth Instagram Set")).toBeVisible();
+  await page.getByRole("button", { name: "Restore Youth Instagram Set" }).click();
+  await expect(page.getByText("Youth Instagram Set is back")).toBeVisible();
 
-  await page.goto("/services/sv6");
+  // Back where it was: linked to its offer again.
+  await page.goto("/offers/of19");
   await settle(page);
-  const funnels = page.getByRole("region", { name: "Funnels" });
-  await expect(funnels.getByRole("link", { name: "Thursday Night Sign-ups" })).toBeVisible();
-  await expect(page.getByRole("region", { name: "All assets" }).getByText("Thursday Night Poster")).toBeVisible();
+  await expect(page.getByText("Youth Instagram Set").first()).toBeVisible();
 });
 
 test("clients, brands and services can be archived but never deleted", async ({ page }) => {

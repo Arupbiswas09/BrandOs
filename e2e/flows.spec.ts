@@ -41,15 +41,15 @@ test("a viewer only sees their clients and cannot edit", async ({ page }) => {
 
 test("search finds things with the keyboard", async ({ page }) => {
   await signIn(page);
-  // The first keypress can land before hydration finishes; retry until the palette opens.
+  // "/" focuses the header's search box and opens its results. The first keypress can land before hydration finishes; retry.
+  const box = page.getByRole("combobox", { name: "Search" });
   await expect(async () => {
     await page.keyboard.press("/");
-    await expect(page.getByRole("dialog", { name: "Search" })).toBeVisible({ timeout: 500 });
+    await expect(box).toHaveAttribute("aria-expanded", "true", { timeout: 500 });
   }).toPass({ timeout: 10_000 });
-  const box = page.getByRole("dialog", { name: "Search" }).getByRole("textbox");
   await expect(box).toBeFocused();
   await box.pressSequentially("christmas");
-  await expect(page.getByRole("dialog", { name: "Search" }).getByText("Christmas Appeal").first()).toBeVisible();
+  await expect(page.getByRole("listbox").getByText("Christmas Appeal").first()).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/brands\/br2|\/offers\/of17|asset=as19/);
 });

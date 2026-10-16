@@ -7,7 +7,7 @@ Built from the *BrandOS v3* Claude Design prototype. Developed by Arup.
 - **Clients → brands → sub-brands**: each brand re-skins the app in its own colours.
 - **Services and offers**: an offer is a service argued at one segment. The coverage grid shows which combinations nobody has written yet.
 - **Assets**: exist once and link to as many offers as they support. Files, copy, checklists, prompts, versions, discussion and client sign-off in one drawer.
-- **Brand Kit**: industry-standard guidelines — logo rules (clear space, minimum sizes, misuse), colours with HEX, RGB, CMYK and Pantone plus WCAG contrast checks and a pairing grid, typefaces and a type scale, voice (we are / we are not, words to use and avoid, examples), imagery, do's and don'ts, files, and a completeness score. **Guidelines PDF** prints the whole kit as a document; client share links include it.
+- **Brand Kit**: industry-standard guidelines — logo rules (clear space, minimum sizes, misuse), colours with HEX, RGB, CMYK and Pantone plus WCAG contrast checks and a pairing grid, typefaces and a type scale, voice (we are / we are not, words to use and avoid, examples), imagery, do's and don'ts, files, and a completeness score. The brand's own guidelines PDF (the newest PDF on its Guidelines asset) reads right on the page, with Open full screen and Download; people who can upload add it or a newer version from there. **Export brand kit** prints the whole kit as a document; client share links include it.
 - **Strategy**: goals, segments and offer types for each brand.
 - **Review**: send for review, request changes, approve; everything lands in the right person's queue.
 - **Access**: seven roles × client scope. **Admin**, **Manager**, **Editor**, **Contributor** (edits only their own work), **Reviewer**, **Viewer**, and **Client**, an outside guest who sees only work cleared to send. Team → *Roles and permissions* shows the full matrix and *Who sees what* shows everyone who can open each client. The browser hides what you cannot do; every server action and API route checks again.
@@ -16,7 +16,9 @@ Built from the *BrandOS v3* Claude Design prototype. Developed by Arup.
 - **Brand health**: eight checks on each brand (proof, CTAs, goals, unlinked assets, coverage gaps, overdue work, stale reviews, unapproved client items), each linking to what needs fixing.
 - **Image previews**: uploaded images show on asset cards and in the asset panel.
 - **Editable notes**: edit or delete your own notes; admins can delete any.
-- **Recycle bin**: anything deleted can be restored for 30 days (Settings menu → Recycle bin, admins).
+- **Nothing important is ever deleted**: clients, brands, sub-brands, services and offers cannot be deleted by anyone, admins included; archive them instead, which hides them and can be undone. Assets and their files can still be deleted.
+- **Recycle bin**: deleted assets (and CTAs, people and groups) can be restored for 30 days (Workspace → Recycle bin, admins). Clients, brands, services and offers deleted before the rule can only be restored.
+- **Search everything** in the header box (⌘K or / jumps there; results drop down under it, narrowed to the brand you are in until you press Tab or clear the chip): clients, brands, services, offers, assets and their file names, tags and copy, CTAs, offer folders, Global Library items, people, discussion notes, funnel boxes, and the app's pages and actions. Accents and case never matter, every word typed has to match somewhere, and results show the matched words.
 - **Live updates**: teammates' changes appear within 30 seconds, and immediately when you return to the tab.
 - **Sign-in security** (password mode): optional **Continue with Google** for people already on the team, **Email me a sign-in code** (a six-digit code that works once, for ten minutes, once email is set up), **two-step verification** with any authenticator app plus recovery codes, **Where you're signed in** in Settings with per-device sign-out, and sign-in throttling that survives restarts.
 - **Email** (over SMTP when `SMTP_HOST` is set, e.g. Brevo; or Resend when `RESEND_API_KEY` is set): invites, password resets, sign-in codes, review requests, requested changes, approvals and @mentions. Each person chooses instant, daily digest or off per kind of event in **Settings → Notifications**.
@@ -98,10 +100,14 @@ to use Playwright's own Chromium (`npx playwright install chromium` first).
 - **Audit log** (`/audit`, admins only): sign-ins and failed sign-ins (email only, never the
   password), sign-outs, password changes, invite and reset links, role and access changes
   (before → after), client share links, exports and recycle-bin restores and deletions.
-  Filter by person, kind, date and text, and download the result as CSV. Sign-in and other
+  Times show in the reader's own timezone, 24-hour. Filter by person, kind, date and text,
+  and download the result as CSV (times in UTC). Sign-in and other
   security events never show in the dashboard's activity feed.
 - **Content-Security-Policy** with a per-request nonce, set in `src/proxy.ts`. Only our own
   scripts run; Google Fonts is allowed for Brand Kit previews. Other headers are in `next.config.ts`.
+  Uploaded files carry their own policy (`/api/files`): sandboxed, nothing in them runs. A PDF
+  asked for inline (the Brand Kit's guidelines) skips the sandbox so the browser's PDF viewer can
+  start, still loads nothing else, and may only be framed by BrandOS.
 - **Breached passwords** are refused when someone sets one (Have I Been Pwned, k-anonymity, so
   the password never leaves the server). If the service is down the password is allowed.
   `PWNED_CHECK=off` turns it off.

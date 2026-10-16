@@ -2,12 +2,12 @@
 
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema as s } from "@/db";
 import type { DB } from "@/db";
 import { seed } from "@/db/seed";
-import { can, canChange, cleanOverrides, type Perm } from "@/lib/access";
+import { NEVER_DELETED_NOTE, can, canChange, cleanOverrides, neverDeleted, type Perm } from "@/lib/access";
 import { DEFAULT_GOALS, ASSET_TYPES, freshBrandPair, offerTypesOf } from "@/lib/constants";
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
@@ -940,49 +940,23 @@ export async function setArchived(kind: "client" | "brand" | "service" | "offer"
   });
 }
 
-async function deleteBrands(tx: Parameters<Parameters<DB["transaction"]>[0]>[0], all: All, brandIds: string[]) {
-  if (!brandIds.length) return;
-  const ids = new Set(brandIds);
-  all.brands.filter((b) => b.parentId && ids.has(b.parentId)).forEach((b) => ids.add(b.id));
-  const list = [...ids];
-  const offerIds = all.offers.filter((o) => ids.has(o.brandId)).map((o) => o.id);
-  const assetIds = all.assets.filter((a) => a.brandId && ids.has(a.brandId)).map((a) => a.id);
-  if (offerIds.length) {
-    await tx.delete(s.links).where(inArray(s.links.offerId, offerIds));
-    await tx.delete(s.comments).where(and(eq(s.comments.kind, "offer"), inArray(s.comments.itemId, offerIds)));
-  }
-  if (assetIds.length) {
-    await tx.delete(s.links).where(inArray(s.links.assetId, assetIds));
-    await tx.delete(s.comments).where(and(eq(s.comments.kind, "asset"), inArray(s.comments.itemId, assetIds)));
-    await tx.delete(s.assetVersions).where(inArray(s.assetVersions.assetId, assetIds));
-  }
-  await tx.delete(s.offers).where(inArray(s.offers.brandId, list));
-  await tx.delete(s.assets).where(inArray(s.assets.brandId, list));
-  await tx.delete(s.services).where(inArray(s.services.brandId, list));
-  await tx.delete(s.ctas).where(inArray(s.ctas.brandId, list));
-  await tx.delete(s.brands).where(inArray(s.brands.id, list));
-}
-
+/**
+ * Deletes an asset, a CTA or a person. Clients, brands, sub-brands, services
+ * and offers are never deleted, whoever asks: they are archived instead.
+ */
 export async function deleteItem(kind: Kind, id: string) {
   return run(async () => {
+    if (neverDeleted(kind)) throw new Denied(NEVER_DELETED_NOTE);
+    if (kind !== "asset" && kind !== "cta" && kind !== "person") throw new Denied("That cannot be deleted.");
     const { me, vis, db, all } = await context(kind === "person" ? "access" : "del");
     await db.transaction(async (tx) => {
       // Everything about to go is copied into the recycle bin first.
-      const exists = { offer: all.offers, asset: all.assets, cta: all.ctas, service: all.services, brand: all.brands, client: all.clients, person: all.users }[kind].some((x) => x.id === id);
+      const exists = { asset: all.assets, cta: all.ctas, person: all.users }[kind].some((x) => x.id === id);
       if (exists) {
         const snap = await snapshot(tx, all, kind, id);
         await tx.insert(s.trash).values({ id: newId("tr"), kind, itemId: id, label: snap.label, context: snap.context, rows: snap.rows, deletedBy: me.id });
       }
       switch (kind) {
-        case "offer": {
-          need(vis.offer(id));
-          const o = all.offers.find((x) => x.id === id)!;
-          await tx.delete(s.links).where(eq(s.links.offerId, id));
-          await tx.delete(s.comments).where(and(eq(s.comments.kind, "offer"), eq(s.comments.itemId, id)));
-          await tx.delete(s.offers).where(eq(s.offers.id, id));
-          await log(tx, me.id, "deleted", "offer", id, o.name);
-          break;
-        }
         case "asset": {
           need(vis.asset(id));
           const a = all.assets.find((x) => x.id === id)!;
@@ -1001,29 +975,6 @@ export async function deleteItem(kind: Kind, id: string) {
           await tx.update(s.assets).set({ ctaId: null }).where(eq(s.assets.ctaId, id));
           await tx.delete(s.ctas).where(eq(s.ctas.id, id));
           await log(tx, me.id, "deleted", "cta", id, c.text);
-          break;
-        }
-        case "service": {
-          need(vis.service(id));
-          const v = all.services.find((x) => x.id === id)!;
-          await tx.update(s.offers).set({ serviceId: null }).where(eq(s.offers.serviceId, id));
-          await tx.delete(s.services).where(eq(s.services.id, id));
-          await log(tx, me.id, "deleted", "service", id, v.name);
-          break;
-        }
-        case "brand": {
-          need(vis.brand(id));
-          const b = all.brands.find((x) => x.id === id)!;
-          await deleteBrands(tx, all, [id]);
-          await log(tx, me.id, "deleted", "brand", id, b.name);
-          break;
-        }
-        case "client": {
-          need(vis.client(id));
-          const c = all.clients.find((x) => x.id === id)!;
-          await deleteBrands(tx, all, all.brands.filter((b) => b.clientId === id).map((b) => b.id));
-          await tx.delete(s.clients).where(eq(s.clients.id, id));
-          await log(tx, me.id, "deleted", "client", id, c.name);
           break;
         }
         case "person": {
@@ -1390,11 +1341,18 @@ export async function restoreFromTrash(entryId: string) {
   });
 }
 
+/**
+ * Empties the bin, or removes one thing from it, for good. Clients, brands,
+ * services and offers deleted before they became undeletable stay until
+ * someone restores them: emptying the bin passes over them.
+ */
 export async function deleteForever(entryId: string | "all") {
   return run(async () => {
     const { me, db } = await context("del");
-    const list = entryId === "all" ? await db.select().from(s.trash) : await db.select().from(s.trash).where(eq(s.trash.id, entryId));
-    need(list.length || entryId === "all", "That is no longer in the bin.");
+    const found = entryId === "all" ? await db.select().from(s.trash) : await db.select().from(s.trash).where(eq(s.trash.id, entryId));
+    need(found.length || entryId === "all", "That is no longer in the bin.");
+    if (entryId !== "all" && neverDeleted(found[0]!.kind)) throw new Denied("Clients, brands, services and offers are never deleted for good. Restore it instead.");
+    const list = found.filter((e) => !neverDeleted(e.kind));
     await db.transaction(async (tx) => {
       for (const e of list) {
         await tx.delete(s.trash).where(eq(s.trash.id, e.id));
