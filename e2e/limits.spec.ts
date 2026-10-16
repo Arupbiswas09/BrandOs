@@ -52,6 +52,5 @@ test("an admin blocks one permission for one person", async ({ page }) => {
   await page.goto("/brands/br1/assets?asset=as1");
   await settle(page);
   const drawer = page.getByRole("dialog", { name: "Free Audit Landing Page" });
-  await drawer.getByRole("tab", { name: /^Files/ }).click();
   await expect(drawer.getByRole("button", { name: /Upload files/ })).toHaveCount(0);
 });

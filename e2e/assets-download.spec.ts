@@ -48,7 +48,6 @@ test("Replace swaps a file in place and logs it", async ({ page }) => {
   await page.goto("/brands/br1/assets?asset=as3");
   await settle(page);
   const drawer = page.getByRole("dialog", { name: ASSET });
-  await drawer.getByRole("tab", { name: /^Files/ }).click();
   await expect(drawer.getByRole("link", { name: /^Download all/ })).toBeVisible();
 
   const chooser = page.waitForEvent("filechooser");
