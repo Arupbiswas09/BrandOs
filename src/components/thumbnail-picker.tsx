@@ -135,7 +135,7 @@ export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={keys}
-        className="relative w-full max-w-[400px] animate-pop rounded-2xl border border-line bg-surface p-5 shadow-card outline-none"
+        className="relative w-full max-w-[400px] animate-pop rounded-xl border border-line bg-surface p-5 shadow-pop outline-none"
       >
         <div className="mb-3.5 flex items-start gap-3">
           <div className="min-w-0 flex-1">

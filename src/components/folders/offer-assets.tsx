@@ -14,14 +14,15 @@ import { ThumbnailPicker } from "@/components/thumbnail-picker";
 import { Btn, Empty, cx } from "@/components/ui";
 
 /*
- * "What supports this offer": the offer's assets, optionally grouped into
+ * The Assets tab of an offer: its assets, optionally grouped into
  * folders. A folder only groups this offer's links; the assets stay where
  * they live, and removing a folder puts its assets back at the top level.
  */
 
-const GRID = "grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4";
-const ROUND = cx("flex h-8 w-8 items-center justify-center rounded-full border border-black/[.06] bg-surface text-ink-3 shadow-card transition-colors hover:text-accent", FOCUS);
-const QUIET = cx("flex h-8 w-8 items-center justify-center rounded-full text-mute-3 transition-colors hover:bg-wash hover:text-ink", FOCUS);
+/* Columns follow the space the grid actually has (it shares the row with the summary column on wide screens). */
+const GRID = "grid grid-cols-2 gap-3 @lg:grid-cols-3 @2xl:grid-cols-4";
+const HEAD = "m-0 text-small font-medium text-mute-2";
+const QUIET = cx("flex size-8 items-center justify-center rounded-lg text-mute-2 transition-colors hover:bg-hover hover:text-ink", FOCUS);
 const carriesAsset = (e: DragEvent) => e.dataTransfer.types.includes(ASSET_DRAG);
 
 export function OfferAssets({ o }: { o: Offer }) {
@@ -79,20 +80,40 @@ export function OfferAssets({ o }: { o: Offer }) {
   const folderTile = <span className="flex h-full w-full items-center justify-center" style={{ background: hexA(tint, 0.1), color: readable(tint, 0.1) }}><Folder aria-hidden size={26} strokeWidth={1.6} /></span>;
   const pickingFolder = folders.find((f) => f.id === picking);
 
+  const actions = canEdit && (
+    <div className="ml-auto flex flex-wrap justify-end gap-2">
+      <Btn size="sm" onClick={() => { setAt(null); setNaming(true); }}><FolderPlus aria-hidden size={15} /><span className="max-sm:sr-only">New folder</span></Btn>
+      <Btn size="sm" onClick={() => open({ kind: "link", offerId: o.id })}><Link2 aria-hidden size={15} /><span>Link existing<span className="max-sm:sr-only"> asset</span></span></Btn>
+      <Btn size="sm" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}><Plus aria-hidden size={15} />New asset</Btn>
+    </div>
+  );
+  const empty = !current && !assets.length && !folders.length;
+
   return (
-    <section aria-labelledby="supports-h">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <h2 id="supports-h" className="m-0 mb-1 text-lead font-semibold">What supports this offer</h2>
-          <p className="m-0 text-body text-mute-2">{assets.length} {assets.length === 1 ? "asset supports" : "assets support"} this offer. Linking never duplicates — the asset stays where it lives.</p>
-        </div>
-        {canEdit && (
-          <div className="flex flex-wrap gap-2">
-            <Btn size="lg" onClick={() => { setAt(null); setNaming(true); }}><FolderPlus aria-hidden size={16} />New folder</Btn>
-            <Btn size="lg" onClick={() => open({ kind: "link", offerId: o.id })}><Link2 aria-hidden size={16} />Link existing asset</Btn>
-            <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}><Plus aria-hidden size={16} />New asset</Btn>
-          </div>
+    <div className="@container">
+      <div className="mb-3 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
+        {current ? (
+          <nav aria-label="Folders" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+            <button type="button" onClick={() => setAt(null)} {...dropOn("root", null)}
+              className={cx("-ml-1.5 inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-body font-medium text-mute-2 transition-colors hover:text-ink", FOCUS, over === "root" && "bg-soft text-ink ring-2 ring-accent")}>
+              <ArrowLeft aria-hidden size={15} />All assets
+            </button>
+            <span aria-hidden className="text-mute-2">/</span>
+            {renaming === current.id ? (
+              <NameForm label={`New name for ${current.name}`} initial={current.name} submit="Save" pending={pending} compact className="min-w-[240px] flex-1 flex-nowrap"
+                onCancel={() => setRenaming(null)} onSave={async (name) => { const r = await run(renameFolder, current.id, name); if (r.ok) setRenaming(null); }} />
+            ) : (
+              <>
+                <span aria-current="page" className="min-w-0 truncate text-body font-semibold text-ink">{current.name}</span>
+                <span className="text-meta tabular-nums text-mute-2">{shown.length}</span>
+                {canEdit && <CardMenu label={`Folder actions for ${current.name}`} items={folderMenu(current)} triggerClassName={QUIET} />}
+              </>
+            )}
+          </nav>
+        ) : folders.length > 0 && (
+          <h3 className={HEAD}>{plural(folders.length, "folder")}</h3>
         )}
+        {actions}
       </div>
 
       {naming && (
@@ -111,37 +132,16 @@ export function OfferAssets({ o }: { o: Offer }) {
       )}
 
       {current ? (
-        <>
-          <nav aria-label="Folders" className="mb-3.5 flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1">
-            <button type="button" onClick={() => setAt(null)} {...dropOn("root", null)}
-              className={cx("-ml-1.5 inline-flex items-center gap-1.5 rounded-lg px-1.5 py-1 text-body font-medium text-mute-2 transition-colors hover:text-ink", FOCUS, over === "root" && "bg-soft text-ink ring-2 ring-accent")}>
-              <ArrowLeft aria-hidden size={15} />All assets
-            </button>
-            <span aria-hidden className="text-mute-5">/</span>
-            {renaming === current.id ? (
-              <NameForm label={`New name for ${current.name}`} initial={current.name} submit="Save" pending={pending} compact className="min-w-[240px] flex-1 flex-nowrap"
-                onCancel={() => setRenaming(null)} onSave={async (name) => { const r = await run(renameFolder, current.id, name); if (r.ok) setRenaming(null); }} />
-            ) : (
-              <>
-                <span aria-current="page" className="min-w-0 truncate text-body font-semibold text-ink">{current.name}</span>
-                <span className="font-mono text-small text-mute-4">{shown.length}</span>
-                <span className="flex-1" />
-                {canEdit && <CardMenu label={`Folder actions for ${current.name}`} items={folderMenu(current)} triggerClassName={ROUND} />}
-              </>
-            )}
-          </nav>
-          {shown.length > 0 ? (
-            <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} />)}</div>
-          ) : (
-            <Empty compact body={canEdit ? "Nothing in this folder yet. Drag a card onto the folder, or use Move to folder in a card's menu." : "Nothing in this folder yet."} />
-          )}
-        </>
-      ) : (assets.length > 0 || folders.length > 0) ? (
+        shown.length > 0 ? (
+          <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} />)}</div>
+        ) : (
+          <Empty compact body={canEdit ? "Nothing in this folder yet. Drag a card onto the folder, or use Move to folder in a card's menu." : "Nothing in this folder yet."} />
+        )
+      ) : !empty ? (
         <>
           {folders.length > 0 && (
             <>
-              <h3 className="eyebrow m-0 mb-2.5">{plural(folders.length, "folder")}</h3>
-              <div className={cx("grid grid-cols-1 gap-2.5 min-[480px]:grid-cols-2 lg:grid-cols-4", shown.length > 0 && "mb-7")}>
+              <div className={cx("grid grid-cols-1 gap-2.5 @sm:grid-cols-2 @2xl:grid-cols-4", shown.length > 0 && "mb-6")}>
                 {folders.map((f) => renaming === f.id ? (
                   <NameForm key={f.id} label={`New name for ${f.name}`} initial={f.name} submit="Save" pending={pending} compact
                     onCancel={() => setRenaming(null)} onSave={async (name) => { const r = await run(renameFolder, f.id, name); if (r.ok) setRenaming(null); }}
@@ -151,22 +151,20 @@ export function OfferAssets({ o }: { o: Offer }) {
                     onOpen={() => setAt(f.id)} menu={canEdit ? folderMenu(f) : []} />
                 ))}
               </div>
-              {shown.length > 0 && <h3 className="eyebrow m-0 mb-2.5">{plural(shown.length, "asset")}</h3>}
+              {shown.length > 0 && <h3 className={cx(HEAD, "mb-3")}>{plural(shown.length, "asset")}</h3>}
             </>
           )}
           {shown.length > 0 && <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} />)}</div>}
         </>
       ) : (
-        <Empty title="No assets in this offer yet" body="Something in the library probably already fits, so look there before you build.">
-          {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link an existing asset</Btn>}
-        </Empty>
+        <Empty title="No assets in this offer yet" body={canEdit ? "Something in the library probably already fits: link it before you build a new one." : "Nothing is linked to this offer yet."} />
       )}
 
       {pickingFolder && (
         <ThumbnailPicker endpoint={`/api/folders/${pickingFolder.id}/thumbnail`} subject={`Folder · ${pickingFolder.name}`} preview={cover(pickingFolder)}
           custom={!!pickingFolder.thumbnail} resetLabel="Use the first asset's picture" fallback={folderTile} onClose={() => setPicking(null)} />
       )}
-    </section>
+    </div>
   );
 }
 

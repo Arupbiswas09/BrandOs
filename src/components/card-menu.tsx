@@ -37,8 +37,12 @@ export function CardMenu({ label, items, triggerClassName, icon, onOpenChange }:
     if (!m || !b) return;
     const w = m.offsetWidth, h = m.offsetHeight;
     const below = b.bottom + 6;
-    m.style.left = `${Math.min(Math.max(8, b.right - w), window.innerWidth - w - 8)}px`;
-    m.style.top = `${below + h > window.innerHeight - 8 && b.top - h - 6 > 8 ? b.top - h - 6 : below}px`;
+    const above = below + h > window.innerHeight - 8 && b.top - h - 6 > 8;
+    const left = Math.min(Math.max(8, b.right - w), window.innerWidth - w - 8);
+    m.style.left = `${left}px`;
+    m.style.top = `${above ? b.top - h - 6 : below}px`;
+    // It grows out of its button.
+    m.style.transformOrigin = `${Math.round(b.left + b.width / 2 - left)}px ${above ? "100%" : "0"}`;
   });
 
   useLayoutEffect(() => {
@@ -105,7 +109,7 @@ export function CardMenu({ label, items, triggerClassName, icon, onOpenChange }:
           role="menu"
           aria-label={label}
           onKeyDown={keys}
-          className="fixed z-[75] min-w-[210px] max-w-[min(280px,calc(100vw-16px))] animate-pop overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-card"
+          className="fixed z-[75] min-w-[210px] max-w-[min(280px,calc(100vw-16px))] animate-pop overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-pop"
           style={{ top: -9999, left: -9999 }}
         >
           {items.map((it, i) => it.kind === "item" ? (

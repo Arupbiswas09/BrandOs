@@ -13,7 +13,7 @@ import { useAction, useApp } from "@/components/app/provider";
 import { Btn, Card, Empty, cx } from "@/components/ui";
 import { BoxView, DEFAULT_TEXT, boxName } from "./box";
 import { ArrowInspector, BoxInspector } from "./inspector";
-import { FunnelIndex, LinkSelect, linkGroups, parseLinkValue, resolveLink, type Resolved } from "./linked";
+import { LinkSelect, linkGroups, parseLinkValue, resolveLink, type Resolved } from "./linked";
 
 /*
  * The funnel board on an offer page. Local state is the truth while you
@@ -375,23 +375,21 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
   const linkedAssets = ws.linkedAssets(offer.id).filter((a) => !a.archived);
   const canDraft = buildDraft(draftSource(offer, linkedAssets)).boxes.length > 0;
 
+  // The tab already says "Funnel": one quiet line on how the board works, and what is on it.
   const head = (
-    <div className="mb-3.5 flex flex-wrap items-end justify-between gap-x-5 gap-y-1.5">
-      <div className="min-w-0">
-        <h2 id={`${uid}-title`} className="m-0 mb-1 text-lead font-semibold">Funnel</h2>
-        <p className="m-0 max-w-[64ch] text-body text-mute-2 text-pretty">
-          {editable
-            ? "The whole path for this offer on one board. Drag boxes to arrange; select one to write in it, link it to a file, or draw an arrow from it."
-            : "The whole path for this offer on one board. The ↗ on a linked box opens the file."}
-        </p>
-      </div>
-      {n > 0 && <span className="font-mono text-meta text-mute-3">{plural(n, "box", "boxes")} · {plural(m, "arrow")}</span>}
+    <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
+      <p className="m-0 max-w-[72ch] text-meta text-mute-2 text-pretty">
+        {editable
+          ? "The whole path for this offer on one board. Drag boxes to arrange; select one to write in it, link it to a file, or draw an arrow from it."
+          : "The whole path for this offer on one board. The ↗ on a linked box opens the file."}
+      </p>
+      {n > 0 && <span className="text-meta tabular-nums text-mute-2">{plural(n, "box", "boxes")} · {plural(m, "arrow")}</span>}
     </div>
   );
 
   if (!n) {
     return (
-      <section aria-labelledby={`${uid}-title`} className="mb-8">
+      <div>
         {head}
         {editable ? (
           // One sentence and one way in: a draft when there is something to draft from, a blank board when not.
@@ -406,24 +404,24 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
             }
           >
             {canDraft ? (
-              <Btn variant="primary" size="lg" disabled={drafting || busy} onClick={() => runAction(draftFunnel, offerId)}>
+              <Btn size="lg" disabled={drafting || busy} onClick={() => runAction(draftFunnel, offerId)}>
                 <Spline aria-hidden size={16} />{drafting ? "Drafting…" : linkedAssets.length ? "Draft from linked assets" : "Draft from the CTA and goal"}
               </Btn>
             ) : (
-              <Btn variant="primary" size="lg" onClick={() => add("step")}>Start blank</Btn>
+              <Btn size="lg" onClick={() => add("step")}>Start blank</Btn>
             )}
           </Empty>
         ) : (
           <div className="rounded-xl border border-dashed border-line-strong bg-surface/60 px-5 py-6 text-body text-mute-2">No funnel mapped yet.</div>
         )}
-      </section>
+      </div>
     );
   }
 
   const saveNote = status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status === "error" ? "Not saved" : "";
 
   return (
-    <section aria-labelledby={`${uid}-title`} className="mb-8" onKeyDown={onKeyDown}>
+    <div onKeyDown={onKeyDown}>
       {head}
       <Card className="overflow-hidden">
         {editable && (
@@ -431,7 +429,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
             {drawFrom ? (
               <div role="status" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-soft px-3 py-1.5 text-meta text-ink-2">
                 <Spline aria-hidden size={15} className="flex-none text-hl-ink" />
-                <span className="min-w-0 flex-1">Click the box this leads to — <span className="kbd">Esc</span> to cancel</span>
+                <span className="min-w-0 flex-1">Click the box this leads to. <span className="kbd">Esc</span> cancels.</span>
                 <Btn size="sm" variant="ghost" onClick={() => { const src = drawFrom; setDrawFrom(null); focusBox(src); }}>Cancel</Btn>
               </div>
             ) : (
@@ -548,7 +546,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
                   data-funnel-arrow={a.id}
                   aria-label={`Arrow from ${from} to ${to}${lab ? `, labelled ${lab}` : ""}`}
                   aria-pressed={on}
-                  title={lab ? undefined : "Arrow — click to label, reverse or delete"}
+                  title={lab ? undefined : "Arrow: click to label, reverse or delete"}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => { setDrawFrom(null); setSel({ kind: "arrow", id: a.id }); }}
                   className={cx(
@@ -578,7 +576,6 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
           </div>
         </div>
       </Card>
-      <FunnelIndex funnel={funnel} />
-    </section>
+    </div>
   );
 }

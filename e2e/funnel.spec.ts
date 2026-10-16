@@ -4,21 +4,26 @@ import { settle, signIn } from "./helpers";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
-/** The Funnel section of an offer page. */
-const board = (page: Page) => page.locator("section", { has: page.getByRole("heading", { name: "Funnel", exact: true }) });
+/** The Funnel tab of an offer page. */
+const board = (page: Page) => page.getByRole("tabpanel", { name: "Funnel" });
 
 test("funnel board: add a step, write in it, draw and label an arrow, and it is still there after a reload", async ({ page }) => {
   await signIn(page);
   await page.goto("/offers/of15");
   await settle(page);
+  // The offer opens on its assets; the board is one tab along, and the tab is kept in the URL.
+  await expect(page.getByRole("tab", { name: /^Assets/ })).toHaveAttribute("aria-selected", "true");
+  await page.getByRole("tab", { name: "Funnel" }).click();
+  await expect(page).toHaveURL(/\/offers\/of15\?tab=funnel$/);
   const funnel = board(page);
-  await expect(funnel.getByRole("heading", { name: "Funnel", exact: true })).toBeVisible();
+  await expect(funnel).toBeVisible();
 
   // The seeded example: three sources, the landing page, the audit, the consultation and the service.
   await expect(funnel.getByText("8 boxes · 6 arrows")).toBeVisible();
   await expect(funnel.getByRole("button", { name: /^Step: Free Audit Landing Page/ })).toBeVisible();
   await expect(funnel.getByRole("button", { name: /^Step: Google Ad Grant/ })).toBeVisible();
-  await expect(funnel.getByRole("heading", { name: "Everything this funnel points at" })).toBeVisible();
+  // No second list of the same links under the board.
+  await expect(page.getByText("Everything this funnel points at")).toHaveCount(0);
 
   // Add a step and write in it.
   await funnel.getByRole("button", { name: "+ Step", exact: true }).click();
@@ -42,6 +47,7 @@ test("funnel board: add a step, write in it, draw and label an arrow, and it is 
 
   await page.reload();
   await settle(page);
+  await expect(page.getByRole("tab", { name: "Funnel" })).toHaveAttribute("aria-selected", "true");
   await expect(funnel.getByRole("button", { name: "Step: Email automation" })).toBeVisible();
   await expect(funnel.getByRole("button", { name: "Arrow from Email automation to The audit, labelled form submit" })).toBeVisible();
   await expect(funnel.getByText("9 boxes · 7 arrows")).toBeVisible();
@@ -70,7 +76,7 @@ test("funnel board: add a step, write in it, draw and label an arrow, and it is 
 test("funnel board: a viewer sees it and can open files, but cannot change it", async ({ page }) => {
   // Priya drafts a funnel on an offer Marta can see, from its linked assets.
   await signIn(page);
-  await page.goto("/offers/of20");
+  await page.goto("/offers/of20?tab=funnel");
   await settle(page);
   const funnel = board(page);
   await expect(funnel.getByText("Map how people move through this offer")).toBeVisible();
@@ -80,9 +86,9 @@ test("funnel board: a viewer sees it and can open files, but cannot change it", 
   await expect(funnel.getByRole("button", { name: /^Stage: Audience growth/ })).toBeVisible();
 
   await signIn(page, "Marta Vieira");
-  await page.goto("/offers/of20");
+  await page.goto("/offers/of20?tab=funnel");
   await settle(page);
-  await expect(funnel.getByRole("heading", { name: "Funnel", exact: true })).toBeVisible();
+  await expect(funnel).toBeVisible();
   await expect(funnel.getByText("Audience growth")).toBeVisible();
   await expect(funnel.getByRole("button", { name: "+ Step", exact: true })).toHaveCount(0);
   await expect(funnel.getByRole("combobox", { name: /Add a box linked/ })).toHaveCount(0);
@@ -98,10 +104,12 @@ test("funnel board: a new offer starts with a funnel drafted from its CTA, goal 
   await signIn(page);
   await page.goto("/offers/of24");
   await settle(page);
-  await page.getByRole("button", { name: "Adapt for another segment" }).click();
+  await page.getByRole("button", { name: "More offer actions" }).click();
+  await page.getByRole("menuitem", { name: "Adapt for another segment" }).click();
   await page.getByRole("button", { name: "Save offer" }).click();
   await page.waitForURL((u) => /\/offers\//.test(u.pathname) && !u.pathname.endsWith("/of24"));
   await settle(page);
+  await page.getByRole("tab", { name: "Funnel" }).click();
   const funnel = board(page);
   await expect(funnel.getByRole("button", { name: /^Step: Book a Free Audit/ })).toBeVisible();
   await expect(funnel.getByRole("button", { name: /^Stage: Revenue/ })).toBeVisible();
@@ -111,11 +119,11 @@ test("funnel board: a new offer starts with a funnel drafted from its CTA, goal 
 
 test("funnel board meets WCAG AA and fits a phone", async ({ page }) => {
   await signIn(page);
-  await page.goto("/offers/of15");
+  await page.goto("/offers/of15?tab=funnel");
   await settle(page);
   const funnel = board(page);
   const scan = async (when: string) => {
-    const r = await new AxeBuilder({ page }).include("main section").withTags(["wcag2a", "wcag2aa"]).analyze();
+    const r = await new AxeBuilder({ page }).include("main [role=tabpanel]").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
     const problems = r.violations.map((v) => `${when}: ${v.id} × ${v.nodes.length} — ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
     expect(problems, problems.join("\n")).toEqual([]);
   };
@@ -134,7 +142,7 @@ test("funnel board meets WCAG AA and fits a phone", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.reload();
   await settle(page);
-  await expect(funnel.getByRole("heading", { name: "Funnel", exact: true })).toBeVisible();
+  await expect(funnel).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow, `the offer page scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(1);
 });

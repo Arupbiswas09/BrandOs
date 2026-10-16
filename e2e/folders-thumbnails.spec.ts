@@ -43,13 +43,17 @@ test("a pasted screenshot becomes the card's thumbnail, and it can go back to au
   await page.goto("/offers/of1?asset=as41");
   await settle(page);
   const drawer = page.getByRole("dialog", { name: FLOW });
-  await expect(drawer.getByRole("button", { name: "Change thumbnail" })).toBeVisible();
+  // Changing the picture is in the drawer's "…" menu; pasting works from anywhere in the drawer.
+  await drawer.getByRole("button", { name: "More asset actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Change thumbnail" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toBeVisible();
 
   await pasteImage(page, png());
   await expect(page.getByText("Thumbnail changed")).toBeVisible();
   await expect(drawer.locator(FLOW_THUMB)).toBeVisible();
   await drawer.getByRole("tab", { name: /^History/ }).click();
-  await expect(drawer.getByText(/changed the thumbnail of — Pasted image\.png/).first()).toBeVisible();
+  await expect(drawer.getByText(/Changed the thumbnail of: Pasted image\.png/).first()).toBeVisible();
 
   // The card on the offer page shows the picture, fully loaded.
   await page.keyboard.press("Escape");
@@ -77,7 +81,8 @@ test("folders group an offer's assets, and removing one keeps every asset", asyn
   await signIn(page);
   await page.goto("/offers/of1");
   await settle(page);
-  const count = page.getByText(/\d+ assets? supports? this offer/);
+  // The Assets tab carries the count.
+  const count = page.getByRole("tab", { name: /^Assets/ });
   const before = await count.textContent();
 
   await page.getByRole("button", { name: "New folder" }).click();
@@ -96,7 +101,7 @@ test("folders group an offer's assets, and removing one keeps every asset", asyn
 
   // By dragging a card onto the folder, with both in view so nothing scrolls mid-drag.
   await page.setViewportSize({ width: 1440, height: 1500 });
-  await page.getByRole("heading", { name: "What supports this offer" }).evaluate((h) => h.scrollIntoView({ block: "start" }));
+  await page.getByRole("tabpanel", { name: /^Assets/ }).evaluate((h) => h.scrollIntoView({ block: "start" }));
   const card = page.locator('[draggable="true"]', { has: page.getByText("Grant Application Source Files", { exact: true }) });
   await card.dragTo(folder);
   await expect(folder).toContainText("2 assets");
@@ -135,11 +140,14 @@ test("an offer is never deleted; it moves back to draft instead", async ({ page 
   await expect(menu.getByRole("menuitem", { name: /Delete/ })).toHaveCount(0);
   await menu.getByRole("menuitem", { name: "Move back to draft" }).click();
   await expect(page.getByText("Moved back to draft")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Ideation", exact: true })).toHaveAttribute("aria-pressed", "true");
-  // Already a draft: nothing left in the menu, so it goes.
-  await expect(page.getByRole("button", { name: "More offer actions" })).toHaveCount(0);
+  const status = page.getByRole("combobox", { name: "Status" });
+  await expect(status).toHaveValue("Ideation");
+  // Already a draft: the menu no longer offers it.
+  await page.getByRole("button", { name: "More offer actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Move back to draft" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
 
   // Put it back for the other tests.
-  await page.getByRole("button", { name: "Active", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Active", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await status.selectOption("Active");
+  await expect(status).toHaveValue("Active");
 });

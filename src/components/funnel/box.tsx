@@ -95,8 +95,8 @@ export function BoxView({ box, r, editable, selected, drawing, lifted, measure, 
       target={r.open}
       label={`Open ${r.name}`}
       className={cx(
-        "absolute flex h-[22px] w-[22px] items-center justify-center rounded-md transition-colors",
-        box.kind === "stage" ? "right-2.5 top-1/2 -translate-y-1/2" : "bottom-1.5 right-1.5",
+        "absolute flex size-6 items-center justify-center rounded-md transition-colors",
+        box.kind === "stage" ? "right-2 top-1/2 -translate-y-1/2" : "bottom-1 right-1",
         OPEN_BTN[box.kind],
       )}
     >

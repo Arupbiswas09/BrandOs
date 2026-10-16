@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowUpRight } from "lucide-react";
-import type { Funnel, FunnelLink, Offer } from "@/db/schema";
+import type { FunnelLink, Offer } from "@/db/schema";
 import { readable, rgb } from "@/lib/color";
 import { NEUTRAL } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -131,50 +130,3 @@ export function LinkSelect({ groups, value, onChange, empty, label, className, c
     </select>
   );
 }
-
-/** "Everything this funnel points at": each linked item once, as a one-click shortcut. Hidden when nothing is linked. */
-export function FunnelIndex({ funnel }: { funnel: Funnel }) {
-  const { ws } = useApp();
-  const seen = new Set<string>();
-  const items = [...funnel.boxes]
-    .sort((a, b) => a.x - b.x || a.y - b.y)
-    .flatMap((b) => {
-      if (!b.link) return [];
-      const key = linkValue(b.link);
-      if (seen.has(key)) return [];
-      seen.add(key);
-      const r = resolveLink(ws, b.link);
-      return r.missing ? [] : [{ key, r }];
-    });
-  if (!items.length) return null;
-  const row = "inline-flex max-w-full items-center gap-2 rounded-xl border border-line bg-surface py-1.5 pl-1.5 pr-2.5 text-left";
-  return (
-    <div className="mt-4">
-      <h3 className="m-0 mb-2 text-body font-semibold text-ink-3">Everything this funnel points at</h3>
-      <ul className="m-0 flex list-none flex-wrap gap-2 p-0">
-        {items.map(({ key, r }) => {
-          const body = (
-            <>
-              <CodeBadge code={r.code} color={r.color} size={26} />
-              <span className="min-w-0">
-                <span className="block truncate text-meta font-semibold leading-tight text-ink">{r.name}</span>
-                <span className="block truncate text-small leading-tight text-mute-3">{r.sub}</span>
-              </span>
-              {r.open && <ArrowUpRight aria-hidden size={14} className="flex-none text-mute-4" />}
-            </>
-          );
-          return (
-            <li key={key} className="min-w-0 max-w-full">
-              {r.open ? (
-                <OpenLink target={r.open} label={`Open ${r.name} (${r.sub})`} className={cx(row, "transition hover:border-line-strong hover:bg-wash")}>{body}</OpenLink>
-              ) : (
-                <span className={row}>{body}</span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
-

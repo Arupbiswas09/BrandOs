@@ -19,13 +19,15 @@ test("create an offer from a service page, link an asset, discuss, review", asyn
   await page.getByRole("button", { name: "Link", exact: true }).first().click();
   await expect(page.getByText("is now linked to this offer")).toBeVisible();
 
+  await page.getByRole("tab", { name: /^Discussion/ }).click();
+  await expect(page).toHaveURL(/tab=discussion/);
   await page.getByPlaceholder(/Add a note/).fill("Looks right to me");
   await page.getByRole("button", { name: "Post note" }).click();
   await expect(page.getByText("Looks right to me")).toBeVisible();
 
   await page.getByRole("button", { name: "Send for review" }).first().click();
   await page.getByRole("dialog").getByText("Joss Weekes").click();
-  await expect(page.getByText("Review — Joss Weekes")).toBeVisible();
+  await expect(page.getByText(/^In review with Joss/)).toBeVisible();
 });
 
 test("a viewer only sees their clients and cannot edit", async ({ page }) => {
