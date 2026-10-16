@@ -1,12 +1,16 @@
-import { eq } from "drizzle-orm";
-import { getDb, schema as s } from "@/db";
+import { and, eq, inArray } from "drizzle-orm";
+import { getDb, schema as s, type DB } from "@/db";
+import type { FileRef } from "@/db/schema";
 import { can, canChange } from "@/lib/access";
 import { readAll, makeVisibility, scopeFor } from "@/server/data";
 import { getViewer } from "@/server/session";
-import { humanSize, removeStoredFile, saveFile, storageProblem } from "@/server/storage";
+import { humanSize, saveFile, storageProblem } from "@/server/storage";
 import { checkUpload } from "@/server/uploads";
 import { getUploadPolicy, myLimits } from "@/server/limits";
 import { checkBatch } from "@/lib/upload-policy";
+import { swapIn } from "@/lib/file-versions";
+
+type Tx = DB | Parameters<Parameters<DB["transaction"]>[0]>[0];
 
 export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/files">) {
   const { id } = await ctx.params;
@@ -41,7 +45,7 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
   const limit = checkBatch(files.map((f) => ({ name: f.name, size: f.size })), myLimits(all, await getUploadPolicy(), me));
   if (limit) return Response.json({ error: limit }, { status: 413 });
 
-  const added = [];
+  const added: (FileRef & { key: string })[] = [];
   for (const { f, c } of checked) {
     const clean = f.name.replace(/[^\w.\- ()]+/g, "_").slice(-120) || "file";
     const key = `assets/${id}/${crypto.randomUUID().slice(0, 8)}-${clean}`;
@@ -49,28 +53,43 @@ export async function POST(req: Request, ctx: RouteContext<"/api/assets/[id]/fil
     added.push({ name: f.name.slice(0, 300), size: humanSize(f.size), bytes: f.size, uploadedBy: me.id, key, type: c.ok ? c.type : "application/octet-stream", url: `/api/files/${key}` });
   }
   const db = await getDb();
+  const now = new Date();
+  /** A stored file that leaves the list is kept as an earlier version of the one taking its place, never deleted. */
+  const keep = async (tx: Tx, gone: FileRef[], byKey: string) => {
+    const kept = gone.filter((f) => f.key && f.key !== byKey);
+    if (!kept.length) return;
+    // Older versions of those files now lead to the new one too, so its history is one list.
+    await tx.update(s.fileVersions).set({ replacedByKey: byKey })
+      .where(and(eq(s.fileVersions.assetId, id), inArray(s.fileVersions.replacedByKey, kept.map((f) => f.key!))));
+    await tx.insert(s.fileVersions).values(kept.map((file) => ({
+      id: "fv" + crypto.randomUUID().replace(/-/g, "").slice(0, 10), assetId: id, file, replacedByKey: byKey, replacedBy: me.id, replacedAt: now,
+    })));
+  };
   if (replaceKey) {
     const old = asset.files[at];
     const fresh = added[0];
     // Same slot, new file. Another entry already called what the new file is called gives way, as with a normal upload.
-    const next = asset.files.flatMap((x, i) => (i === at ? [fresh] : x.name === fresh.name ? [] : [x]));
-    await db.update(s.assets).set({ files: next, updatedAt: new Date() }).where(eq(s.assets.id, id));
-    await db.insert(s.activity).values({
-      id: "ac" + crypto.randomUUID().slice(0, 10), userId: me.id, action: "replaced a file on", type: "asset", itemId: id, label: asset.name,
-      field: old.name === fresh.name ? fresh.name : `${old.name} → ${fresh.name}`,
+    const { next, displaced } = swapIn(asset.files, at, fresh);
+    await db.transaction(async (tx) => {
+      await tx.update(s.assets).set({ files: next, updatedAt: now }).where(eq(s.assets.id, id));
+      await keep(tx, displaced, fresh.key);
+      await tx.insert(s.activity).values({
+        id: "ac" + crypto.randomUUID().slice(0, 10), userId: me.id, action: "replaced a file on", type: "asset", itemId: id, label: asset.name,
+        field: old.name === fresh.name ? fresh.name : `${old.name} → ${fresh.name}`,
+      });
     });
-    // Keep the stored copy while another asset (a clone) still points at it.
-    const stillUsed = next.some((f) => f.key === replaceKey) || all.assets.some((x) => x.id !== id && x.files.some((f) => f.key === replaceKey));
-    if (!stillUsed) await removeStoredFile(replaceKey);
     return Response.json({ ok: true, files: added, replaced: replaceKey });
   }
-  // Same file name again replaces the older entry rather than listing it twice.
-  const names = new Set(added.map((x) => x.name));
-  const next = [...asset.files.filter((x) => !names.has(x.name)), ...added];
-  await db.update(s.assets).set({ files: next, updatedAt: new Date() }).where(eq(s.assets.id, id));
-  await db.insert(s.activity).values({
-    id: "ac" + crypto.randomUUID().slice(0, 10), userId: me.id, action: "uploaded to", type: "asset", itemId: id, label: asset.name,
-    field: added.length === 1 ? added[0].name : `${added.length} files`,
+  // Same file name again replaces the older entry rather than listing it twice; the older file is kept as a version.
+  const byName = new Map(added.map((x) => [x.name, x]));
+  const next = [...asset.files.filter((x) => !byName.has(x.name)), ...added];
+  await db.transaction(async (tx) => {
+    await tx.update(s.assets).set({ files: next, updatedAt: now }).where(eq(s.assets.id, id));
+    for (const fresh of byName.values()) await keep(tx, asset.files.filter((x) => x.name === fresh.name), fresh.key);
+    await tx.insert(s.activity).values({
+      id: "ac" + crypto.randomUUID().slice(0, 10), userId: me.id, action: "uploaded to", type: "asset", itemId: id, label: asset.name,
+      field: added.length === 1 ? added[0].name : `${added.length} files`,
+    });
   });
   return Response.json({ ok: true, files: added });
 }
