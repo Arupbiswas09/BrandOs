@@ -7,7 +7,6 @@ export type DeleteKind = "client" | "brand" | "service" | "offer" | "asset" | "c
 export type AssetDraft = Partial<Asset> & { offerIds?: string[] };
 
 export type ModalSpec =
-  | { kind: "new" }
   | { kind: "client"; draft?: Partial<Client> }
   | { kind: "brand"; draft: Partial<Brand> & { clientId: string } }
   | { kind: "kit"; brandId: string }
@@ -28,6 +27,10 @@ export type ModalSpec =
   | { kind: "sendReview"; item: ItemKind; id: string }
   | { kind: "reqChanges"; item: ItemKind; id: string }
   | { kind: "confirm"; item: DeleteKind; id: string; label: string; back?: string }
+  /**
+   * @deprecated Client links are gone (BrandOS is internal only) and this opens nothing.
+   * Kept only because asset-drawer.tsx still asks for it; delete it once that button goes.
+   */
   | { kind: "share"; brandId: string }
   /** Bulk changes from select mode. `onDone` gets the ids that were skipped, so they stay ticked. */
   | { kind: "bulkReview"; ids: string[]; onDone?: (keep: string[]) => void }

@@ -2,13 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { AtSign, Bell, ChevronRight, UserRound, Users, X } from "lucide-react";
-import { hexA, readable } from "@/lib/color";
+import { AtSign, ChevronRight, Inbox as InboxIcon, UserRound, Users, X } from "lucide-react";
 import { href } from "@/lib/routes";
 import type { QueueItem, WS } from "@/lib/ws";
 import { markMentionsRead } from "@/app/actions";
 import { useApp } from "./provider";
-import { Avatar, cx } from "@/components/ui";
+import { Avatar, IconBtn, cx } from "@/components/ui";
 
 type Note = WS["d"]["comments"][number];
 
@@ -18,7 +17,7 @@ export type OnYou =
   | { type: "mention"; key: string; since: number; c: Note };
 
 /**
- * The one list of what is on me. The bell, the sidebar queue, the dashboard's
+ * The one list of what is on me. The sidebar queue, the phone's Inbox, the dashboard's
  * "Waiting on you" and the inbox's "On you" all read it, so they never
  * disagree. Whatever has waited longest comes first.
  */
@@ -48,10 +47,10 @@ export function Inbox() {
 function Section({ icon, title, count, children }: { icon: ReactNode; title: string; count?: number; children: ReactNode }) {
   return (
     <section className="mb-6 last:mb-0">
-      <h3 className="m-0 mb-2.5 flex items-center gap-2 text-micro font-semibold uppercase tracking-[0.06em] text-mute-4">
+      <h3 className="m-0 mb-2.5 flex items-center gap-2 text-small font-semibold text-mute-2">
         <span aria-hidden className="flex h-6 w-6 items-center justify-center rounded-md bg-soft text-accent [&>svg]:h-3.5 [&>svg]:w-3.5">{icon}</span>
         {title}
-        {count !== undefined && <span className="rounded-full bg-chip px-1.5 py-px text-micro font-semibold normal-case tracking-normal text-mute-2">{count}</span>}
+        {count !== undefined && <span className="rounded-full bg-chip px-1.5 py-px text-micro font-semibold tabular-nums text-mute-2">{count}</span>}
       </h3>
       {children}
     </section>
@@ -113,19 +112,17 @@ function Panel({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Inbox">
       <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.28)]" onClick={onClose} />
-      <div data-scroll className="absolute inset-y-0 right-0 flex w-[440px] max-w-full animate-slide flex-col overflow-y-auto border-l border-line bg-wash shadow-card">
-        <div className="safe-top sticky top-0 z-[2] border-b border-line bg-surface/95 ">
+      <div data-scroll className="absolute inset-y-0 right-0 flex w-[440px] max-w-full animate-slide flex-col overflow-y-auto border-l border-line bg-wash shadow-pop">
+        <div className="safe-top sticky top-0 z-[2] border-b border-line bg-surface">
           <div className="flex items-center gap-3 px-5 py-4">
-            <span aria-hidden className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-soft text-accent"><Bell className="h-[18px] w-[18px]" /></span>
+            <span aria-hidden className="flex size-8 flex-none items-center justify-center rounded-lg bg-soft text-accent"><InboxIcon className="size-4" /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-lead font-semibold leading-tight tracking-[-0.012em]">Inbox</span>
               <span className="block text-meta text-mute-2">
                 {mine.length ? `${mine.length} ${mine.length === 1 ? "thing needs" : "things need"} you` : "Nothing needs you"}
               </span>
             </span>
-            <button ref={closeRef} type="button" aria-label="Close" onClick={onClose} className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-mute-2 transition-colors hover:bg-hover hover:text-ink">
-              <X className="h-5 w-5" />
-            </button>
+            <IconBtn ref={closeRef} label="Close" onClick={onClose}><X aria-hidden /></IconBtn>
           </div>
         </div>
 
@@ -142,11 +139,10 @@ function Panel({ onClose }: { onClose: () => void }) {
                   {mine.map((x) => {
                     if (x.type === "mention") return mention(x.c);
                     const q = x.q;
-                    const c = q.act === "review" ? "#8A6A12" : "#C2410C";
                     return (
-                      <button key={x.key} type="button" onClick={() => openItem(q.kind, q.id)} className="lift w-full rounded-xl border border-line bg-surface px-4 py-3.5 text-left shadow-card">
+                      <button key={x.key} type="button" onClick={() => openItem(q.kind, q.id)} className="lift w-full rounded-xl border border-line bg-surface px-4 py-3 text-left shadow-card">
                         <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                          <span className="rounded-sm px-2 py-0.5 text-small font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{q.verb}</span>
+                          <span className={cx("rounded-sm px-2 py-0.5 text-small font-semibold", q.act === "review" ? "bg-warn/12 text-warn-ink" : "bg-change/10 text-change-ink")}>{q.verb}</span>
                           <span className="flex-1" /><span className="text-small text-mute-3">{q.act === "review" ? `In review ${q.ago.replace(/ ago$/, "")}` : `Sent back ${q.ago}`}</span>
                         </span>
                         <span className="block text-body font-semibold leading-[1.35]">{q.name}</span>
@@ -174,7 +170,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                         <span className="block truncate text-body font-medium">{x.name}</span>
                         <span className="block text-small text-mute-3">{x.verb} · {ws.first(x.who)}</span>
                       </span>
-                      <ChevronRight aria-hidden className="h-4 w-4 flex-none text-mute-5 transition-transform group-hover:translate-x-0.5" />
+                      <ChevronRight aria-hidden className="size-4 flex-none text-mute-3 transition-transform duration-150 group-hover:translate-x-0.5" />
                     </button>
                   ))}
                   {!others.length && <div className="px-4 py-3 text-body text-mute-3">Nobody else is holding anything up.</div>}

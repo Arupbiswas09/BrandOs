@@ -2,6 +2,7 @@
 
 import { useState, type InputHTMLAttributes } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import { IconBtn } from "@/components/ui";
 
 /** A password field with a show/hide button. */
 export function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
@@ -9,10 +10,9 @@ export function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
   return (
     <span className="relative block">
       <input {...props} type={show ? "text" : "password"} className={`field pr-11 ${props.className ?? ""}`} />
-      <button type="button" onClick={() => setShow((v) => !v)} aria-label={show ? "Hide password" : "Show password"} aria-pressed={show}
-        className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[#5E6C66] hover:bg-[#EDF2F0] hover:text-[#101614]">
-        {show ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
-      </button>
+      <IconBtn label={show ? "Hide password" : "Show password"} aria-pressed={show} onClick={() => setShow((v) => !v)} className="absolute right-1.5 top-1/2 -translate-y-1/2">
+        {show ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
+      </IconBtn>
     </span>
   );
 }

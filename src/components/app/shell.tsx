@@ -2,22 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import {
-  Bell, BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Inbox as InboxIcon, Keyboard, LayoutDashboard, LogOut, Menu, Plus,
-  PanelLeftClose, PanelLeftOpen, RotateCcw, Search, Settings, ShieldCheck, Trash2, Users, X,
+  BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Inbox as InboxIcon, Keyboard, LayoutDashboard, LogOut, Menu, Palette as PaletteIcon, Plus,
+  PanelLeftClose, PanelLeftOpen, RotateCcw, Settings, ShieldCheck, Trash2, Users, X,
 } from "lucide-react";
 import { useStored } from "@/lib/stored";
 import { BRAND_TABS, href, parsePath } from "@/lib/routes";
 import { live } from "@/lib/ws";
-import { ACCESS_COLOR } from "@/lib/constants";
-import { hexA, onColor, readable } from "@/lib/color";
+import { onColor } from "@/lib/color";
 import { resetDemo, signOut, switchUser } from "@/app/actions";
 import { useAction, useApp } from "./provider";
-import { PALETTES, PALETTE_KEYS, themeVars, type Palette, type Takeover } from "./theme";
-import { Avatar, Mark, cx } from "@/components/ui";
+import { PALETTE_KEYS, themeVars, type Palette, type Takeover } from "./theme";
+import { Avatar, IconBtn, Mark, cx } from "@/components/ui";
 import { AssetDrawer } from "@/components/drawer/asset-drawer";
-import { HeaderSearch, SEARCH_INPUT_ID } from "./command-palette";
+import { HeaderSearch } from "./command-palette";
 import { NewMenu } from "./new-menu";
 import { Inbox, useOnYou } from "./inbox";
 import { ModalHost } from "@/components/modals/host";
@@ -47,7 +46,7 @@ function useActiveBrand() {
 /**
  * How far a brand's colour takes over inside that brand. By default it leads:
  * header rule, primary buttons, a soft tint on the page and borders. Anyone
- * who picked a setting in this browser keeps it.
+ * who picked a setting in this browser keeps it. Set in Settings → Appearance.
  */
 export function useTakeover(): [Takeover, (t: Takeover) => void] {
   return useStored<Takeover>("bos.takeover", "bold", ["bold", "moderate", "off"]);
@@ -57,10 +56,21 @@ export function usePalette(): [Palette, (p: Palette) => void] {
   return useStored<Palette>("bos.palette", "petrol", PALETTE_KEYS);
 }
 
-/** What the bell, the sidebar queue and the phone's Inbox count: the inbox's "On you", item for item. */
+/**
+ * How many things are on you: the inbox's "On you", item for item. Shown in
+ * exactly one place per screen size: the sidebar's "Your queue" on desktop,
+ * the bottom bar's Inbox on phones and tablets.
+ */
 function useWaiting() {
   return useOnYou().length;
 }
+
+/** What a limited role can do, said once in the header so nobody wonders why a button is missing. */
+const ROLE_NOTE: Partial<Record<string, string>> = {
+  Reviewer: "Reviewer: approve, send back, comment",
+  Viewer: "Viewer: read only",
+  Contributor: "Contributor: edit your own work",
+};
 
 export function AppShell({ children }: { children: ReactNode }) {
   const brand = useActiveBrand();
@@ -91,11 +101,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 /* ================================================================ sidebar */
 
+/** One sidebar row: 32px, 14px text, a tint of the accent when it is where you are. */
 const itemCls = (active: boolean) =>
   cx(
-    "group/nav flex w-full items-center gap-3 rounded-md px-3 py-2 text-body font-medium transition-colors duration-150",
+    "group/nav flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-meta font-medium transition-colors duration-150",
     active ? "bg-hl text-hl-ink" : "text-mute-1 hover:bg-hover hover:text-ink",
   );
+
+/** A quiet label over a group of rows. */
+function NavLabel({ children }: { children: ReactNode }) {
+  return <div className="px-2.5 pb-1 pt-5 text-micro font-medium text-mute-3">{children}</div>;
+}
 
 function Sidebar({ mini }: { mini: boolean }) {
   const { nav, setNav } = useApp();
@@ -105,7 +121,7 @@ function Sidebar({ mini }: { mini: boolean }) {
       {nav && (
         <div className="fixed inset-0 z-[65] lg:hidden">
           <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.35)]" onClick={() => setNav(false)} />
-          <div className="absolute inset-y-0 left-0 max-w-[88vw] animate-slide-left shadow-card"><SidebarBody mini={false} drawer /></div>
+          <div className="absolute inset-y-0 left-0 max-w-[88vw] animate-slide-left shadow-pop"><SidebarBody mini={false} drawer /></div>
         </div>
       )}
     </>
@@ -135,7 +151,7 @@ function useMiniTip(on: boolean): [ReactNode, TipBind, () => void] {
     return { onMouseEnter: (e) => show(e.currentTarget), onMouseLeave: hide, onFocus: (e) => show(e.currentTarget), onBlur: hide };
   }, [on, hide]);
   const node = on && tip ? (
-    <span aria-hidden className="pointer-events-none fixed z-[70] -translate-y-1/2 animate-fade whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-small font-medium text-white shadow-card" style={{ top: tip.top, left: tip.left }}>
+    <span aria-hidden className="pointer-events-none fixed z-[70] -translate-y-1/2 animate-fade whitespace-nowrap rounded-lg bg-ink px-2.5 py-1.5 text-small font-medium text-white shadow-pop" style={{ top: tip.top, left: tip.left }}>
       {tip.label}
     </span>
   ) : null;
@@ -144,10 +160,10 @@ function useMiniTip(on: boolean): [ReactNode, TipBind, () => void] {
 
 /** One nav row. When the sidebar is folded the label becomes a tooltip. */
 function NavItem({ href: to, icon, label, name, active, mini, badge, onClick, dialog, tip }: { href?: string; icon: ReactNode; label: string; name?: string; active?: boolean; mini: boolean; badge?: ReactNode; onClick?: () => void; dialog?: boolean; tip: TipBind }) {
-  const cls = cx(itemCls(!!active), "text-left", mini && "h-10 justify-center px-0");
+  const cls = cx(itemCls(!!active), "text-left", mini && "h-9 justify-center px-0");
   const body = (
     <>
-      <span className={cx("relative flex flex-none", !active && "text-mute-3 group-hover/nav:text-ink")}>{icon}{mini && badge && <span className="absolute -right-2 -top-2">{badge}</span>}</span>
+      <span className={cx("relative flex flex-none [&>svg]:size-4", !active && "text-mute-3 group-hover/nav:text-ink")}>{icon}{mini && badge && <span className="absolute -right-2 -top-2">{badge}</span>}</span>
       {mini ? <span className="sr-only">{label}</span> : <span className="min-w-0 flex-1 truncate">{label}</span>}
       {!mini && badge}
     </>
@@ -159,18 +175,19 @@ function NavItem({ href: to, icon, label, name, active, mini, badge, onClick, di
 }
 
 /**
- * "Your queue": what is on you, with the same count as the bell, near the top
- * of the sidebar. It opens the same inbox the bell opens.
+ * "Your queue": what is on you. The label never changes; the count shows only
+ * when something is waiting, tinted with the accent (never red). It opens
+ * the inbox. On desktop this is the one place the count appears.
  */
 function QueueNav({ mini, drawer, tip }: { mini: boolean; drawer?: boolean; tip: TipBind }) {
   const { inbox, setInbox, setNav } = useApp();
   const n = useWaiting();
-  const badge = mini
-    ? n > 0 && <span aria-hidden className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-micro font-bold leading-none text-on-accent ring-2 ring-white theme-fade">{n}</span>
-    : <span aria-hidden className={cx("flex h-5 min-w-5 flex-none items-center justify-center rounded-full px-1.5 text-micro font-semibold tabular-nums theme-fade", n ? "bg-accent text-on-accent" : "bg-chip text-mute-3")}>{n}</span>;
+  const badge = n > 0 && (mini
+    ? <span aria-hidden className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-micro font-semibold leading-none tabular-nums text-on-accent ring-2 ring-surface theme-fade">{n}</span>
+    : <span aria-hidden className="flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-accent/12 px-1.5 text-micro font-semibold tabular-nums text-accent theme-fade">{n}</span>);
   return (
-    <NavItem mini={mini} tip={tip} dialog active={inbox} icon={<InboxIcon className="h-[18px] w-[18px] flex-none" />}
-      label={n ? "Your queue" : "Nothing on you"} name={n ? `Your queue, ${n} waiting` : "Nothing on you"} badge={badge || undefined}
+    <NavItem mini={mini} tip={tip} dialog active={inbox} icon={<InboxIcon />}
+      label="Your queue" name={n ? `Your queue, ${n} waiting` : "Your queue"} badge={badge || undefined}
       onClick={() => { if (drawer) setNav(false); setInbox(true); }} />
   );
 }
@@ -179,7 +196,6 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
   const { ws, open, setNav } = useApp();
   const pathname = usePathname();
   const p = parsePath(pathname);
-  const [run] = useAction();
   const [, setNavMode] = useNavMode();
   const [tipNode, tip, hideTip] = useMiniTip(mini);
 
@@ -188,30 +204,27 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
   const activeSection = p.view === "brand" ? (p.tab === "ctas" ? "kit" : p.tab ?? "home") : p.view === "offer" ? "offers" : p.view === "service" ? "services" : undefined;
   const brands = live(ws.d.brands);
   const clients = live(ws.d.clients).map((c) => ({ c, tops: brands.filter((b) => b.clientId === c.id && !b.parentId) }));
-  const ic = "h-[18px] w-[18px] flex-none";
-  const demo = ws.d.authMode === "demo";
-  const reset = () => { if (window.confirm("Reset the demo to its starting data?")) void run(resetDemo); };
 
   const brandRow = (b: (typeof brands)[number], depth: number) => mini ? (
     <Link key={b.id} href={href.brand(b.id)} aria-current={activeBrandId === b.id ? "page" : undefined} {...tip(b.name)}
-      className={cx("mx-auto flex h-9 w-9 items-center justify-center rounded-lg text-micro font-bold transition-transform duration-150", activeBrandId === b.id ? "ring-2 ring-accent ring-offset-2" : "hover:scale-105")}
+      className={cx("mx-auto flex size-8 items-center justify-center rounded-lg text-micro font-bold", activeBrandId === b.id && "ring-2 ring-accent ring-offset-2")}
       style={{ background: b.primary, color: onColor(b.primary) }}>
       {b.mark}<span className="sr-only"> {b.name}</span>
     </Link>
   ) : (
     <div key={b.id}>
       {/* When the brand is open its sections below carry the highlight; the brand itself just goes bold. */}
-      <Link href={href.brand(b.id)} className={cx(itemCls(false), "py-1.5", activeBrandId === b.id && "font-semibold text-ink")} style={{ paddingLeft: 12 + depth * 14 }}>
-        <span className="h-2.5 w-2.5 flex-none rounded-sm" style={{ background: b.primary }} />
+      <Link href={href.brand(b.id)} className={cx(itemCls(false), activeBrandId === b.id && "font-semibold text-ink")} style={{ paddingLeft: 10 + depth * 12 }}>
+        <span aria-hidden className="size-2 flex-none rounded-sm" style={{ background: b.primary }} />
         <span className="min-w-0 flex-1 truncate">{b.name}</span>
       </Link>
-      {/* The brand you are in shows its sections underneath, as in the prototype. */}
+      {/* The brand you are in shows its sections underneath. */}
       {activeBrandId === b.id && (
         <div className="my-0.5 flex flex-col gap-px" role="group" aria-label={`${b.name} sections`}>
           {BRAND_TABS.map(([k, label]) => (
             <Link key={k} href={href.brand(b.id, k)} aria-current={activeSection === k ? "page" : undefined}
-              className={cx("block rounded-md py-1 pr-3 text-meta transition-colors", activeSection === k ? "bg-hl font-semibold text-hl-ink" : "text-mute-2 hover:bg-hover hover:text-ink")}
-              style={{ paddingLeft: 32 + depth * 14 }}>
+              className={cx("flex h-7 items-center rounded-lg pr-2.5 text-meta transition-colors duration-150", activeSection === k ? "bg-hl font-medium text-hl-ink" : "text-mute-2 hover:bg-hover hover:text-ink")}
+              style={{ paddingLeft: 28 + depth * 12 }}>
               {label}
             </Link>
           ))}
@@ -220,75 +233,54 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
     </div>
   );
 
-
   return (
-    <aside className={cx("safe-top flex h-full flex-col border-r border-line bg-surface transition-[width] duration-200", mini ? "w-[72px]" : "w-[264px]")}>
-      <div className={cx("flex h-16 flex-none items-center border-b border-line", mini ? "justify-center px-2" : "justify-between px-4")}>
-        <Link href="/" className="flex items-center gap-2.5 rounded-md" title="BrandOS — Dashboard">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-body font-bold text-on-accent shadow-[inset_0_-2px_0_rgba(0,0,0,.18)] theme-fade">B</span>
-          {!mini && <span className="text-lead font-semibold tracking-[-0.01em] text-ink">BrandOS</span>}
+    <aside className={cx("safe-top flex h-full flex-col border-r border-line bg-surface transition-[width] duration-200", mini ? "w-18" : "w-66")}>
+      <div className={cx("flex h-15 flex-none items-center border-b border-line", mini ? "justify-center px-2" : "justify-between pl-4 pr-3")}>
+        <Link href="/" className="flex items-center gap-2.5 rounded-lg" aria-label="BrandOS, go to the Dashboard">
+          <span aria-hidden className="flex size-7 items-center justify-center rounded-lg bg-accent text-meta font-bold text-on-accent theme-fade">B</span>
+          {!mini && <span aria-hidden className="text-body font-semibold tracking-[-0.01em] text-ink">BrandOS</span>}
         </Link>
         {!mini && !drawer && (
-          <button type="button" onClick={() => setNavMode("mini")} aria-label="Collapse the sidebar" title="Collapse the sidebar ( [ )" className="flex h-8 w-8 items-center justify-center rounded-md text-mute-3 transition-colors hover:bg-hover hover:text-ink">
-            <PanelLeftClose className="h-[18px] w-[18px]" />
-          </button>
+          <IconBtn label="Collapse the sidebar" title="Collapse the sidebar ( [ )" onClick={() => setNavMode("mini")}><PanelLeftClose aria-hidden /></IconBtn>
         )}
-        {drawer && (
-          <button type="button" onClick={() => setNav(false)} aria-label="Close navigation" className="flex h-9 w-9 items-center justify-center rounded-md text-mute-3 transition-colors hover:bg-hover hover:text-ink">
-            <X className="h-5 w-5" />
-          </button>
-        )}
+        {drawer && <IconBtn label="Close navigation" onClick={() => setNav(false)}><X aria-hidden /></IconBtn>}
       </div>
-      <nav data-scroll onScroll={hideTip} className={cx("flex-1 overflow-y-auto py-3", mini ? "px-3" : "px-2")} aria-label="Main">
-        <div className="flex flex-col gap-0.5">
-          <NavItem mini={mini} tip={tip} href="/" icon={<LayoutDashboard className={ic} />} label="Dashboard" active={p.view === "street"} />
+      <nav data-scroll onScroll={hideTip} className={cx("flex-1 overflow-y-auto pb-3 pt-2", mini ? "px-3" : "px-2")} aria-label="Main">
+        <div className="flex flex-col gap-px">
+          <NavItem mini={mini} tip={tip} href="/" icon={<LayoutDashboard />} label="Dashboard" active={p.view === "street"} />
           <QueueNav mini={mini} drawer={drawer} tip={tip} />
           {/* Launch dates only: ClickUp and Asana own tasks and deadlines. */}
-          <NavItem mini={mini} tip={tip} href="/calendar" icon={<CalendarDays className={ic} />} label="Launches" active={p.view === "calendar"} />
-          {!ws.isGuest && <NavItem mini={mini} tip={tip} href="/library" icon={<BookOpen className={ic} />} label="Global Library" active={p.view === "library"} />}
-          {ws.can("access") && <NavItem mini={mini} tip={tip} href="/team" icon={<Users className={ic} />} label="Team and access" active={p.view === "team"} badge={mini ? undefined : <span className="text-small text-mute-4">{ws.d.users.length}</span>} />}
+          <NavItem mini={mini} tip={tip} href="/calendar" icon={<CalendarDays />} label="Launches" active={p.view === "calendar"} />
+          <NavItem mini={mini} tip={tip} href="/library" icon={<BookOpen />} label="Global Library" active={p.view === "library"} />
+          {ws.can("access") && <NavItem mini={mini} tip={tip} href="/team" icon={<Users />} label="Team and access" active={p.view === "team"} />}
         </div>
 
-        {mini ? <div aria-hidden className="mx-2 my-3 border-t border-line" /> : <div className="eyebrow mb-1 mt-5 px-3">Clients</div>}
-        <div className={cx("flex flex-col", mini ? "gap-2" : "gap-0.5")}>
+        {mini ? <div aria-hidden className="mx-2 my-3 border-t border-line" /> : <NavLabel>Clients</NavLabel>}
+        <div className={cx("flex flex-col", mini ? "gap-2" : "gap-px")}>
           {clients.map(({ c, tops }) => (
-            <div key={c.id} className={mini ? "flex flex-col gap-2" : "mb-1"}>
+            <div key={c.id} className={mini ? "flex flex-col gap-2" : "flex flex-col gap-px"}>
               {!mini && (
-                <Link href={href.client(c.id)} className={cx(itemCls(p.view === "client" && p.id === c.id), "py-1.5 font-semibold text-ink-3")}>
+                <Link href={href.client(c.id)} aria-current={p.view === "client" && p.id === c.id ? "page" : undefined}
+                  className={cx(itemCls(p.view === "client" && p.id === c.id), "font-semibold", !(p.view === "client" && p.id === c.id) && "text-ink-3")}>
                   <span className="min-w-0 flex-1 truncate">{c.name}</span>
                 </Link>
               )}
               {tops.map((b) => (
-                <div key={b.id} className={mini ? "flex flex-col gap-2" : undefined}>
+                <div key={b.id} className={mini ? "flex flex-col gap-2" : "flex flex-col gap-px"}>
                   {brandRow(b, 1)}
                   {brands.filter((x) => x.parentId === b.id).map((sb) => brandRow(sb, 2))}
                 </div>
               ))}
             </div>
           ))}
-          {ws.can("structure") && <NavItem mini={mini} tip={tip} icon={<Plus className={ic} />} label="Add client" onClick={() => open({ kind: "client" })} />}
+          {ws.can("structure") && <NavItem mini={mini} tip={tip} icon={<Plus />} label="Add client" onClick={() => open({ kind: "client" })} />}
         </div>
       </nav>
-      <div className={cx("safe-bottom flex flex-none flex-col border-t border-line", mini ? "px-3 py-2" : "px-2 pb-1 pt-2.5")}>
-        {!mini && <div className="eyebrow mb-1 px-3">Workspace</div>}
-        <div className="flex flex-col gap-0.5">
-          {ws.can("del") && <NavItem mini={mini} tip={tip} href="/trash" icon={<Trash2 className={ic} />} label="Recycle bin" active={p.view === "trash"} />}
-          {ws.can("access") && <NavItem mini={mini} tip={tip} href="/audit" icon={<ShieldCheck className={ic} />} label="Audit log" active={p.view === "audit"} />}
-          <NavItem mini={mini} tip={tip} href="/settings" icon={<Settings className={ic} />} label="Settings" active={p.view === "settings"} />
-          {/* Demo mode only. Production runs with passwords, where this never shows (and the server refuses it). */}
-          {mini && demo && <NavItem mini tip={tip} icon={<RotateCcw className={ic} />} label="Reset demo data" onClick={reset} />}
-          {mini && !drawer && <NavItem mini tip={tip} icon={<PanelLeftOpen className={ic} />} label="Expand the sidebar" onClick={() => setNavMode("full")} />}
-        </div>
-        {!mini && (
-          <div className="mt-2 flex min-h-9 items-center gap-2 border-t border-divider pl-3 pr-1 pt-1.5">
-            <p className="m-0 flex-1 text-micro text-mute-4">Developed by <span className="font-semibold text-mute-2">Arup</span></p>
-            {demo && (
-              <button type="button" onClick={reset} title="Reset the demo to its starting data" className="flex items-center gap-1.5 rounded-md px-2 py-1 text-small font-medium text-mute-3 transition-colors hover:bg-hover hover:text-ink">
-                <RotateCcw className="h-3.5 w-3.5" />Reset demo<span className="sr-only"> data</span>
-              </button>
-            )}
-          </div>
-        )}
+      <div className={cx("safe-bottom flex flex-none flex-col gap-px border-t border-line py-2", mini ? "px-3" : "px-2")}>
+        {ws.can("del") && <NavItem mini={mini} tip={tip} href="/trash" icon={<Trash2 />} label="Recycle bin" active={p.view === "trash"} />}
+        {ws.can("access") && <NavItem mini={mini} tip={tip} href="/audit" icon={<ShieldCheck />} label="Audit log" active={p.view === "audit"} />}
+        <NavItem mini={mini} tip={tip} href="/settings" icon={<Settings />} label="Settings" active={p.view === "settings"} />
+        {mini && !drawer && <NavItem mini tip={tip} icon={<PanelLeftOpen />} label="Expand the sidebar" onClick={() => setNavMode("full")} />}
       </div>
       {tipNode}
     </aside>
@@ -297,36 +289,34 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
 
 /* ================================================================ mobile bottom bar */
 
-/** Phones and tablets: the everyday destinations under the thumb. The sidebar drawer holds the rest. */
+/**
+ * Phones and tablets: the everyday destinations under the thumb. Menu opens
+ * the full navigation; search lives in the header.
+ */
 function MobileNav() {
-  const { cmdk, setCmdk, inbox, setInbox, nav, setNav } = useApp();
+  const { inbox, setInbox, nav, setNav } = useApp();
   const p = parsePath(usePathname());
   const waiting = useWaiting();
   const item = (active: boolean) => cx("flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-micro font-medium transition-colors duration-150", active ? "text-ink" : "text-mute-3 hover:text-ink");
-  const pill = (active: boolean) => cx("relative flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150", active && "bg-hl text-hl-ink");
-  const ic = "h-5 w-5";
+  const pill = (active: boolean) => cx("relative flex h-7 w-12 items-center justify-center rounded-full transition-colors duration-150 [&>svg]:size-5", active && "bg-hl text-hl-ink");
   return (
-    <nav aria-label="Quick navigation" className="h-mobile-nav safe-bottom fixed inset-x-0 bottom-0 z-[34] border-t border-line bg-surface/95 shadow-card  lg:hidden">
+    <nav aria-label="Quick navigation" className="h-mobile-nav safe-bottom fixed inset-x-0 bottom-0 z-[34] border-t border-line bg-surface lg:hidden">
       <div className="mx-auto flex h-16 max-w-[560px] items-stretch gap-1 px-2 py-1.5">
         <Link href="/" className={item(p.view === "street")} aria-current={p.view === "street" ? "page" : undefined}>
-          <span className={pill(p.view === "street")}><LayoutDashboard className={ic} /></span>Dashboard
+          <span className={pill(p.view === "street")}><LayoutDashboard aria-hidden /></span>Dashboard
         </Link>
         <Link href="/calendar" className={item(p.view === "calendar")} aria-current={p.view === "calendar" ? "page" : undefined}>
-          <span className={pill(p.view === "calendar")}><CalendarDays className={ic} /></span>Launches
+          <span className={pill(p.view === "calendar")}><CalendarDays aria-hidden /></span>Launches
         </Link>
-        {/* Focused in the tap itself, so phones bring up the keyboard. */}
-        <button type="button" onClick={() => { document.getElementById(SEARCH_INPUT_ID)?.focus(); setCmdk(true); }} aria-controls={SEARCH_INPUT_ID} className={item(cmdk)}>
-          <span className={pill(cmdk)}><Search className={ic} /></span>Search
-        </button>
         <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog" className={item(inbox)}>
           <span className={pill(inbox)}>
-            <InboxIcon className={ic} />
-            {waiting > 0 && <span aria-hidden className="absolute -top-1 right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-micro font-bold leading-none text-white ring-2 ring-white">{waiting}</span>}
+            <InboxIcon aria-hidden />
+            {waiting > 0 && <span aria-hidden className="absolute -top-1 right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-micro font-semibold leading-none tabular-nums text-on-accent ring-2 ring-surface theme-fade">{waiting}</span>}
           </span>
           Inbox{waiting > 0 && <span className="sr-only">, {waiting} waiting</span>}
         </button>
-        <button type="button" onClick={() => setNav(true)} aria-expanded={nav} className={item(nav)}>
-          <span className={pill(nav)}><Menu className={ic} /></span>Menu
+        <button type="button" onClick={() => setNav(true)} aria-expanded={nav} aria-haspopup="dialog" className={item(nav)}>
+          <span className={pill(nav)}><Menu aria-hidden /></span>Menu
         </button>
       </div>
     </nav>
@@ -335,124 +325,131 @@ function MobileNav() {
 
 /* ================================================================ header */
 
+/**
+ * Brand mark (inside a brand), search, "+ New" (the one primary action in the
+ * chrome) and the user menu. The queue count lives in the sidebar on desktop
+ * and in the bottom bar on smaller screens, so the header has no bell.
+ */
 function Header({ mini }: { mini: boolean }) {
-  const { ws, setNav, setInbox } = useApp();
+  const { ws } = useApp();
   const brand = useActiveBrand();
   const [mode] = useTakeover();
   const themed = mode !== "off" ? brand : null;
   const me = ws.me;
-  const roleNote: Partial<Record<typeof me.access, string>> = {
-    Reviewer: "Reviewer — approve, send back, comment",
-    Viewer: "Viewer — read only",
-    Contributor: "Contributor — edit your own work",
-    Client: "Client — shared work only",
-  };
-  const readOnly = roleNote[me.access];
-  const waiting = useWaiting();
+  const readOnly = ROLE_NOTE[me.access];
   const [menu, setMenu] = useState(false);
   const pathname = usePathname();
   const [lastPath, setLastPath] = useState(pathname);
   if (lastPath !== pathname) { setLastPath(pathname); setMenu(false); }
+  const trigger = useRef<HTMLButtonElement>(null);
+  const closeMenu = useCallback((refocus = true) => { setMenu(false); if (refocus) trigger.current?.focus(); }, []);
 
   return (
-    <header className={`safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-3 border-b border-line bg-surface px-3 transition-[left] duration-200 sm:px-6 ${mini ? "lg:left-[72px]" : "lg:left-[264px]"}`}>
-      {themed && <span aria-hidden className="pointer-events-none absolute inset-x-0 -bottom-px h-[2px] bg-accent theme-fade" />}
-      <button type="button" aria-label="Open navigation" onClick={() => setNav(true)} className="flex h-9 w-9 flex-none items-center justify-center rounded-md text-mute-1 hover:bg-hover lg:hidden">
-        <Menu className="h-5 w-5" />
-      </button>
+    <header className={cx("safe-top h-header fixed left-0 right-0 top-0 z-[35] flex items-center gap-2 border-b border-line bg-surface px-3 transition-[left] duration-200 sm:gap-3 sm:px-6", mini ? "lg:left-18" : "lg:left-66")}>
+      {themed && <span aria-hidden className="pointer-events-none absolute inset-x-0 -bottom-px h-0.5 bg-accent theme-fade" />}
+      {/* Phones and tablets have no sidebar, so the header carries the way home. */}
+      {!themed && (
+        <Link href="/" aria-label="BrandOS, go to the Dashboard" className="flex flex-none items-center rounded-lg lg:hidden">
+          <span aria-hidden className="flex size-8 items-center justify-center rounded-lg bg-accent text-meta font-bold text-on-accent theme-fade">B</span>
+        </Link>
+      )}
       {themed && <span aria-hidden title={themed.name} className="flex-none"><Mark mark={themed.mark} color={themed.primary} size={30} radius={8} className="text-micro" /></span>}
       <HeaderSearch />
-      <span className="flex-1" />
+      <span className="flex-1 max-sm:hidden" />
       {readOnly && (
-        <span className="hidden flex-none rounded-md px-2.5 py-1 text-small font-semibold xl:inline" style={{ background: hexA(ACCESS_COLOR[me.access], 0.12), color: readable(ACCESS_COLOR[me.access], 0.12) }}>
-          {readOnly}
-        </span>
+        <span className="hidden flex-none rounded-sm bg-chip px-2 py-1 text-small font-medium text-mute-1 xl:inline">{readOnly}</span>
       )}
       <NewMenu />
-      <button type="button" onClick={() => setInbox(true)} aria-label={waiting ? `Inbox, ${waiting} waiting` : "Inbox"} title="Inbox ( I )" className="relative hidden h-10 w-10 flex-none items-center justify-center rounded-md text-mute-1 transition-colors hover:bg-hover hover:text-ink lg:flex">
-        <Bell className="h-5 w-5" />
-        {waiting > 0 && <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-micro font-bold text-white ring-2 ring-white">{waiting}</span>}
-      </button>
       <div className="relative flex-none">
-        <button type="button" onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-haspopup="menu" className="flex items-center gap-2 rounded-md p-1.5 hover:bg-hover">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-small font-semibold text-on-accent theme-fade">{me.initials}</span>
-          <span className="hidden text-left md:block">
+        <button ref={trigger} type="button" onClick={() => setMenu((v) => !v)} aria-expanded={menu} aria-haspopup="menu" aria-controls={menu ? "user-menu" : undefined}
+          className="flex items-center gap-2 rounded-lg p-1 transition-colors duration-150 hover:bg-hover md:pr-2">
+          <span aria-hidden className="flex size-8 items-center justify-center rounded-full bg-accent text-small font-semibold text-on-accent theme-fade">{me.initials}</span>
+          {/* Read out at every size; seen from tablets up. */}
+          <span className="sr-only text-left md:not-sr-only md:block">
             <span className="block text-meta font-semibold leading-tight text-ink">{me.name}</span>
             <span className="block text-small leading-tight text-mute-3">{me.role}</span>
           </span>
-          <ChevronDown className="hidden h-4 w-4 text-mute-4 md:block" />
+          <ChevronDown aria-hidden className="hidden size-4 text-mute-3 md:block" />
         </button>
-        {menu && <UserMenu onClose={() => setMenu(false)} />}
+        {menu && <UserMenu onClose={closeMenu} />}
       </div>
     </header>
   );
 }
 
-function UserMenu({ onClose }: { onClose: () => void }) {
+/**
+ * Who you are and the few things about your own account: Settings (where the
+ * colours and brand strength live), keyboard shortcuts, installing the app
+ * and signing out. In the demo, switching teammate and resetting the data.
+ */
+function UserMenu({ onClose }: { onClose: (refocus?: boolean) => void }) {
   const { ws, open } = useApp();
   const [run] = useAction();
-  const [mode, setMode] = useTakeover();
-  const [palette, setPalette] = usePalette();
   const box = useRef<HTMLDivElement>(null);
+  const me = ws.me;
+  const demo = ws.d.authMode === "demo";
+  // People with the old Client role cannot sign in, so they are not offered.
+  const teammates = ws.d.users.filter((u) => u.access !== "Client");
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
-    box.current?.querySelector<HTMLElement>("button, a")?.focus();
+    box.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
-  const me = ws.me;
-  const row = "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-meta text-ink-3 hover:bg-hover";
+
+  const keys = (e: ReactKeyboardEvent) => {
+    if (e.key === "Tab") { onClose(false); return; }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) return;
+    e.preventDefault();
+    const all = Array.from(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? []);
+    const i = all.indexOf(document.activeElement as HTMLElement);
+    const next = e.key === "Home" ? 0 : e.key === "End" ? all.length - 1 : (i + (e.key === "ArrowDown" ? 1 : all.length - 1)) % all.length;
+    all[next]?.focus();
+  };
+
+  const reset = () => { onClose(false); if (window.confirm("Reset the demo to its starting data?")) void run(resetDemo); };
+  const row = "flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-meta text-ink-3 outline-none transition-colors duration-100 hover:bg-hover focus-visible:bg-hover [&>svg]:size-4 [&>svg]:flex-none [&>svg]:text-mute-3";
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div ref={box} role="menu" className="absolute right-0 top-[calc(100%+8px)] z-50 w-[300px] animate-pop rounded-lg border border-line bg-surface p-1.5 shadow-card">
-        <div className="flex items-center gap-3 px-3 pb-3 pt-2">
-          <span className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-accent text-meta font-semibold text-on-accent">{me.initials}</span>
+      <div className="fixed inset-0 z-40" onClick={() => onClose(false)} />
+      <div ref={box} id="user-menu" role="menu" aria-label="Your account" onKeyDown={keys}
+        className="absolute right-0 top-[calc(100%+6px)] z-50 w-72 origin-top-right animate-pop rounded-xl border border-line bg-surface p-1.5 shadow-pop">
+        <div className="flex items-center gap-3 px-2.5 pb-2.5 pt-1.5">
+          <span aria-hidden className="flex size-9 flex-none items-center justify-center rounded-full bg-accent text-meta font-semibold text-on-accent">{me.initials}</span>
           <span className="min-w-0">
-            <span className="block truncate text-body font-semibold">{me.name}</span>
-            <span className="block truncate text-small text-mute-3">{me.email ?? me.role}</span>
+            <span className="block truncate text-body font-semibold text-ink">{me.name}</span>
+            <span className="block truncate text-small text-mute-3">{me.access}{me.email ? ` · ${me.email}` : ""}</span>
           </span>
-          <span className="ml-auto flex-none rounded px-1.5 py-0.5 text-micro font-semibold" style={{ background: hexA(ACCESS_COLOR[me.access], 0.12), color: readable(ACCESS_COLOR[me.access], 0.12) }}>{me.access}</span>
         </div>
         <div className="mx-1 mb-1 h-px bg-divider" />
-        {ws.d.authMode === "demo" && (
+        <Link href="/settings" onClick={() => onClose(false)} className={row} role="menuitem"><Settings aria-hidden />Settings</Link>
+        <Link href="/settings#appearance" onClick={() => onClose(false)} className={row} role="menuitem"><PaletteIcon aria-hidden /><span className="flex-1">Appearance</span><span className="text-small text-mute-3">In Settings</span></Link>
+        <button type="button" role="menuitem" onClick={() => { onClose(false); open({ kind: "shortcuts" }); }} className={row}><Keyboard aria-hidden /><span className="flex-1">Keyboard shortcuts</span><kbd className="kbd">?</kbd></button>
+        <InstallItem onDone={() => onClose(false)} className={row} />
+        {demo && (
           <>
-            <div className="eyebrow px-3 pb-1 pt-2">View as a teammate</div>
-            <div data-scroll className="max-h-[220px] overflow-y-auto">
-              {ws.d.users.map((u) => (
-                <button key={u.id} type="button" role="menuitem" onClick={() => { onClose(); void run(switchUser, u.id); }} className={cx(row, u.id === me.id && "bg-soft")}>
-                  <Avatar initials={u.initials} size={26} />
-                  <span className="min-w-0 flex-1"><span className="block truncate font-medium">{u.name}</span><span className="block text-small text-mute-3">{u.role} · {u.access}</span></span>
-                  {(ws.d.queueCounts[u.id] ?? 0) > 0 && <span className="text-small text-mute-3">{ws.d.queueCounts[u.id]}</span>}
-                </button>
-              ))}
-            </div>
             <div className="mx-1 my-1 h-px bg-divider" />
+            <div role="group" aria-label="View as a teammate">
+              <div aria-hidden className="px-2.5 pb-1 pt-1.5 text-micro font-medium text-mute-3">View as a teammate</div>
+              <div data-scroll className="max-h-56 overflow-y-auto">
+                {teammates.map((u) => (
+                  <button key={u.id} type="button" role="menuitem" onClick={() => { onClose(false); void run(switchUser, u.id); }} className={cx(row, "h-11", u.id === me.id && "bg-soft")}>
+                    <Avatar initials={u.initials} size={24} />
+                    <span className="min-w-0 flex-1"><span className="block truncate font-medium">{u.name}</span><span className="block truncate text-small text-mute-3">{u.role} · {u.access}</span></span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {/* Demo mode only. Production runs with passwords, where this never shows (and the server refuses it). */}
+            <button type="button" role="menuitem" onClick={reset} className={row}><RotateCcw aria-hidden />Reset demo data</button>
           </>
         )}
-        <div className="eyebrow px-3 pb-1.5 pt-2">Colours</div>
-        <div className="flex gap-1.5 px-3 pb-2" role="radiogroup" aria-label="Colour set">
-          {PALETTE_KEYS.map((k) => (
-            <button key={k} type="button" role="radio" aria-checked={palette === k} title={`${PALETTES[k].name} — ${PALETTES[k].note}`} onClick={() => setPalette(k)}
-              className={cx("flex h-8 flex-1 overflow-hidden rounded-md border-2", palette === k ? "border-ink" : "border-transparent")}>
-              <span className="flex-[3]" style={{ background: PALETTES[k].accent }} /><span className="flex-[2]" style={{ background: PALETTES[k].hl }} />
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1 px-3 pb-2" role="radiogroup" aria-label="Brand colour intensity">
-          {(["bold", "moderate", "off"] as const).map((m) => (
-            <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} className={cx("flex-1 rounded-md border px-2 py-1 text-small capitalize", mode === m ? "border-accent bg-soft font-semibold text-ink" : "border-line text-mute-2 hover:border-mute-4")}>
-              {m === "off" ? "House blue" : m === "moderate" ? "Brand accent" : "Brand tint"}
-            </button>
-          ))}
-        </div>
         <div className="mx-1 my-1 h-px bg-divider" />
-        <Link href="/settings" onClick={onClose} className={row} role="menuitem"><Settings className="h-4 w-4 text-mute-3" />Settings</Link>
-        <button type="button" role="menuitem" onClick={() => { onClose(); open({ kind: "shortcuts" }); }} className={row}><Keyboard className="h-4 w-4 text-mute-3" /><span className="flex-1">Keyboard shortcuts</span><kbd className="text-micro text-mute-4">?</kbd></button>
-        <InstallItem onDone={onClose} className={row} />
         <form action={signOut}>
-          <button type="submit" role="menuitem" className={row}><LogOut className="h-4 w-4 text-mute-3" />Sign out</button>
+          <button type="submit" role="menuitem" className={row}><LogOut aria-hidden />Sign out</button>
         </form>
+        <p className="m-0 border-t border-divider px-2.5 pb-1 pt-2 text-micro text-mute-3">BrandOS · Developed by Arup</p>
       </div>
     </>
   );
@@ -463,8 +460,8 @@ function InstallItem({ onDone, className }: { onDone: () => void; className: str
   const { open } = useApp();
   if (standalone || (!canPrompt && !ios)) return null;
   return (
-    <button type="button" role="menuitem" onClick={async () => { if (canPrompt) await install(); else { onDone(); open({ kind: "install" }); } }} className={cx(className, "font-medium text-accent")}>
-      <Download className="h-4 w-4" />Install the app
+    <button type="button" role="menuitem" onClick={async () => { if (canPrompt) await install(); else { onDone(); open({ kind: "install" }); } }} className={className}>
+      <Download aria-hidden />Install the app
     </button>
   );
 }
@@ -531,7 +528,7 @@ function Crumbs() {
   const crumbs = useCrumbs();
   if (!crumbs.length) return null;
   return (
-    <nav aria-label="Breadcrumb" className="border-b border-line bg-surface px-4 py-2.5 sm:px-8">
+    <nav aria-label="Breadcrumb" className="border-b border-line bg-surface px-4 py-2 sm:px-8">
       <ol className="mx-auto flex max-w-[1180px] items-center gap-1.5 overflow-hidden text-meta">
         {crumbs.map((c, i) => {
           const last = i === crumbs.length - 1;
@@ -542,7 +539,7 @@ function Crumbs() {
               ) : (
                 <span aria-current={last ? "page" : undefined} className={cx("truncate", last ? "font-medium text-ink" : "text-mute-3")}>{c.label}</span>
               )}
-              {!last && <ChevronRight className="h-3.5 w-3.5 flex-none text-mute-5" />}
+              {!last && <ChevronRight aria-hidden className="size-3.5 flex-none text-mute-3" />}
             </li>
           );
         })}
@@ -550,4 +547,3 @@ function Crumbs() {
     </nav>
   );
 }
-

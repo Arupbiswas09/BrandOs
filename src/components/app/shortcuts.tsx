@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useApp } from "./provider";
 import { useNavMode } from "./nav-mode";
+import { NEW_MENU_EVENT } from "./new-menu";
 
 const typing = (el: EventTarget | null) =>
   el instanceof HTMLElement && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
@@ -11,7 +12,7 @@ const typing = (el: EventTarget | null) =>
 /** Global keys: ⌘K or / to search, N for new, ? for help, Esc closes the top layer. */
 export function Shortcuts() {
   const [navMode, setNavMode] = useNavMode();
-  const { ws, modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav } = useApp();
+  const { modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav } = useApp();
   const router = useRouter();
 
   useEffect(() => {
@@ -40,14 +41,15 @@ export function Shortcuts() {
       }
       if (e.key === "/") { e.preventDefault(); setCmdk(true); }
       else if (e.key === "?") { e.preventDefault(); open({ kind: "shortcuts" }); }
-      else if (e.key.toLowerCase() === "n" && ws.can("edit")) { e.preventDefault(); open({ kind: "new" }); }
+      // The New menu knows what this person may create (and is not there when that is nothing).
+      else if (e.key.toLowerCase() === "n") { e.preventDefault(); window.dispatchEvent(new CustomEvent(NEW_MENU_EVENT)); }
       else if (e.key.toLowerCase() === "i") { e.preventDefault(); setInbox(true); }
       else if (e.key === "[") { e.preventDefault(); setNavMode(navMode === "mini" ? "full" : "mini"); }
       else if (e.key.toLowerCase() === "g") { g = true; clearTimeout(gTimer); gTimer = setTimeout(() => (g = false), 900); }
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); clearTimeout(gTimer); };
-  }, [ws, modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav, router, navMode, setNavMode]);
+  }, [modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav, router, navMode, setNavMode]);
 
   return null;
 }

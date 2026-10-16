@@ -2,7 +2,8 @@
 
 import { useActionState } from "react";
 import { requestReset } from "@/app/auth-actions";
-import { Req } from "@/components/auth-shell";
+import { FormError, Req } from "@/components/auth-shell";
+import { Btn } from "@/components/ui";
 
 export function ForgotForm() {
   const [state, action, pending] = useActionState(requestReset, undefined);
@@ -19,10 +20,8 @@ export function ForgotForm() {
         <Req>Email</Req>
         <input name="email" type="email" autoComplete="email" required defaultValue={state?.email} className="field" autoFocus />
       </label>
-      {state?.error && <div role="alert" className="rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-meta text-change-ink">{state.error}</div>}
-      <button type="submit" disabled={pending} className="rounded-lg bg-[#2D4A5C] px-4 py-2.5 text-body font-semibold text-white hover:brightness-110 disabled:opacity-60">
-        {pending ? "Sending…" : "Send me a link"}
-      </button>
+      {state?.error && <FormError>{state.error}</FormError>}
+      <Btn type="submit" variant="primary" size="lg" disabled={pending} className="w-full">{pending ? "Sending…" : "Send me a link"}</Btn>
     </form>
   );
 }

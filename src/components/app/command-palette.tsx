@@ -1,26 +1,31 @@
 "use client";
 
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  BookOpen, Building2, CalendarDays, Clock, CornerDownLeft, FileText, Folder, Inbox, Keyboard, Layers, LayoutDashboard, Library,
+  BookOpen, Building2, CalendarDays, Clock, CornerDownLeft, FileText, Folder, Inbox, Keyboard, Layers, LayoutDashboard, Library, Link2,
   Megaphone, MessageSquare, MousePointerClick, Palette as PaletteIcon, Plus, Search, Settings, ShieldCheck, Trash2, User, Users, X, Zap,
   type LucideIcon,
 } from "lucide-react";
 import { hexA, onColor, readable } from "@/lib/color";
 import { href } from "@/lib/routes";
+import { linkHref } from "@/lib/asset-download";
 import { ASSET_STATUS, NEUTRAL } from "@/lib/constants";
 import { SEARCH_KINDS, type Part, type SearchHit, type SearchKind, type SearchTarget } from "@/lib/search";
 import { useApp } from "./provider";
 import { whereAmI } from "./here";
 import { NEW_MENU_EVENT } from "./new-menu";
-import { Avatar, cx } from "@/components/ui";
+import { Avatar, IconBtn, cx } from "@/components/ui";
 
 /*
  * Global search lives in the header box itself: typing there searches at
  * once and the results drop down under it. ⌘K and "/" focus the box. On
- * phones the box widens over the header and the results fill the screen
- * below it.
+ * phones the header shows a search button instead; it opens the box over
+ * the whole header row and the results fill the screen below it.
+ *
+ * Assets with a link and offers can be copied straight from the results:
+ * the link button on the row, or ⌘C on the row you are on.
  */
 
 type Row = {
@@ -40,6 +45,8 @@ type Row = {
   snippet?: Part[];
   /** A quiet row that changes the search rather than opening something ("Show all", "Search everywhere"). */
   more?: boolean;
+  /** What "Copy link" copies: an asset's own link, or an offer's page in BrandOS (a path). */
+  link?: string;
   run: () => void;
 };
 type Section = { section: string; icon: LucideIcon; rows: Row[]; count?: number };
@@ -75,7 +82,7 @@ export const SEARCH_INPUT_ID = "header-search";
 const plain = (text: string): Part[] => [{ text, hit: false }];
 
 export function HeaderSearch() {
-  const { ws, cmdk: open, setCmdk, openAsset, open: openModal, setInbox } = useApp();
+  const { ws, cmdk: open, setCmdk, openAsset, open: openModal, setInbox, toast } = useApp();
   const router = useRouter();
   const pathname = usePathname();
   const [q, setQ] = useState("");
@@ -151,11 +158,23 @@ export function HeaderSearch() {
   // A chosen scope with nothing in it any more falls back to everything.
   const shownScope = scope !== "All" && counts.has(scope) ? scope : "All";
 
+  /** An asset's own link when it has one (made openable, as everywhere else); an offer's page in BrandOS. */
+  const linkOf = (kind: "asset" | "offer", id: string): string | undefined =>
+    kind === "offer" ? href.offer(id) : linkHref(ws.asset(id)?.url) ?? undefined;
+
+  const copyLink = async (row: Row | undefined) => {
+    if (!row?.link) return;
+    const url = row.link.startsWith("/") ? window.location.origin + row.link : row.link;
+    try { await navigator.clipboard.writeText(url); toast("Link copied"); }
+    catch { window.prompt("Copy this link", url); }
+  };
+
   const toRow = (h: SearchHit): Row => ({
     key: h.kind + h.id, title: h.titleParts, sub: h.sub, code: h.code, color: h.color, archived: h.archived,
     type: h.kind === "Page" && h.to.type === "action" ? "Action" : KIND[h.kind].one,
     avatar: h.kind === "Person", thumb: h.thumb, status: h.status, field: h.field, snippet: h.snippet,
     ...(h.kind === "Page" && { icon: PAGE_ICON[h.id] ?? (h.to.type === "action" ? Plus : Zap) }),
+    link: h.kind === "Offer" ? linkOf("offer", h.id) : h.kind === "Asset" || h.kind === "Library" ? linkOf("asset", h.id) : undefined,
     run: () => runTarget(h.to),
   });
 
@@ -165,17 +184,16 @@ export function HeaderSearch() {
       const h = whereAmI(ws, pathname);
       const recent: Row[] = ws.d.recents.map((r): Row | null => {
         if (r.kind === "brand") { const b = ws.brand(r.itemId); return b && { key: "b" + b.id, title: plain(b.name), type: "Brand", sub: ws.client(b.clientId)?.name ?? "", code: b.mark, color: b.primary, run: () => go(href.brand(b.id)) }; }
-        if (r.kind === "offer") { const o = ws.offer(r.itemId); const b = ws.brand(o?.brandId); return o && { key: "o" + o.id, title: plain(o.name), type: "Offer", sub: [b?.name, o.segment].filter(Boolean).join(" · "), code: "OF", color: b?.primary ?? NEUTRAL, run: () => go(href.offer(o.id)) }; }
+        if (r.kind === "offer") { const o = ws.offer(r.itemId); const b = ws.brand(o?.brandId); return o && { key: "o" + o.id, title: plain(o.name), type: "Offer", sub: [b?.name, o.segment].filter(Boolean).join(" · "), code: "OF", color: b?.primary ?? NEUTRAL, link: linkOf("offer", o.id), run: () => go(href.offer(o.id)) }; }
         if (r.kind === "service") { const v = ws.service(r.itemId); const b = ws.brand(v?.brandId); return v && { key: "s" + v.id, title: plain(v.name), type: "Service", sub: b?.name ?? "", code: "SVC", color: b?.primary ?? NEUTRAL, run: () => go(href.service(v.id)) }; }
         if (r.kind === "client") { const c = ws.client(r.itemId); return c && { key: "c" + c.id, title: plain(c.name), type: "Client", sub: c.kind, code: "CL", color: NEUTRAL, run: () => go(href.client(c.id)) }; }
         const a = ws.asset(r.itemId); const b = ws.brand(a?.brandId);
-        return a && { key: "a" + a.id, title: plain(a.name), type: a.brandId ? "Asset" : "Library", sub: [b?.name ?? "Global Library", a.type].join(" · "), code: ws.codeOf(a), color: b?.primary ?? NEUTRAL, thumb: ws.previewOf(a), status: a.status, run: () => { done(); openAsset(a.id); } };
+        return a && { key: "a" + a.id, title: plain(a.name), type: a.brandId ? "Asset" : "Library", sub: [b?.name ?? "Global Library", a.type].join(" · "), code: ws.codeOf(a), color: b?.primary ?? NEUTRAL, thumb: ws.previewOf(a), status: a.status, link: linkOf("asset", a.id), run: () => { done(); openAsset(a.id); } };
       }).filter((r): r is Row => !!r).slice(0, 5);
       const page = (key: string, title: string, sub: string, icon: LucideIcon, run: () => void, type = "Page"): Row => ({ key, title: plain(title), type, sub, code: "", color: NEUTRAL, icon, run });
       const jump: Row[] = [
         ...(h.active ? [page("kit", "Brand Kit", h.active.name, PaletteIcon, () => go(href.brand(h.active!.id, "kit")))] : []),
-        // Client guests cannot open the library.
-        ...(ws.isGuest ? [] : [page("lib", "Global Library", "Checklists, prompts, templates, SOPs", BookOpen, () => go("/library"))]),
+        page("lib", "Global Library", "Checklists, prompts, templates, SOPs", BookOpen, () => go("/library")),
         page("cal", "Launches", "Offer launch dates", CalendarDays, () => go("/calendar")),
         ...(ws.can("edit") && h.brand ? [
           page("new-offer", "New offer", `In ${h.brand.name}`, Plus, () => action("new-offer"), "Action"),
@@ -229,6 +247,13 @@ export function HeaderSearch() {
       if (e.key === "ArrowDown" || e.key === "Enter") { e.preventDefault(); setCmdk(true); }
       return;
     }
+    // ⌘C (Ctrl+C) copies the link of the row you are on, unless you have selected text in the box to copy.
+    const box = e.currentTarget;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "c" && box.selectionStart === box.selectionEnd && flat[sel]?.link) {
+      e.preventDefault();
+      void copyLink(flat[sel]);
+      return;
+    }
     if (e.key === "ArrowDown") { e.preventDefault(); setSel((i) => Math.min(flat.length - 1, i + 1)); }
     else if (e.key === "ArrowUp") { e.preventDefault(); setSel((i) => Math.max(0, i - 1)); }
     else if (e.key === "Enter") { e.preventDefault(); flat[sel]?.run(); }
@@ -244,24 +269,34 @@ export function HeaderSearch() {
   const pickScope = (k: SearchKind | "All") => { setScope(k); setSel(0); inputRef.current?.focus(); };
   const placeholder = owner ? `Search ${ownerName.split(" ")[0]}'s work` : inBrand && open ? `Search ${brandName}` : "Search everything";
 
+  // Phones: the header shows a search button; tapping it opens the box and focuses it in the same tap, so the keyboard comes up.
+  const openFromButton = () => { flushSync(() => setCmdk(true)); inputRef.current?.focus(); };
+  const active = open ? flat[sel] : undefined;
+
   let i = -1;
   return (
+    <>
+    {!open && (
+      <IconBtn label="Search" onClick={openFromButton} aria-controls={SEARCH_INPUT_ID} className="ml-auto size-9 sm:hidden">
+        <Search aria-hidden />
+      </IconBtn>
+    )}
     <div
       ref={wrapRef}
       // Focus moving to something outside (Tab) closes the results; clicks are handled by the listener above.
       onBlur={(e) => { if (e.relatedTarget && !wrapRef.current?.contains(e.relatedTarget as Node)) close(); }}
       className={cx(
         // Open, the box takes the room it needs, up to its widest.
-        "relative flex h-10 min-w-0 max-w-2xl transition-[flex-grow] duration-200", open ? "flex-[4]" : "flex-1",
-        // Phones: open, the box widens over the whole header row.
-        open && "max-sm:fixed max-sm:inset-x-0 max-sm:top-0 max-sm:z-[2] max-sm:h-header max-sm:max-w-none max-sm:items-center max-sm:gap-2 max-sm:bg-surface max-sm:px-3 max-sm:pt-[env(safe-area-inset-top)]",
+        "relative flex h-9 min-w-0 max-w-xl transition-[flex-grow] duration-200", open ? "flex-[4]" : "flex-1",
+        // Phones: closed, only the button above shows; open, the box covers the whole header row.
+        open ? "max-sm:fixed max-sm:inset-x-0 max-sm:top-0 max-sm:z-[2] max-sm:h-header max-sm:max-w-none max-sm:items-center max-sm:gap-2 max-sm:bg-surface max-sm:px-3 max-sm:pt-[env(safe-area-inset-top)]" : "max-sm:hidden",
       )}
     >
       <div className={cx(
-        "flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-body transition-colors duration-150",
-        open ? "border-accent bg-surface shadow-card" : "border-line bg-wash hover:border-line-strong hover:bg-surface",
+        "flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border px-3 text-body transition-colors duration-150",
+        open ? "border-accent bg-surface" : "border-line bg-wash hover:border-line-strong hover:bg-surface",
       )}>
-        <Search aria-hidden className="h-[18px] w-[18px] flex-none text-mute-5" />
+        <Search aria-hidden className="size-4 flex-none text-mute-3" />
         {open && inBrand && <ScopeChip onClear={widen} label={`In ${brandName}`} clearLabel={`Search everything, not only ${brandName}`} />}
         {open && owner && <ScopeChip onClear={() => { setOwner(null); setSel(0); inputRef.current?.focus(); }} label={`Owned by ${ownerName}`} clearLabel={`Stop showing only ${ownerName}'s work`} icon />}
         <input
@@ -285,22 +320,23 @@ export function HeaderSearch() {
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="min-w-[6ch] flex-1 border-0 bg-transparent py-1 text-body text-ink outline-none placeholder:text-mute-4"
+          className="min-w-[6ch] flex-1 border-0 bg-transparent py-1 text-body text-ink outline-none placeholder:text-mute-3"
         />
         {open
           ? <button type="button" onClick={done} className="kbd hidden h-6 flex-none px-1.5 text-mute-2 hover:text-ink sm:inline-flex">Esc<span className="sr-only"> (close search)</span></button>
           : <kbd aria-hidden className="kbd hidden flex-none sm:inline-flex">⌘K</kbd>}
       </div>
-      {open && <button type="button" onClick={done} className="flex-none px-1 text-body font-medium text-accent sm:hidden">Cancel</button>}
+      {open && <button type="button" onClick={done} className="flex h-9 flex-none items-center px-1 text-body font-medium text-accent sm:hidden">Cancel</button>}
       <span id="search-help" className="sr-only">
         Searches everything you can see as you type. Every word has to match. Use the up and down arrows to move through results and Enter to open one.{open && inBrand ? ` Results are only from ${brandName}; press Tab to search everything.` : ""}
       </span>
+      <span id="search-copy-help" className="sr-only">Press Command C to copy its link.</span>
 
       {open && (
         <div
           // Clicks inside the results keep the typing focus in the box.
           onMouseDown={(e) => { if (!(e.target as HTMLElement).closest("input")) e.preventDefault(); }}
-          className="absolute left-0 top-full z-10 mt-1.5 flex max-h-[70vh] min-w-full w-[min(640px,calc(100vw-5rem))] animate-pop flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-card max-sm:right-0 max-sm:mt-0 max-sm:max-h-[calc(100dvh-60px-env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-none max-sm:border-x-0"
+          className="absolute left-0 top-full z-10 mt-1.5 flex max-h-[70vh] min-w-full w-[min(640px,calc(100vw-5rem))] origin-top-left animate-pop flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-pop max-sm:right-0 max-sm:mt-0 max-sm:max-h-[calc(100dvh-60px-env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-none max-sm:border-x-0"
         >
           {searching && hits.length > 0 && (
             <div data-scroll className="flex flex-none items-center gap-1 overflow-x-auto border-b border-line px-2.5 py-1.5" role="group" aria-label="Show">
@@ -316,46 +352,56 @@ export function HeaderSearch() {
             {flat.length > 0 && <div id="search-results" role="listbox" aria-label={searching ? `${total} results` : "Suggestions"}>
             {sections.map((s) => (
               <div key={s.section} role="group" aria-label={s.section} className="mb-1 last:mb-0">
-                <div aria-hidden className="eyebrow flex items-center gap-1.5 px-2.5 pb-1 pt-2">
-                  <s.icon aria-hidden className="h-3.5 w-3.5" />{s.section}
-                  {s.count !== undefined && <span className="tracking-normal text-mute-5">· {s.count}</span>}
+                <div aria-hidden className="flex items-center gap-1.5 px-2.5 pb-1 pt-2 text-micro font-medium text-mute-3">
+                  <s.icon aria-hidden className="size-3.5" />{s.section}
+                  {s.count !== undefined && <span className="tabular-nums">· {s.count}</span>}
                 </div>
                 {s.rows.map((r) => {
                   i++;
                   const idx = i;
                   const on = sel === idx;
                   return (
-                    <div
-                      key={r.key}
-                      id={`search-opt-${idx}`}
-                      data-i={idx}
-                      role="option"
-                      aria-selected={on}
-                      onMouseMove={() => { if (sel !== idx) setSel(idx); }}
-                      onClick={r.run}
-                      className={cx("flex min-h-[44px] w-full cursor-pointer items-center gap-3 rounded-lg px-2.5 py-1 text-left transition-colors duration-100", on ? "bg-soft" : "hover:bg-hover")}
-                    >
-                      <RowMark row={r} />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          {r.status && <span aria-hidden title={r.status} className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: ASSET_STATUS[r.status as keyof typeof ASSET_STATUS] ?? NEUTRAL }} />}
-                          <span className={cx("truncate text-body leading-5", r.more ? "font-semibold text-accent" : "text-ink")}><Marked parts={r.title} /></span>
-                          {r.status && <span className="sr-only">, {r.status}</span>}
+                    // The copy button sits beside the option, not inside it: an option's content is read as one piece of text.
+                    <div key={r.key} className="relative">
+                      <div
+                        id={`search-opt-${idx}`}
+                        data-i={idx}
+                        role="option"
+                        aria-selected={on}
+                        aria-describedby={r.link ? "search-copy-help" : undefined}
+                        onMouseMove={() => { if (sel !== idx) setSel(idx); }}
+                        onClick={r.run}
+                        className={cx("flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg py-1 pl-2.5 text-left transition-colors duration-100", r.link ? "pr-11" : "pr-2.5", on ? "bg-hl" : "hover:bg-hover")}
+                      >
+                        <RowMark row={r} />
+                        <span className="min-w-0 flex-1">
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            {r.status && <span aria-hidden title={r.status} className="size-1.5 flex-none rounded-full" style={{ background: ASSET_STATUS[r.status as keyof typeof ASSET_STATUS] ?? NEUTRAL }} />}
+                            <span className={cx("truncate text-body leading-5", r.more ? "font-semibold text-accent" : "text-ink")}><Marked parts={r.title} /></span>
+                            {r.status && <span className="sr-only">, {r.status}</span>}
+                          </span>
+                          {(r.type || r.sub) && (
+                            <span className="block truncate text-small leading-4 text-mute-2">
+                              {r.type && <span className="font-medium text-mute-3">{r.type}</span>}
+                              {r.type && r.sub && " · "}{r.sub}
+                            </span>
+                          )}
+                          {r.snippet && (
+                            <span className="block truncate text-small leading-4 text-mute-2">
+                              <span className="text-mute-3">{r.field}: </span><Marked parts={r.snippet} />
+                            </span>
+                          )}
                         </span>
-                        {(r.type || r.sub) && (
-                          <span className="block truncate text-small leading-4 text-mute-2">
-                            {r.type && <span className="font-mono text-micro font-medium uppercase tracking-[0.08em] text-mute-3">{r.type}</span>}
-                            {r.type && r.sub && " · "}{r.sub}
-                          </span>
-                        )}
-                        {r.snippet && (
-                          <span className="block truncate text-small leading-4 text-mute-2">
-                            <span className="text-mute-4">{r.field}: </span><Marked parts={r.snippet} />
-                          </span>
-                        )}
-                      </span>
-                      {r.archived && <span className="flex-none rounded-full bg-chip px-2 py-0.5 text-micro font-medium text-mute-2">Archived</span>}
-                      {on && <span aria-hidden className="kbd hidden flex-none gap-1 px-1.5 sm:inline-flex"><CornerDownLeft className="h-3 w-3" /></span>}
+                        {r.archived && <span className="flex-none rounded-full bg-chip px-2 py-0.5 text-micro font-medium text-mute-2">Archived</span>}
+                        {on && !r.link && <span aria-hidden className="kbd hidden flex-none gap-1 px-1.5 sm:inline-flex"><CornerDownLeft className="size-3" /></span>}
+                      </div>
+                      {/* For the mouse and for touch; the keyboard has ⌘C, and screen readers hear that on the option. */}
+                      {r.link && (
+                        <IconBtn label={`Copy link to ${r.title.map((p) => p.text).join("")}`} aria-hidden tabIndex={-1} onClick={() => void copyLink(r)}
+                          className={cx("absolute right-1.5 top-1/2 -translate-y-1/2 hover:bg-surface", on ? "opacity-100" : "opacity-0 pointer-coarse:opacity-100")}>
+                          <Link2 aria-hidden />
+                        </IconBtn>
+                      )}
                     </div>
                   );
                 })}
@@ -377,6 +423,7 @@ export function HeaderSearch() {
           <div className="hidden flex-none items-center gap-4 whitespace-nowrap border-t border-line bg-wash-2 px-3.5 py-2 text-small text-mute-3 sm:flex">
             <Hint keys={["↑", "↓"]}>move</Hint>
             <Hint keys={["↵"]}>open</Hint>
+            {active?.link && <Hint keys={["⌘C"]}>copy link</Hint>}
             {inBrand && <Hint keys={["Tab"]}>search everywhere</Hint>}
             <Hint keys={["Esc"]}>close</Hint>
             <span className="flex-1" />
@@ -386,16 +433,17 @@ export function HeaderSearch() {
       )}
       <span className="sr-only" aria-live="polite">{searching ? `${total} result${total === 1 ? "" : "s"}` : ""}</span>
     </div>
+    </>
   );
 }
 
 /** "In Quokka For Good ×": what the results are narrowed to, removable in one click. */
 function ScopeChip({ label, clearLabel, onClear, icon }: { label: string; clearLabel: string; onClear: () => void; icon?: boolean }) {
   return (
-    <span className="inline-flex min-w-0 max-w-[45%] flex-none items-center gap-1 rounded-full bg-soft py-0.5 pl-2.5 pr-1 text-small font-medium text-ink">
-      {icon && <User aria-hidden className="h-3.5 w-3.5 flex-none text-mute-3" />}
+    <span className="inline-flex min-w-0 max-w-[45%] flex-none items-center gap-1 rounded-full bg-hl py-0.5 pl-2.5 pr-0.5 text-small font-medium text-hl-ink">
+      {icon && <User aria-hidden className="size-3.5 flex-none" />}
       <span className="truncate">{label}</span>
-      <button type="button" onClick={onClear} aria-label={clearLabel} className="flex h-5 w-5 flex-none items-center justify-center rounded-full text-mute-3 hover:bg-surface hover:text-ink">
+      <button type="button" onClick={onClear} aria-label={clearLabel} className="-my-1 flex size-6 flex-none items-center justify-center rounded-full text-mute-3 hover:bg-surface hover:text-ink">
         <X aria-hidden className="h-3.5 w-3.5" />
       </button>
     </span>
@@ -405,8 +453,8 @@ function ScopeChip({ label, clearLabel, onClear, icon }: { label: string; clearL
 function Chip({ on, onClick, label, n }: { on: boolean; onClick: () => void; label: string; n: number }) {
   return (
     <button type="button" aria-pressed={on} onClick={onClick}
-      className={cx("focus-inset flex-none rounded-full px-2.5 py-0.5 text-small font-medium transition-colors duration-150", on ? "bg-ink text-white" : "text-mute-2 hover:bg-hover hover:text-ink")}>
-      {label}<span className={cx("ml-1.5 font-mono text-micro", on ? "text-white/75" : "text-mute-4")}>{n}</span>
+      className={cx("focus-inset flex-none rounded-full px-2.5 py-0.5 text-small font-medium transition-colors duration-150", on ? "bg-hl font-semibold text-hl-ink" : "text-mute-2 hover:bg-hover hover:text-ink")}>
+      {label}<span className="ml-1.5 tabular-nums text-micro">{n}</span>
     </button>
   );
 }

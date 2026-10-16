@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import type { Access, Group } from "@/db/schema";
-import { OVERRIDABLE, PERM_INFO, can, cleanOverrides, roleCan, type Perm } from "@/lib/access";
+import { NO_ACCESS_LABEL, OVERRIDABLE, PERM_INFO, ROLES, can, cleanOverrides, roleCan, type Perm } from "@/lib/access";
 import { cellFor } from "@/components/pages/access";
-import { ACCESS_COLOR, ACCESS_LEVELS, ACCESS_NOTE, ROLE_OPTIONS } from "@/lib/constants";
+import { ACCESS_COLOR, ACCESS_NOTE, ROLE_OPTIONS } from "@/lib/constants";
 import type { PublicUser } from "@/lib/types";
 import { requestChanges, saveGroup, savePerson, sendForReview } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
@@ -33,6 +33,9 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
   const save = async () => { const r = await run(savePerson, { id: draft?.id, ...d, permOverrides: cleanOverrides(d.access, d.permOverrides) }); if (r.ok) close(); };
   const effective = { access: d.access, permOverrides: cleanOverrides(d.access, d.permOverrides) };
   const roles = ROLE_OPTIONS.includes(d.role) ? ROLE_OPTIONS : [...ROLE_OPTIONS, d.role];
+  // The old Client role is not offered. Someone who still has it has no access until a role is picked here.
+  const noAccess = d.access === "Client";
+  const first = d.name.split(" ")[0] || "they";
 
   return (
     <Modal title={draft?.id ? "Edit access" : "Invite someone"} sub="Two decisions: their role (what they can do) and their scope (which clients they can see)." width={640} onSubmit={save}
@@ -45,21 +48,26 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
         <input type="email" className="field" value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} placeholder="marta@agency.com" />
       </Field>
       <div>
-        <div className="label">Role — what they can do<span aria-hidden className="ml-0.5 text-[#DC2626]">*</span></div>
+        <div className="label">Role: what they can do<span aria-hidden className="ml-0.5 text-mute-3">*</span></div>
+        {noAccess && (
+          <p className="mb-2.5 mt-0 rounded-lg bg-wash px-3 py-2 text-meta text-mute-1">
+            <b className="font-semibold text-ink">{NO_ACCESS_LABEL}.</b> {first === "they" ? "This person" : first} had the old Client role and cannot sign in. Pick a role to give them access.
+          </p>
+        )}
         <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Role" aria-required="true">
-          {ACCESS_LEVELS.map((a) => (
-            <button key={a} type="button" role="radio" aria-checked={d.access === a} onClick={() => setD({ ...d, access: a, ...(a === "Client" && { allClients: false }) })}
-              className={cx("flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 text-left transition", d.access === a ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-surface hover:border-mute-4")}>
-              <span className="mt-2 h-[9px] w-[9px] flex-none rounded-sm" style={{ background: ACCESS_COLOR[a] }} />
+          {ROLES.map((a) => (
+            <button key={a} type="button" role="radio" aria-checked={d.access === a} onClick={() => setD({ ...d, access: a })}
+              className={cx("flex w-full items-start gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors duration-150", d.access === a ? "border-accent bg-soft ring-1 ring-accent" : "border-line bg-surface hover:border-line-strong")}>
+              <span aria-hidden className="mt-2 size-2 flex-none rounded-sm" style={{ background: ACCESS_COLOR[a] }} />
               <span className="flex-1">
-                <span className="block text-body font-semibold">{a}{a === "Client" && <span className="ml-1.5 text-micro font-semibold uppercase tracking-[0.06em] text-mute-3">Guest</span>}</span>
+                <span className="block text-body font-semibold">{a}</span>
                 <span className="mt-0.5 block text-small leading-[1.4] text-mute-2">{ACCESS_NOTE[a]}</span>
               </span>
             </button>
           ))}
         </div>
-        <div className="mt-3 rounded-xl bg-wash px-3.5 py-3">
-          <div className="mb-1.5 text-small font-semibold text-mute-1">As {/^[AEIOU]/.test(d.access) ? "an" : "a"} {d.access}{Object.keys(effective.permOverrides).length ? " with the exceptions below" : ""}, {d.name.split(" ")[0] || "they"} can:</div>
+        {!noAccess && <div className="mt-3 rounded-xl bg-wash px-3.5 py-3">
+          <div className="mb-1.5 text-small font-semibold text-mute-1">As {/^[AEIOU]/.test(d.access) ? "an" : "a"} {d.access}{Object.keys(effective.permOverrides).length ? " with the exceptions below" : ""}, {first} can:</div>
           <div className="flex flex-wrap gap-1.5">
             {PERM_INFO.map((p) => {
               let c = cellFor(d.access, p.perm);
@@ -69,10 +77,10 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
                 c = !yes ? "no" : c === "no" ? "yes" : c;
               }
               if (c === "no") return null;
-              return <span key={p.perm} className="rounded-full bg-surface px-2.5 py-1 text-small font-medium text-ink-3 ring-1 ring-line">{p.label}{c === "own" ? " (own work)" : c === "shared" ? " (shared items)" : ""}</span>;
+              return <span key={p.perm} className="rounded-full bg-surface px-2.5 py-1 text-small font-medium text-ink-3 ring-1 ring-line">{p.label}{c === "own" ? " (own work)" : ""}</span>;
             })}
           </div>
-        </div>
+        </div>}
       </div>
       <details className="group rounded-xl border border-line" open={Object.keys(d.permOverrides).length > 0 || d.uploadLimitMb != null || d.storageQuotaMb != null}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
@@ -80,14 +88,13 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
             <span className="block text-body font-semibold">Exceptions and limits for {d.name.split(" ")[0] || "this person"}</span>
             <span className="block text-small text-mute-2">Block or allow single permissions on top of the role, and cap their uploads.</span>
           </span>
-          <span className="text-mute-3 group-open:rotate-180">▾</span>
+          <span aria-hidden className="text-mute-3 group-open:rotate-180">▾</span>
         </summary>
         <div className="border-t border-divider px-3.5 pb-3.5 pt-2">
           {OVERRIDABLE.map((perm) => {
             const info = PERM_INFO.find((x) => x.perm === perm)!;
             const role = roleCan(d.access, perm);
             const v = d.permOverrides[perm];
-            const guestLocked = d.access === "Client" && !role && !["comment", "review", "upload"].includes(perm);
             const set = (x: boolean | undefined) => setD((y) => {
               const o = { ...y.permOverrides };
               if (x === undefined || x === role) delete o[perm]; else o[perm] = x;
@@ -102,11 +109,11 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
                 <span className="flex rounded-lg border border-line p-0.5" role="radiogroup" aria-label={info.label}>
                   {([["Role", undefined], ["Allow", true], ["Block", false]] as const).map(([label, val]) => {
                     const on = val === undefined ? v === undefined : v === val;
-                    const disabled = (val === true && (role || guestLocked)) || (val === false && !role);
+                    const disabled = noAccess || (val === true && role) || (val === false && !role);
                     return (
                       <button key={label} type="button" role="radio" aria-checked={on} disabled={disabled} onClick={() => set(val)}
                         className={cx("rounded-md px-2.5 py-1 text-small font-medium transition disabled:cursor-not-allowed disabled:opacity-30",
-                          on ? (val === false ? "bg-[#FEE4E2] text-[#B42318]" : val === true ? "bg-[#DCFCE7] text-[#166534]" : "bg-wash text-ink") : "text-mute-2 hover:text-ink")}>
+                          on ? (val === false ? "bg-danger/10 text-danger" : val === true ? "bg-ok/12 text-ok" : "bg-wash text-ink") : "text-mute-2 hover:text-ink")}>
                         {label}
                       </button>
                     );
@@ -127,9 +134,8 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
         </div>
       </details>
       <div>
-        <div className="label">Scope — what they can see</div>
-        {d.access === "Client" && <p className="mb-2.5 mt-0 text-meta text-mute-2">Clients only ever see work marked <b className="font-semibold text-ink">cleared to send</b> in the clients or brands you pick here.</p>}
-        <button type="button" role="checkbox" aria-checked={d.allClients} disabled={d.access === "Client"} onClick={() => setD({ ...d, allClients: !d.allClients, clientIds: [], brandIds: [], groupIds: [] })}
+        <div className="label">Scope: what they can see</div>
+        <button type="button" role="checkbox" aria-checked={d.allClients} disabled={noAccess} onClick={() => setD({ ...d, allClients: !d.allClients, clientIds: [], brandIds: [], groupIds: [] })}
           className="mb-2.5 flex w-full items-center gap-2.5 rounded-xl border border-line bg-surface px-3.5 py-3 text-left hover:border-mute-2 disabled:cursor-not-allowed disabled:opacity-40">
           <Tick on={d.allClients} /><span className="text-lead font-medium">Every client, including ones added later</span>
         </button>
@@ -227,7 +233,7 @@ export function SendReviewModal({ item, id }: { item: ItemKind; id: string }) {
             <span className="block text-lead font-semibold">{u.name}{u.id === ws.me.id ? " (you)" : ""}</span>
             <span className="block text-body text-mute-2">{u.role} · {u.access}</span>
           </span>
-          <span className="font-mono text-meta text-mute-4" title="Items already waiting on them">{ws.d.queueCounts[u.id] ?? 0} waiting</span>
+          <span className="text-meta tabular-nums text-mute-3" title="Items already waiting on them">{ws.d.queueCounts[u.id] ?? 0} waiting</span>
         </button>
       ))}
       {!people.length && <div className="p-6 text-center text-body text-mute-2">Nobody else can review yet. Give someone Reviewer access on the Team page.</div>}

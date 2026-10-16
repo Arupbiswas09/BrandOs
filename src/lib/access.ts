@@ -7,9 +7,9 @@ import type { Access, Brand, Group, User } from "@/db/schema";
  *   - Their SCOPE says what they can SEE (every client, or chosen clients,
  *     brands and groups).
  *
- * Contributors can change only the work they own. Clients are outside
- * guests: they see only what has been marked "visible to client", and can
- * comment and approve it.
+ * Contributors can change only the work they own. BrandOS is internal only:
+ * the old Client guest role is no longer offered, and anyone who still has it
+ * is shown as "No access" and cannot sign in (see server/session).
  *
  * This module is pure so the server and the browser make the same decisions.
  * The browser uses it only to hide buttons; every server action checks again.
@@ -25,7 +25,7 @@ export type Perm =
   | "structure" // add and change clients, brands and sub-brands
   | "kit"       // change a Brand Kit (colours, fonts, logo rules, voice)
   | "library"   // change the Global Library
-  | "share"     // create and revoke client share links
+  | "share"     // mark assets as cleared to send
   | "del"       // delete assets (files and all) and use the recycle bin; archive whole clients and brands
   | "export"    // download all the data
   | "access";   // invite people and change what they can see and do
@@ -38,12 +38,11 @@ export type Perm =
  */
 export const NEVER_DELETED = ["client", "brand", "service", "offer"] as const;
 export const neverDeleted = (kind: string) => (NEVER_DELETED as readonly string[]).includes(kind);
-export const NEVER_DELETED_NOTE = "Clients, brands, services and offers are never deleted. Archive it instead — that hides it and can be undone.";
+export const NEVER_DELETED_NOTE = "Clients, brands, services and offers are never deleted. Archive it instead: that hides it and can be undone.";
 
 /**
- * Roles offered when inviting people. BrandOS is internal only, so the
- * Client guest role is no longer offered; anyone who already has it keeps
- * working as before.
+ * Roles offered when inviting people. BrandOS is internal only, so the old
+ * Client guest role is not among them; anyone who still has it has no access.
  */
 export const ROLES: Access[] = ["Admin", "Manager", "Editor", "Contributor", "Reviewer", "Viewer"];
 
@@ -61,7 +60,8 @@ export const PERMISSIONS: Record<Access, Record<Perm, boolean>> = {
   Contributor: row(T, F, T, F, F, F, F, F, F, F, F, F),
   Reviewer:    row(T, T, F, F, F, F, F, F, F, F, F, F),
   Viewer:      row(F, F, F, F, F, F, F, F, F, F, F, F),
-  Client:      row(T, T, F, F, F, F, F, F, F, F, F, F),
+  // The old guest role: no access at all.
+  Client:      row(F, F, F, F, F, F, F, F, F, F, F, F),
 };
 
 /** Plain-language names for the permission table, in display order. */
@@ -83,14 +83,14 @@ export const PERM_INFO: { perm: Perm | "view" | "own"; label: string; note: stri
   { perm: "access", label: "Manage the team", note: "Invite people, set roles and choose what they see." },
 ];
 
-export const ROLE_INFO: Record<Access, { summary: string; color: string; guest?: boolean }> = {
+export const ROLE_INFO: Record<Access, { summary: string; color: string }> = {
   Admin: { summary: "Everything, everywhere. The only role that manages the team, deletes assets, archives whole clients and brands, and exports data.", color: "#6D28D9" },
   Manager: { summary: "Runs client work end to end: sets up brands and owns Brand Kits and strategy. Cannot delete assets or archive whole clients.", color: "#1D4ED8" },
   Editor: { summary: "Creates and edits all work in their clients, reviews it and marks it Live.", color: "#047857" },
   Contributor: { summary: "Creates work and edits what they own, then sends it for review. Cannot approve.", color: "#0E7490" },
   Reviewer: { summary: "Reads, comments, approves or sends back. Changes nothing themselves.", color: "#B45309" },
   Viewer: { summary: "Reads only. For people who need to find things, not change them.", color: "#46534D" },
-  Client: { summary: "An outside guest. Sees only work marked visible to the client, and can comment and approve it.", color: "#BE185D", guest: true },
+  Client: { summary: "No access. The old client guest role: they cannot sign in until an admin gives them a role.", color: "#56645E" },
 };
 
 type ScopeUser = Pick<User, "access" | "allClients" | "clientIds" | "brandIds" | "groupIds">;
@@ -98,9 +98,6 @@ type ScopeBrand = Pick<Brand, "id" | "clientId" | "parentId">;
 
 /** Permissions an admin may switch on or off for one person, on top of their role. */
 export const OVERRIDABLE: Perm[] = ["comment", "review", "edit", "upload", "publish", "archive", "structure", "kit", "library", "share", "del", "export"];
-/** The most a client guest can ever be given: they stay outside the agency. */
-const GUEST_GRANTABLE = new Set<Perm>(["comment", "review", "upload"]);
-
 type PermUser = Pick<User, "access"> & { permOverrides?: Partial<Record<string, boolean>> | null };
 
 /** What the role alone allows, ignoring any per-person exception. */
@@ -109,23 +106,23 @@ export function roleCan(access: Access, perm: Perm): boolean {
 }
 
 export function can(user: PermUser | null | undefined, perm: Perm): boolean {
-  if (!user) return false;
+  if (!user || user.access === "Client") return false;
   const base = roleCan(user.access, perm);
   // Managing the team stays tied to the Admin role, so nobody is locked out or quietly promoted.
   if (perm === "access" || !OVERRIDABLE.includes(perm)) return base;
   const o = user.permOverrides?.[perm];
   if (o === false) return false;
-  if (o === true) return user.access === "Client" ? GUEST_GRANTABLE.has(perm) : true;
+  if (o === true) return true;
   return base;
 }
 
 /** Only the exceptions that actually change something, for storing and showing. */
 export function cleanOverrides(access: Access, o: Partial<Record<string, boolean>> | null | undefined): Partial<Record<Perm, boolean>> {
   const out: Partial<Record<Perm, boolean>> = {};
+  if (access === "Client") return out;
   for (const p of OVERRIDABLE) {
     const v = o?.[p];
     if (typeof v !== "boolean" || v === roleCan(access, p)) continue;
-    if (v && access === "Client" && !GUEST_GRANTABLE.has(p)) continue;
     out[p] = v;
   }
   return out;
@@ -138,14 +135,17 @@ export function canChange(user: (PermUser & Pick<User, "id">) | null | undefined
   return !item || item.ownerId === user.id;
 }
 
+/** The old Client role. Such people cannot sign in; kept so older records still read. */
 export const isGuest = (user: Pick<User, "access"> | null | undefined) => user?.access === "Client";
+export const NO_ACCESS_LABEL = "No access";
 
 export type Scope = { all: boolean; clients: Set<string>; brands: Set<string>; guest: boolean };
 
 export function scopeOf(user: ScopeUser, groups: Pick<Group, "id" | "clientIds" | "brandIds">[]): Scope {
   const guest = user.access === "Client";
-  // Guests never get "every client", whatever the flag says.
-  if (user.allClients && !guest) return { all: true, clients: new Set(), brands: new Set(), guest };
+  // No access sees nothing, whatever the flags say.
+  if (guest) return { all: false, clients: new Set(), brands: new Set(), guest };
+  if (user.allClients) return { all: true, clients: new Set(), brands: new Set(), guest };
   const clients = new Set(user.clientIds ?? []);
   const brands = new Set(user.brandIds ?? []);
   for (const gid of user.groupIds ?? []) {
@@ -175,7 +175,8 @@ export function scopeLabel(
   user: ScopeUser,
   lookup: { group: (id: string) => { name: string } | undefined; client: (id: string) => { name: string } | undefined; brand: (id: string) => { name: string } | undefined },
 ): string {
-  if (user.allClients && user.access !== "Client") return "Every client";
+  if (user.access === "Client") return "Cannot sign in";
+  if (user.allClients) return "Every client";
   const parts = [
     ...(user.groupIds ?? []).map((g) => lookup.group(g)?.name),
     ...(user.clientIds ?? []).map((c) => lookup.client(c)?.name),

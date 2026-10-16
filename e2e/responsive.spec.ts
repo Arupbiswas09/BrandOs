@@ -27,8 +27,10 @@ for (const size of SIZES) {
 
     test("navigation is reachable", async ({ page }) => {
       await signIn(page);
+      // Below 1024px the bottom bar's Menu opens the navigation (the header has no second menu button).
       if (size.width < 1024) {
-        await page.getByRole("button", { name: "Open navigation" }).click();
+        await expect(page.locator("header").getByRole("button", { name: /navigation|menu/i })).toHaveCount(0);
+        await page.getByRole("navigation", { name: "Quick navigation" }).getByRole("button", { name: "Menu" }).click();
       }
       await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Global Library" }).click();
       await expect(page).toHaveURL(/\/library$/);

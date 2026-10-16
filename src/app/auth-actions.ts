@@ -8,7 +8,7 @@ import { randomBytes } from "node:crypto";
 import { getDb, schema as s } from "@/db";
 import { can } from "@/lib/access";
 import { hashPassword, verifyPassword } from "@/server/password";
-import { authMode, clearPending, currentSessionId, endSession, getViewer, pendingUserId, startSession } from "@/server/session";
+import { authMode, clearPending, currentSessionId, endSession, getViewer, mayUseBrandOS, pendingUserId, startSession } from "@/server/session";
 import { clearFailures, clientIp, isThrottled, LIMITS, recordFailure, type Limit } from "@/server/throttle";
 import { hashRecoveryCode, isRecoveryShape, verifyTotp } from "@/server/totp";
 import { afterFirstFactor, enabledTwoFactor } from "@/server/two-factor";
@@ -19,6 +19,9 @@ import { BREACHED_MESSAGE, isBreachedPassword } from "@/server/pwned";
 import { EV } from "@/lib/audit";
 
 export type FormState = { error?: string; email?: string } | undefined;
+
+/** What someone with the old Client role is told, after they prove who they are. BrandOS is internal only. */
+const NO_ACCESS = "This account does not have access to BrandOS any more. It is for the agency team only. Ask an admin if you think this is wrong.";
 
 /** Password sign-in. Failures count per email and per IP, in the database (see server/throttle). */
 export async function signInWithPassword(_: FormState, form: FormData): Promise<FormState> {
@@ -42,6 +45,7 @@ export async function signInWithPassword(_: FormState, form: FormData): Promise<
     return { error: "That email and password do not match.", email };
   }
   await clearFailures(["email:" + email]);
+  if (!mayUseBrandOS(u)) return { error: NO_ACCESS, email };
   redirect(await afterFirstFactor(u.id));
 }
 
@@ -104,10 +108,11 @@ async function requestSignInCode(form: FormData): Promise<CodeState> {
   if (await isThrottled(keys)) return { error: "We have sent several codes already. Use the newest one, or wait fifteen minutes and ask again.", email, sent: true };
   await recordFailure(keys.map(([k]) => k));
   const db = await getDb();
-  const [u] = await db.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, email)).limit(1);
-  await recordSecurity({ userId: u?.id, action: EV.codeRequested, label: email.slice(0, 200), field: u ? "code emailed" : "no account with that email", withIp: true });
+  const [u] = await db.select({ id: s.users.id, access: s.users.access }).from(s.users).where(eq(s.users.email, email)).limit(1);
+  const allowed = mayUseBrandOS(u);
+  await recordSecurity({ userId: u?.id, action: EV.codeRequested, label: email.slice(0, 200), field: !u ? "no account with that email" : allowed ? "code emailed" : "no access, no code sent", withIp: true });
   // After the answer is sent, so a known address takes no longer to answer than an unknown one.
-  if (u) after(async () => {
+  if (u && allowed) after(async () => {
     const code = await issueCode(u.id);
     await sendMail({
       to: email,
@@ -131,7 +136,7 @@ async function verifySignInCode(form: FormData): Promise<CodeState> {
   const keys: Limit[] = [["codein:" + email, LIMITS.codeGuess], [ip && "ip:" + ip, LIMITS.ip]];
   if (await isThrottled(keys)) return { error: "Too many wrong codes. Wait fifteen minutes and try again.", email, sent: true };
   const db = await getDb();
-  const [u] = await db.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, email)).limit(1);
+  const [u] = await db.select({ id: s.users.id, access: s.users.access }).from(s.users).where(eq(s.users.email, email)).limit(1);
   const result = u ? await redeemCode(u.id, code) : "wrong";
   if (result !== "ok") {
     await recordFailure(keys.map(([k]) => k));
@@ -142,6 +147,7 @@ async function verifySignInCode(form: FormData): Promise<CodeState> {
     };
   }
   await clearFailures(["codein:" + email, "codemail:" + email, "email:" + email]);
+  if (!mayUseBrandOS(u)) return { error: NO_ACCESS, email, sent: false };
   redirect(await afterFirstFactor(u!.id, "email code"));
 }
 
@@ -155,7 +161,7 @@ export async function sendTestEmail(): Promise<{ ok: true; to: string } | { ok: 
   const me = await getViewer();
   if (!me || !can(me, "access")) return { ok: false, error: "Only admins can send a test email." };
   if (!me.email) return { ok: false, error: "Your account has no email address." };
-  if (!mailEnabled()) return { ok: false, error: "Email is not set up on this server yet (SMTP_HOST or RESEND_API_KEY)." };
+  if (!mailEnabled()) return { ok: false, error: "Email is not set up on this server yet. Whoever runs BrandOS adds the mail settings." };
   const r = await deliver({
     to: me.email,
     subject: "BrandOS test email",
@@ -174,6 +180,7 @@ export async function createInvite(userId: string): Promise<{ ok: true; path: st
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.id, userId));
   if (!u) return { ok: false, error: "That person does not exist." };
+  if (!mayUseBrandOS(u)) return { ok: false, error: `${u.name} has no access. Give them a role first.` };
   const token = randomBytes(24).toString("base64url");
   const purpose = u.passwordHash ? "reset" : "invite";
   await db.insert(s.invites).values({ token, userId, purpose, createdBy: me.id, expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000) });
@@ -206,9 +213,10 @@ export async function requestReset(_: FormState, form: FormData): Promise<FormSt
   await recordFailure(["reset:" + email]);
   const db = await getDb();
   const [u] = await db.select().from(s.users).where(eq(s.users.email, email)).limit(1);
-  await recordSecurity({ userId: u?.id, action: EV.resetRequested, label: email.slice(0, 200), field: u ? "link emailed" : "no account with that email", withIp: true });
+  const allowed = mayUseBrandOS(u);
+  await recordSecurity({ userId: u?.id, action: EV.resetRequested, label: email.slice(0, 200), field: !u ? "no account with that email" : allowed ? "link emailed" : "no access, no link sent", withIp: true });
   // After the answer is sent, so a known address takes no longer to answer than an unknown one.
-  if (u) after(async () => {
+  if (u && allowed) after(async () => {
     const token = randomBytes(24).toString("base64url");
     await db.insert(s.invites).values({ token, userId: u.id, purpose: "reset", expiresAt: new Date(Date.now() + 3600 * 1000) });
     await sendMail({
@@ -232,6 +240,8 @@ export async function acceptInvite(_: FormState, form: FormData): Promise<FormSt
   const [inv] = await db.select().from(s.invites)
     .where(and(eq(s.invites.token, token), isNull(s.invites.usedAt), gt(s.invites.expiresAt, new Date()))).limit(1);
   if (!inv) return { error: "This invite has expired or was already used. Ask for a new one.", email };
+  const [invitee] = await db.select({ access: s.users.access }).from(s.users).where(eq(s.users.id, inv.userId)).limit(1);
+  if (!mayUseBrandOS(invitee)) return { error: NO_ACCESS, email };
   const [clash] = await db.select({ id: s.users.id }).from(s.users).where(eq(s.users.email, email));
   if (clash && clash.id !== inv.userId) return { error: "Someone already uses that email address.", email };
   if (await isBreachedPassword(password)) return { error: BREACHED_MESSAGE, email };

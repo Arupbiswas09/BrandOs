@@ -30,7 +30,7 @@ test("create an offer from a service page, link an asset, discuss, review", asyn
 
 test("a viewer only sees their clients and cannot edit", async ({ page }) => {
   await signIn(page, "Marta Vieira");
-  await expect(page.getByText("Viewer — read only").first()).toBeVisible();
+  await expect(page.getByText("Viewer: read only").first()).toBeVisible();
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByText("Northgate Athletics").first()).toBeVisible();
   await expect(nav.getByText("Quokka For Good")).toHaveCount(0);

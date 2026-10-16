@@ -1,18 +1,21 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, type CSSProperties } from "react";
 import { completeSetup } from "@/app/setup-actions";
 import { BRAND_PALETTES } from "@/lib/constants";
 import { onColor } from "@/lib/color";
-import { Req } from "@/components/auth-shell";
+import { FormError, Req } from "@/components/auth-shell";
 import { PasswordInput } from "@/components/password-input";
+import { Btn, cx } from "@/components/ui";
 
 export function SetupForm({ needsPassword }: { needsPassword: boolean }) {
   const [state, action, pending] = useActionState(completeSetup, undefined);
   const [color, setColor] = useState(BRAND_PALETTES[0][0]);
+  // The chosen colour previews on the button, as the agency's colour will across its own brand.
+  const preview = { "--bos-accent": color, "--bos-on": onColor(color) } as CSSProperties;
   return (
     <form action={action} className="flex flex-col gap-5 rounded-xl border border-line bg-surface p-6 sm:p-7">
-      <p className="m-0 -mb-2 text-small text-mute-3"><span aria-hidden className="text-[#DC2626]">*</span> Required</p>
+      <p className="m-0 -mb-2 text-small text-mute-3"><span aria-hidden>*</span> Required</p>
       <fieldset className="m-0 flex flex-col gap-4 border-0 p-0">
         <legend className="mb-3 text-lead font-semibold">Your agency</legend>
         <label className="block"><Req>Agency name</Req><input name="agency" required className="field" placeholder="Quokka For Good" autoFocus /></label>
@@ -22,7 +25,7 @@ export function SetupForm({ needsPassword }: { needsPassword: boolean }) {
           <div className="flex flex-wrap items-center gap-2">
             {BRAND_PALETTES.map(([c]) => (
               <button key={c} type="button" aria-label={`Use ${c}`} aria-pressed={color === c} onClick={() => setColor(c)}
-                className="h-9 w-9 rounded-lg border-2" style={{ background: c, borderColor: color === c ? "#101614" : "transparent" }} />
+                className={cx("size-9 rounded-lg border-2", color === c ? "border-ink" : "border-transparent")} style={{ background: c }} />
             ))}
             <input type="color" aria-label="Pick any colour" value={color} onChange={(e) => setColor(e.target.value.toUpperCase())} className="h-9 w-11 cursor-pointer rounded-lg border border-line bg-surface p-0.5" />
           </div>
@@ -38,10 +41,8 @@ export function SetupForm({ needsPassword }: { needsPassword: boolean }) {
             <span className="mt-1.5 block text-small text-mute-3">At least ten characters.</span></label>
         )}
       </fieldset>
-      {state?.error && <div role="alert" className="rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-meta text-change-ink">{state.error}</div>}
-      <button type="submit" disabled={pending} className="rounded-lg px-4 py-3 text-body font-semibold hover:brightness-110 disabled:opacity-60" style={{ background: color, color: onColor(color) }}>
-        {pending ? "Opening up…" : "Open BrandOS"}
-      </button>
+      {state?.error && <FormError>{state.error}</FormError>}
+      <Btn type="submit" variant="primary" size="lg" disabled={pending} className="w-full" style={preview}>{pending ? "Opening up…" : "Open BrandOS"}</Btn>
     </form>
   );
 }
