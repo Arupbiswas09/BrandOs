@@ -80,7 +80,7 @@ function BrandHero({ b }: { b: Brand }) {
       {/* Full-bleed: a flat soft tint of the brand colour over the band's white, under a solid rule in it. */}
       <span aria-hidden className="pointer-events-none absolute inset-y-0 left-1/2 -z-[1] w-[200vw] -translate-x-1/2" style={{ background: hexA(b.primary, 0.06) }} />
       <span aria-hidden className="pointer-events-none absolute left-1/2 top-0 -z-[1] h-[3px] w-[200vw] -translate-x-1/2" style={{ background: b.primary }} />
-      <Mark mark={b.mark} color={b.primary} size={64} radius={16} className="mx-auto mb-4 text-[21px] shadow-[0_8px_20px_-10px_rgba(16, 22, 20,.5)]" />
+      <Mark mark={b.mark} color={b.primary} size={64} radius={16} className="mx-auto mb-4 text-[21px] shadow-[0_8px_20px_-10px_rgba(16,22,20,.5)]" />
       <h1 className="display m-0 text-[36px] sm:text-[42px]">Welcome to {b.name}</h1>
       {b.tagline && <p className="mx-auto mb-0 mt-2 max-w-[56ch] text-[16px] text-mute-2 text-pretty">{b.tagline}</p>}
       <p className="m-0 mt-2 flex flex-wrap items-center justify-center gap-x-2 text-[14px] text-mute-3">
@@ -339,7 +339,7 @@ function Services({ b }: { b: Brand }) {
           const hasGap = !segs.has("All segments") && missing.length > 0 && so.length > 0;
           const assets = live(ws.assetsOfService(v.id));
           return (
-            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]", LIFT, FOCUS)}>
+            <Link key={v.id} href={href.service(v.id)} className={cx("flex flex-col gap-[13px] rounded-[14px] border border-line bg-white p-[22px] text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]", LIFT, FOCUS)}>
               <span className="flex items-start gap-3.5">
                 <IconTile icon={Layers} color={b.primary} size={40} />
                 <span className="min-w-0 flex-1"><span className="block text-[19px] font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{v.name}</span>{v.short && <span className="mt-[3px] block text-[15px] text-mute-2">{v.short}</span>}</span>

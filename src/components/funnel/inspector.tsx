@@ -13,7 +13,7 @@ import { LinkSelect, linkValue, type Resolved } from "./linked";
  * arrow (label, reverse, delete).
  */
 
-const PANEL = "absolute z-[10] animate-pop rounded-xl border border-line bg-white p-3.5 text-left shadow-[0_14px_36px_-10px_rgba(16, 22, 20,.28)]";
+const PANEL = "absolute z-[10] animate-pop rounded-xl border border-line bg-white p-3.5 text-left shadow-[0_14px_36px_-10px_rgba(16,22,20,.28)]";
 
 function Head({ title, onClose }: { title: string; onClose: () => void }) {
   return (

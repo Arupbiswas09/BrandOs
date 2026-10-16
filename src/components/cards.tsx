@@ -72,7 +72,7 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle }
   return (
     <div
       className={cx(
-        "group relative flex flex-col rounded-[13px] border border-line bg-white shadow-[0_1px_2px_rgba(16, 22, 20,.04)]",
+        "group relative flex flex-col rounded-[13px] border border-line bg-white shadow-[0_1px_2px_rgba(16,22,20,.04)]",
         variant === "kit" || variant === "font" ? "transition hover:border-line-strong" : LIFT,
         a.archived && !selected && "opacity-55",
         selected && "border-accent ring-2 ring-accent",
@@ -172,7 +172,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
 
   if (variant === "standalone") {
     return (
-      <Link href={href.offer(o.id)} className={cx("flex flex-col gap-2.5 rounded-[13px] border border-line bg-white px-5 py-[18px] text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]", LIFT, FOCUS, o.archived && "opacity-55")}>
+      <Link href={href.offer(o.id)} className={cx("flex flex-col gap-2.5 rounded-[13px] border border-line bg-white px-5 py-[18px] text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]", LIFT, FOCUS, o.archived && "opacity-55")}>
         <span className="flex flex-wrap items-center gap-1.5">
           <Chip color={OFFER_STATUS[o.status]}>{o.status}</Chip>
           <Chip color={segColor}>{o.segment}</Chip>
@@ -188,7 +188,7 @@ export function OfferCard({ o, variant = "full" }: { o: Offer; variant?: "full" 
     <Link
       href={href.offer(o.id)}
       className={cx(
-        "flex flex-col rounded-[14px] border border-line bg-white text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]",
+        "flex flex-col rounded-[14px] border border-line bg-white text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]",
         LIFT, FOCUS,
         variant === "full" ? "gap-3 px-[22px] py-5" : "gap-2.5 p-5",
         o.archived && "opacity-55",

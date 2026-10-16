@@ -23,7 +23,7 @@ export function Toasts() {
         const tone = TONE[t.tone];
         const Icon = tone.icon;
         return (
-          <div key={t.id} className="pointer-events-auto relative flex w-full max-w-[420px] animate-toast items-start gap-3 overflow-hidden rounded-xl border border-line bg-white py-3 pl-4 pr-2 shadow-[0_14px_36px_rgba(16, 22, 20,.16)] sm:w-[380px]">
+          <div key={t.id} className="pointer-events-auto relative flex w-full max-w-[420px] animate-toast items-start gap-3 overflow-hidden rounded-xl border border-line bg-white py-3 pl-4 pr-2 shadow-[0_14px_36px_rgba(16,22,20,.16)] sm:w-[380px]">
             <span aria-hidden className={cx("absolute inset-y-0 left-0 w-1", tone.bar)} />
             <div role={t.tone === "error" ? "alert" : "status"} className="flex min-w-0 flex-1 items-start gap-2.5">
               <Icon className={cx("mt-px h-5 w-5 flex-none", tone.ink)} />

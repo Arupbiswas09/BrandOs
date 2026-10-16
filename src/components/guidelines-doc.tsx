@@ -25,7 +25,7 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
     <div className="guidelines min-h-screen bg-[#EDF2F0] print:bg-white">
       {fontHref && <link rel="stylesheet" href={fontHref} precedence="default" />}
       {toolbar && <div className="sticky top-0 z-10 border-b border-[#E1E7E4] bg-white/90 px-5 py-3 backdrop-blur print:hidden">{toolbar}</div>}
-      <article className="mx-auto my-8 max-w-[900px] overflow-hidden rounded-2xl bg-white shadow-[0_10px_40px_rgba(16, 22, 20,.08)] print:my-0 print:max-w-none print:rounded-none print:shadow-none">
+      <article className="mx-auto my-8 max-w-[900px] overflow-hidden rounded-2xl bg-white shadow-[0_10px_40px_rgba(16,22,20,.08)] print:my-0 print:max-w-none print:rounded-none print:shadow-none">
         {/* cover */}
         <header className="flex min-h-[420px] flex-col justify-between p-10 sm:p-14 print:min-h-[96vh] print:break-after-page" style={{ background: b.primary, color: fg }}>
           <div className="flex items-center gap-3">

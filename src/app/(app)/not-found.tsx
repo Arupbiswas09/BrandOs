@@ -4,7 +4,7 @@ import Link from "next/link";
 export default function AppNotFound() {
   return (
     <div className="mx-auto max-w-[520px] px-6 py-16 sm:py-24">
-      <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center shadow-[0_1px_2px_rgba(16, 22, 20,.04)] sm:px-10">
+      <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center shadow-[0_1px_2px_rgba(16,22,20,.04)] sm:px-10">
         <div className="eyebrow mb-2">404</div>
         <h1 className="display m-0 mb-2 text-[32px]">This page is not here</h1>
         <p className="mx-auto mb-7 mt-0 max-w-[40ch] text-[15px] leading-[1.55] text-mute-1 text-pretty">It moved, was deleted, or the link was mistyped. Search with <kbd className="kbd">/</kbd> or head back to the dashboard.</p>

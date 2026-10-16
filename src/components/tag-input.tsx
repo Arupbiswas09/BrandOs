@@ -157,7 +157,7 @@ export function TagInput({ value, onChange, text, onText, pool, placeholder, lab
             aria-label="Suggested tags"
             onMouseDown={(e) => e.preventDefault()}
             className={cx(
-              "absolute inset-x-0 z-20 m-0 flex list-none flex-col gap-px rounded-[10px] border border-line bg-white p-1 shadow-[0_10px_28px_rgba(16, 22, 20,.14)]",
+              "absolute inset-x-0 z-20 m-0 flex list-none flex-col gap-px rounded-[10px] border border-line bg-white p-1 shadow-[0_10px_28px_rgba(16,22,20,.14)]",
               above ? "bottom-full mb-1.5" : "top-full mt-1.5",
             )}
           >

@@ -12,7 +12,7 @@ import { cx } from "./ui";
  */
 
 /** The hover lift every clickable card shares. */
-export const LIFT = "transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_10px_24px_-12px_rgba(16, 22, 20,.18)] motion-reduce:hover:translate-y-0";
+export const LIFT = "transition duration-200 hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_10px_24px_-12px_rgba(16,22,20,.18)] motion-reduce:hover:translate-y-0";
 
 /** A visible focus ring for cards and tiles (the base outline would square their corners off). */
 export const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2";

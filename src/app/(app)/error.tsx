@@ -8,7 +8,7 @@ export default function AppError({ error, retry }: { error: Error & { digest?: s
   useEffect(() => { console.error(error); }, [error]);
   return (
     <div className="mx-auto max-w-[520px] px-6 py-16 sm:py-24">
-      <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center shadow-[0_1px_2px_rgba(16, 22, 20,.04)] sm:px-10">
+      <div className="rounded-2xl border border-line bg-white px-6 py-10 text-center shadow-[0_1px_2px_rgba(16,22,20,.04)] sm:px-10">
         <div className="eyebrow mb-2">Something broke</div>
         <h1 className="display m-0 mb-2 text-[32px]">This page did not load</h1>
         <p className="mx-auto mb-6 mt-0 max-w-[42ch] text-[15px] leading-[1.55] text-mute-1 text-pretty">Nothing you saved is lost. Try again, and if it keeps happening, send the team this reference:</p>
