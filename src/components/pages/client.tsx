@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, ChevronRight, FolderOpen, GitBranch, Megaphone, Pencil } from "lucide-react";
 import { fmtDateTime, fmtMonthShort } from "@/lib/format";
-import { hexA, readable } from "@/lib/color";
+import { hexA } from "@/lib/color";
 import { href } from "@/lib/routes";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
-import { ArchExpander, ArchivedNote, Avatar, Btn, Card, Empty, H2, Mark, Page, cx } from "@/components/ui";
+import { ArchExpander, ArchivedNote, Avatar, Btn, Card, CodeTile, Empty, H2, Mark, Page, cx } from "@/components/ui";
 import { EntityHeader, FOCUS, LIFT, MetaItem } from "@/components/polish";
 import { MoreMenu } from "@/components/more-menu";
 import { ActivityRow } from "@/components/activity-row";
@@ -39,11 +39,14 @@ export function ClientPage({ id }: { id: string }) {
 
   // The latest change to the client, its brands, offers or assets.
   const updated = new Date(Math.max(...[c, ...bs, ...os, ...as].map((x) => +new Date(x.updatedAt))));
+  const count = (n: number, one: string, many: string) => ({ label: n === 1 ? one : many, value: String(n) });
   const stats = [
-    { label: "Brands", value: String(live(bs).length) },
-    { label: "Offers", value: String(live(os).length) },
-    { label: "Assets", value: String(live(as).length) },
+    count(live(bs).length, "Brand", "Brands"),
+    count(live(os).length, "Offer", "Offers"),
+    count(live(as).length, "Asset", "Assets"),
   ];
+  // With one brand its counts are the strip's counts, so its card would only repeat them.
+  const perBrand = tops.length > 1;
   const contact = c.contactId ? ws.user(c.contactId) : null;
   // Clients are never deleted. Archiving one is for admins only, and sits out of the way.
   const more = ws.can("del") ? [
@@ -58,7 +61,7 @@ export function ClientPage({ id }: { id: string }) {
         sub={c.kind}
         actions={(ws.can("structure") || more.length > 0) && (
           <>
-            {ws.can("structure") && <Btn variant="primary" onClick={() => open({ kind: "client", draft: c })}><Pencil aria-hidden size={16} />Edit</Btn>}
+            {ws.can("structure") && <Btn onClick={() => open({ kind: "client", draft: c })}><Pencil aria-hidden size={16} />Edit</Btn>}
             <MoreMenu items={more} label="More client actions" />
           </>
         )}
@@ -89,7 +92,7 @@ export function ClientPage({ id }: { id: string }) {
               </span>
             </>
           ) : (
-            <span className="text-meta text-mute-3">No primary contact yet{ws.can("structure") ? " — set one with Edit." : "."}</span>
+            <span className="text-meta text-mute-2">No primary contact yet.{ws.can("structure") ? " Set one with Edit." : ""}</span>
           )}
         </div>
       </Card>
@@ -110,11 +113,13 @@ export function ClientPage({ id }: { id: string }) {
                   </span>
                   <ChevronRight aria-hidden size={18} className="flex-none text-mute-3 transition group-hover:translate-x-0.5 group-hover:text-ink" />
                 </Link>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3 text-meta text-mute-2">
-                  <MetaItem icon={Megaphone}>{plural(live(ws.offersOf(b.id)).length, "offer")}</MetaItem>
-                  <MetaItem icon={FolderOpen}>{plural(live(ws.assetsOf(b.id)).length, "asset")}</MetaItem>
-                  {subs.length > 0 && <MetaItem icon={GitBranch}>{plural(subs.length, "sub-brand")}</MetaItem>}
-                </div>
+                {(perBrand || subs.length > 0) && (
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3 text-meta text-mute-2">
+                    {perBrand && <MetaItem icon={Megaphone}>{plural(live(ws.offersOf(b.id)).length, "offer")}</MetaItem>}
+                    {perBrand && <MetaItem icon={FolderOpen}>{plural(live(ws.assetsOf(b.id)).length, "asset")}</MetaItem>}
+                    {subs.length > 0 && <MetaItem icon={GitBranch}>{plural(subs.length, "sub-brand")}</MetaItem>}
+                  </div>
+                )}
                 {subs.map((sb) => (
                   <Link key={sb.id} href={href.brand(sb.id)} className="flex w-full items-center gap-2.5 border-t border-divider px-5 py-3 text-left hover:bg-wash focus-visible:outline-offset-[-2px]">
                     <Mark mark={sb.mark} color={sb.primary} size={22} radius={6} />
@@ -142,7 +147,7 @@ export function ClientPage({ id }: { id: string }) {
               const col = ws.colorOf(a);
               return (
                 <button key={a.id} type="button" onClick={() => openAsset(a.id)} className={cx("flex items-start gap-3 rounded-xl border border-line bg-surface p-3.5 text-left", LIFT, FOCUS)}>
-                  <span className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg font-mono text-micro font-bold tracking-[0.04em]" style={{ background: hexA(col, 0.12), color: readable(col, 0.12) }}>{ws.codeOf(a)}</span>
+                  <CodeTile code={ws.codeOf(a)} color={col} size={40} style={{ fontSize: 12 }} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-body font-semibold leading-[1.35]">{a.name}</span>
                     <span className="mt-1 block text-body text-mute-2">{ws.brand(a.brandId)?.name} · {ws.ago(a.updatedAt)}</span>

@@ -82,10 +82,10 @@ export const ACCESS_NOTE = Object.fromEntries(ROLES.map((r) => [r, ROLE_INFO[r].
 
 export const DEFAULT_GOALS = [
   { name: "Awareness", description: "Be known by people who have never heard of us." },
-  { name: "Audience growth", description: "Grow the audience we own — list, followers, members." },
+  { name: "Audience growth", description: "Grow the audience we own: list, followers, members." },
   { name: "Revenue", description: "Turn interest into money, one-off or recurring." },
   { name: "Retention", description: "Keep and deepen the relationships we already have." },
-  { name: "Recruitment", description: "Ask for time rather than money — volunteers, coaches, staff." },
+  { name: "Recruitment", description: "Ask for time rather than money: volunteers, coaches, staff." },
 ];
 
 export const GOAL_PALETTE = ["#8156C7", "#2D6FA8", "#2F8F62", "#C2740C", "#C2410C", "#0E7490", "#7C6AC4", "#B4553A"];
@@ -100,26 +100,65 @@ export function offerTypesOf(b: { offerTypes?: string[] | null } | null | undefi
 
 export const DELIVERY = ["Designed page", "Doc link", "File download", "Email sequence", "None"];
 
+/*
+ * The one state palette. Four tones and nothing else, so a colour means the
+ * same thing on every screen:
+ *   ok       approved, active, ready or live
+ *   review   waiting on a reviewer
+ *   change   sent back with changes requested
+ *   neutral  not started, paused, draft or archived
+ * A tone is always a small dot beside its word, never a filled chip, and
+ * never red: red is kept for errors and destructive actions. Segments and
+ * goals are not states, so they never borrow these colours as fills.
+ */
+export type Tone = "ok" | "review" | "change" | "neutral";
+
+export const TONE: Record<Tone, string> = {
+  ok: "#277A53",
+  review: "#C99A2E",
+  change: "#C2410C",
+  neutral: "#93A09A",
+};
+
 export const REVIEW_COLOR: Record<Review, string> = {
-  None: "#93A09A",
-  "In review": "#C99A2E",
-  "Changes requested": "#C2410C",
-  Approved: "#2F8F62",
+  None: TONE.neutral,
+  "In review": TONE.review,
+  "Changes requested": TONE.change,
+  Approved: TONE.ok,
 };
 
 export const OFFER_STATUS: Record<OfferStatus, string> = {
-  Ideation: "#7C6AC4",
-  Active: "#2F8F62",
-  Paused: "#C99A2E",
-  Archived: "#93A09A",
+  Ideation: TONE.neutral,
+  Active: TONE.ok,
+  Paused: TONE.neutral,
+  Archived: TONE.neutral,
 };
 
 export const ASSET_STATUS: Record<AssetStatus, string> = {
-  Draft: "#93A09A",
-  Ready: "#2D6FA8",
-  Live: "#1F7A55",
-  Archived: "#C9D3CE",
+  Draft: TONE.neutral,
+  Ready: TONE.ok,
+  Live: TONE.ok,
+  Archived: TONE.neutral,
 };
+
+/** Where something stands, as one dot and one word: a pending review first, then its stage. */
+export type Stand = { word: string; tone: Tone; color: string; /** The stage and the review together, for a tooltip. */ full: string };
+
+const pendingReview = (r: Review): r is "In review" | "Changes requested" => r === "In review" || r === "Changes requested";
+
+export function offerStand(o: { status: OfferStatus; review: Review }): Stand {
+  const full = o.review !== "None" ? `${o.status} · ${o.review}` : o.status;
+  if (pendingReview(o.review)) return { word: o.review, tone: o.review === "In review" ? "review" : "change", color: REVIEW_COLOR[o.review], full };
+  const tone: Tone = o.status === "Active" ? "ok" : "neutral";
+  return { word: o.status, tone, color: TONE[tone], full };
+}
+
+export function assetStand(a: { status: AssetStatus; review: Review }): Stand {
+  const full = a.review !== "None" ? `${a.status} · ${a.review}` : a.status;
+  if (pendingReview(a.review)) return { word: a.review, tone: a.review === "In review" ? "review" : "change", color: REVIEW_COLOR[a.review], full };
+  const tone: Tone = a.status === "Live" || a.status === "Ready" ? "ok" : "neutral";
+  return { word: a.status, tone, color: TONE[tone], full };
+}
 
 export const ROLE_OPTIONS = [
   "Strategy lead",
@@ -156,7 +195,8 @@ export function freshBrandPair(brands: { primary: string; archived?: boolean }[]
   return [pick[0], pick[1]];
 }
 
-export const SEGMENT_PALETTE = ["#7C6AC4", "#2D6FA8", "#C2740C", "#2F8F62", "#C2410C", "#0E7490", "#B4553A", "#4B62C4"];
+/** Starting colours for new segments: none of them a state colour (green, amber or orange), so a segment dot never reads as a status. */
+export const SEGMENT_PALETTE = ["#7C6AC4", "#2D6FA8", "#0E7490", "#A3456B", "#4B62C4", "#3F7F8C", "#8156C7", "#5E6C66"];
 
 export const NEUTRAL = "#5E6C66";
 export const GLOBAL_ACCENT = "#2D4A5C";
