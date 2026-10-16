@@ -281,18 +281,49 @@ test("a brand from its website: scan, check the draft, create it with its servic
   await page.goto(`${brandUrl}/kit`);
   await settle(page);
   await expect(page.getByText(`${name} logo`).filter({ visible: true }).first()).toBeVisible();
-  await expect(page.getByText("Fraunces").first()).toBeVisible();
-  await expect(page.getByText("#E07A3F").first()).toBeVisible();
+  // The kit opens one section at a time.
+  const kit = page.getByRole("tablist", { name: "Brand kit sections" });
+  await kit.getByRole("tab", { name: "Typography" }).click();
+  await expect(page.getByText("Fraunces").filter({ visible: true }).first()).toBeVisible();
+  await kit.getByRole("tab", { name: "Colour" }).click();
+  await expect(page.getByText("#E07A3F").filter({ visible: true }).first()).toBeVisible();
 });
 
-test("the dev preview mounts every piece", async ({ page }) => {
+test("the way in: the New menu, a quiet Import on a brand's Offers and Assets, and the pages' breadcrumbs", async ({ page }) => {
   await signIn(page);
-  for (const tab of ["website", "import", "drive", "entry"]) {
-    await page.goto(`/dev/onboarding?tab=${tab}`);
-    await settle(page);
-    await expect(page.getByRole("heading", { level: 1, name: "Onboarding" })).toBeVisible();
-  }
-  await expect(page.getByRole("link", { name: /Brand from a website/ })).toHaveAttribute("href", "/brands/new/from-website?client=cl1");
-  await expect(page.getByRole("link", { name: /Import from a spreadsheet/ }).first()).toHaveAttribute("href", "/import?brand=br1");
-  await axe(page, "entry points");
+  // Inside a brand, the New menu's import goes to that brand and a new brand goes under its client.
+  await page.goto("/brands/br1");
+  await settle(page);
+  await page.getByRole("button", { name: "New", exact: true }).click();
+  const menu = page.getByRole("menu", { name: "New" });
+  await expect(menu.getByRole("menuitem", { name: /Brand from a website/ })).toHaveAttribute("href", "/brands/new/from-website?client=cl1");
+  await expect(menu.getByRole("menuitem", { name: /Import from a spreadsheet/ })).toHaveAttribute("href", "/import?brand=br1");
+  await page.keyboard.press("Escape");
+
+  // A quiet link beside each tab's one primary button, never a second primary.
+  await page.goto("/brands/br1/offers");
+  await settle(page);
+  await expect(page.getByRole("link", { name: "Import", exact: true })).toHaveAttribute("href", "/import?brand=br1");
+  await page.goto("/brands/br1/assets");
+  await settle(page);
+  await expect(page.getByRole("link", { name: "Import", exact: true })).toHaveAttribute("href", "/import?brand=br1&kind=assets");
+  await page.getByRole("link", { name: "Import", exact: true }).click();
+  await expect(page).toHaveURL(/\/import\?brand=br1&kind=assets$/);
+  await settle(page);
+  const crumbs = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumbs.getByRole("listitem")).toHaveText(["Dashboard", "Import"]);
+  await axe(page, "import");
+
+  // "new" is not a brand: the page is not themed as one and says what it is.
+  await page.goto("/brands/new/from-website?client=cl1");
+  await settle(page);
+  await expect(crumbs.getByRole("listitem")).toHaveText(["Dashboard", "New brand from a website"]);
+  await expect(page.getByRole("heading", { level: 1, name: "Start a brand from its website" })).toBeVisible();
+  await axe(page, "from website");
+
+  // A Viewer gets neither.
+  await signIn(page, "Marta Vieira");
+  await page.goto("/brands/br4/assets");
+  await settle(page);
+  await expect(page.getByRole("link", { name: "Import", exact: true })).toHaveCount(0);
 });

@@ -8,13 +8,18 @@ import { Archive, ArchiveRestore, ChevronDown, Ellipsis, Plus } from "lucide-rea
 import { assetStand, offerStand, roleOf, type Stand } from "@/lib/constants";
 import { fmtDateTime } from "@/lib/format";
 import { href } from "@/lib/routes";
+import { useStored } from "@/lib/stored";
 import { plural, type FunnelGroup, type ServiceStats, type WS } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
-import { AssetRow, AssetRows, Dot, GroupedRows, ListGroup, OfferRow, SegmentTag, StateWord } from "@/components/cards";
+import { AssetRow, AssetRows, Dot, GroupedRows, ListGroup, OfferRow, SegmentTag, StateWord, reviewSummary } from "@/components/cards";
 import { CardMenu } from "@/components/card-menu";
 import { ArchivedNote, Btn, CodeTile, Empty, Page, cx } from "@/components/ui";
-import { EntityHeader, FOCUS } from "@/components/polish";
+import { EntityHeader, FOCUS, LIFT } from "@/components/polish";
+import { ViewToggle, type View } from "@/components/view-toggle";
+import { StarButton } from "@/components/features/stars/star-button";
+import { useStarShortcut } from "@/components/features/stars/use-star-shortcut";
+import { WhatWorked } from "@/components/features/results/what-worked";
 import { NotHere, useVisit } from "./common";
 
 /* ---------------------------------------------------------------- the five counts, as tabs */
@@ -36,6 +41,7 @@ const TABS: { key: TabKey; label: string; word: [string, string]; n: (s: Service
   { key: "assets", label: "All assets", word: ["asset in all", "assets in all"], n: (s) => s.assets },
 ];
 const isTab = (x: string | null): x is TabKey => TABS.some((t) => t.key === x);
+const VIEWS = ["list", "grid"] as const;
 
 /** Which assets each asset tab lists: the same rules the counts use. */
 const ASSET_TAB: Partial<Record<TabKey, { pick: (a: Asset) => boolean; none: string }>> = {
@@ -58,9 +64,12 @@ export function ServicePage({ id }: { id: string }) {
   const [details, setDetails] = useState(false);
   const v = ws.service(id);
   useVisit("service", id, !!v);
+  useStarShortcut("service", id, v?.name ?? "", { enabled: !!v });
+  // The client asked to see this service's offers as cards; rows are one click away and the choice is remembered.
+  const [offerView, setOfferView] = useStored<View>("bos:view:service-offers", "grid", VIEWS);
 
-  // The tab lives in the address. Opening an asset borrows `tab` for the drawer's own tabs
-  // and drops it, so once the drawer closes the page puts its own choice back.
+  // The tab lives in the address as `?tab=`. The asset drawer keeps its own section in `?assetTab=`,
+  // so it never touches this; while an asset is open the address is left alone.
   useEffect(() => {
     if (params.get("asset")) return;
     const want = tab === "offers" ? null : tab;
@@ -94,8 +103,10 @@ export function ServicePage({ id }: { id: string }) {
             {stats.updatedBy && <> by {ws.first(stats.updatedBy)}</>}
           </span>
         )}
-        actions={(canEdit || ws.can("archive")) && (
+        actions={(
           <>
+            {/* For everyone who can see the service, whatever they may change. */}
+            <StarButton kind="service" id={v.id} name={v.name} />
             {canEdit && <Btn onClick={() => open({ kind: "service", draft: v })}>Edit</Btn>}
             {canEdit && <Btn variant="primary" onClick={() => newOffer()}><Plus aria-hidden size={16} />New offer</Btn>}
             {/* Services are never deleted; archiving puts one out of sight and keeps its offers. */}
@@ -128,7 +139,7 @@ export function ServicePage({ id }: { id: string }) {
             <div role="tabpanel" id="service-panel" aria-labelledby={`service-tab-${tab}`} className="mt-5">
               {tab === "offers" && (
                 <>
-                  <OffersBySegment offers={offers} brandId={v.brandId} canEdit={canEdit} newOffer={newOffer} />
+                  <OffersBySegment offers={offers} brandId={v.brandId} canEdit={canEdit} newOffer={newOffer} view={offerView} onView={setOfferView} />
                   {archivedOffers.length > 0 && <ArchivedOffersNote n={archivedOffers.length} brandId={v.brandId} />}
                 </>
               )}
@@ -235,43 +246,47 @@ function Aside({ v, offers, needs, open, onOpen }: { v: Service; offers: Offer[]
         <span className="min-w-0 flex-1 truncate text-meta text-mute-2">{needs.length ? `About, and ${plural(needs.length, "thing")} needing attention` : "About this service"}</span>
         <ChevronDown aria-hidden size={18} className={cx("flex-none text-mute-2 transition-transform duration-200 ease-snap", open && "rotate-180")} />
       </button>
-      <div id="service-details" className={cx("rounded-xl border border-line bg-surface", open ? "mt-2 block" : "hidden", "xl:mt-0 xl:block")}>
-        <section aria-labelledby="service-about" className="px-4 py-4">
-          <h2 id="service-about" className="m-0 text-body font-semibold text-ink">About</h2>
-          {v.description
-            ? <p className="m-0 mt-1.5 text-meta leading-[1.6] text-ink-3 text-pretty">{v.description}</p>
-            : <p className="m-0 mt-1.5 text-meta text-mute-2">No description yet.</p>}
-          {segs.length > 0 && (
-            <div className="mt-3">
-              <h3 className="m-0 text-small font-medium text-mute-2">Segments it is written for</h3>
-              <ul className="m-0 mt-1.5 flex list-none flex-wrap gap-1.5 p-0 text-small">
-                {segs.map((s) => <li key={s} className="min-w-0"><SegmentTag name={s} color={ws.segColor(s, v.brandId)} /></li>)}
+      <div id="service-details" className={cx(open ? "mt-2 block" : "hidden", "xl:mt-0 xl:block")}>
+        <div className="rounded-xl border border-line bg-surface">
+          <section aria-labelledby="service-about" className="px-4 py-4">
+            <h2 id="service-about" className="m-0 text-body font-semibold text-ink">About</h2>
+            {v.description
+              ? <p className="m-0 mt-1.5 text-meta leading-[1.6] text-ink-3 text-pretty">{v.description}</p>
+              : <p className="m-0 mt-1.5 text-meta text-mute-2">No description yet.</p>}
+            {segs.length > 0 && (
+              <div className="mt-3">
+                <h3 className="m-0 text-small font-medium text-mute-2">Segments it is written for</h3>
+                <ul className="m-0 mt-1.5 flex list-none flex-wrap gap-1.5 p-0 text-small">
+                  {segs.map((s) => <li key={s} className="min-w-0"><SegmentTag name={s} color={ws.segColor(s, v.brandId)} /></li>)}
+                </ul>
+              </div>
+            )}
+          </section>
+          <section aria-labelledby="service-needs" className="border-t border-divider px-4 py-4">
+            <h2 id="service-needs" className="m-0 text-body font-semibold text-ink">
+              Needs attention{needs.length > 0 && <span className="font-normal text-mute-2"> · {needs.length}</span>}
+            </h2>
+            {needs.length ? (
+              <ul className="m-0 mt-2 flex list-none flex-col gap-2.5 p-0">
+                {needs.map((n) => (
+                  <li key={n.key} className="min-w-0">
+                    {"offer" in n.to
+                      ? <Link href={href.offer(n.to.offer)} className="block truncate rounded-sm text-meta font-medium text-ink hover:underline" title={n.name}>{n.name}</Link>
+                      : <button type="button" onClick={() => openAsset((n.to as { asset: string }).asset)} className="block max-w-full truncate rounded-sm text-left text-meta font-medium text-ink hover:underline" title={n.name}>{n.name}</button>}
+                    <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-small text-mute-2">
+                      {n.s ? <StateWord s={n.s} className="flex-none" /> : <span className="font-medium text-warn-text">{n.why}</span>}
+                      {n.s && <><span aria-hidden>·</span><span className="truncate">{n.why}</span></>}
+                    </span>
+                  </li>
+                ))}
               </ul>
-            </div>
-          )}
-        </section>
-        <section aria-labelledby="service-needs" className="border-t border-divider px-4 py-4">
-          <h2 id="service-needs" className="m-0 text-body font-semibold text-ink">
-            Needs attention{needs.length > 0 && <span className="font-normal text-mute-2"> · {needs.length}</span>}
-          </h2>
-          {needs.length ? (
-            <ul className="m-0 mt-2 flex list-none flex-col gap-2.5 p-0">
-              {needs.map((n) => (
-                <li key={n.key} className="min-w-0">
-                  {"offer" in n.to
-                    ? <Link href={href.offer(n.to.offer)} className="block truncate rounded-sm text-meta font-medium text-ink hover:underline" title={n.name}>{n.name}</Link>
-                    : <button type="button" onClick={() => openAsset((n.to as { asset: string }).asset)} className="block max-w-full truncate rounded-sm text-left text-meta font-medium text-ink hover:underline" title={n.name}>{n.name}</button>}
-                  <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-small text-mute-2">
-                    {n.s ? <StateWord s={n.s} className="flex-none" /> : <span className="font-medium text-warn-text">{n.why}</span>}
-                    {n.s && <><span aria-hidden>·</span><span className="truncate">{n.why}</span></>}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="m-0 mt-1.5 text-meta text-mute-2">Nothing waiting. Every offer has somewhere for people to arrive.</p>
-          )}
-        </section>
+            ) : (
+              <p className="m-0 mt-1.5 text-meta text-mute-2">Nothing waiting. Every offer has somewhere for people to arrive.</p>
+            )}
+          </section>
+        </div>
+        {/* What converts best among this service's offers. Nothing until two of them can be compared. */}
+        <WhatWorked serviceId={v.id} className="mt-4" />
       </div>
     </aside>
   );
@@ -380,7 +395,31 @@ function FunnelRow({ g }: { g: FunnelGroup }) {
 
 /* ---------------------------------------------------------------- offers */
 
-function OffersBySegment({ offers, brandId, canEdit, newOffer }: { offers: Offer[]; brandId: string; canEdit: boolean; newOffer: (segment?: string) => void }) {
+/**
+ * One offer as a compact card: its name, the positioning it argues, and where
+ * it stands. The segment heading above already says who it is for.
+ */
+function SegmentOfferCard({ o }: { o: Offer }) {
+  const { ws } = useApp();
+  const st = offerStand(o);
+  const assets = ws.linkedAssets(o.id);
+  const summary = reviewSummary(assets);
+  const pitch = o.positioning.trim() || o.short.trim();
+  return (
+    <Link href={href.offer(o.id)} className={cx("flex flex-1 flex-col rounded-xl border border-line bg-surface px-4 py-3 shadow-card", LIFT, FOCUS, o.archived && "opacity-55")}>
+      <span className="block truncate text-body font-semibold text-ink" title={o.name}>{o.name}</span>
+      {pitch && <span className="mt-0.5 line-clamp-2 text-meta leading-[1.5] text-mute-2 text-pretty">{pitch}</span>}
+      <span className="mt-auto flex min-w-0 items-center gap-2 pt-2 text-small text-mute-2">
+        <StateWord s={st} muted={st.word === "Active"} className="flex-none" />
+        <span aria-hidden>·</span>
+        <span className={cx("min-w-0 truncate", !assets.length && "font-medium text-warn-text")}>{assets.length ? plural(assets.length, "asset") : "No assets yet"}{summary && <> · {summary}</>}</span>
+        <span className="ml-auto flex-none pl-2" suppressHydrationWarning>{ws.ago(o.updatedAt)}</span>
+      </span>
+    </Link>
+  );
+}
+
+function OffersBySegment({ offers, brandId, canEdit, newOffer, view, onView }: { offers: Offer[]; brandId: string; canEdit: boolean; newOffer: (segment?: string) => void; view: View; onView: (v: View) => void }) {
   const { ws } = useApp();
   const segs = ws.brand(brandId)?.segments ?? [];
   const names = [...segs.map((s) => s.name), ...(segs.some((s) => s.name === "All segments") ? [] : ["All segments"])];
@@ -389,21 +428,52 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer }: { offers: Offer
   // An offer written for all segments covers them; otherwise name the segments nobody has written for.
   const missing = offers.some((o) => o.segment === "All segments") ? [] : segs.filter((s) => s.name !== "All segments" && !offers.some((o) => o.segment === s.name));
 
+  // One group per segment, in the Brand Kit's order; offers whose segment has gone come last.
+  const all = [
+    ...groups.map((g, i) => ({ key: `segment-${i}`, title: <><Dot color={ws.segColor(g.name, brandId)} small />{g.name}</>, list: g.list, gone: false })),
+    ...(orphans.length ? [{ key: "segment-gone", title: <>Segment no longer in the Brand Kit</>, list: orphans, gone: true }] : []),
+  ];
+  // The switch only shows with two or more offers to arrange; one offer is a row.
+  const cards = view === "grid" && offers.length > 1;
+
+  const heading = (g: (typeof all)[number]) => (
+    <h3 id={`${g.key}-h`} className="m-0 flex min-w-0 items-center gap-2 text-meta font-semibold text-ink">
+      <span className="flex min-w-0 items-center gap-2 truncate">{g.title}</span>
+      <span className="flex-none font-normal tabular-nums text-mute-2">· {plural(g.list.length, "offer")}</span>
+    </h3>
+  );
+  const grid = (g: (typeof all)[number]) => (
+    <ul aria-labelledby={`${g.key}-h`} className="m-0 grid list-none gap-3 p-0 @xl:grid-cols-2 @4xl:grid-cols-3">
+      {g.list.map((o) => <li key={o.id} className="flex min-w-0 flex-col"><SegmentOfferCard o={o} /></li>)}
+    </ul>
+  );
+
   return (
     <>
-      <p className="m-0 mb-3 text-meta text-mute-2">By segment: the same service, argued for each audience.</p>
-      <GroupedRows>
-        {groups.map((g, i) => (
-          <ListGroup key={g.name} as="h3" id={`segment-${i}`} title={<><Dot color={ws.segColor(g.name, brandId)} small />{g.name}</>} count={g.list.length} noun={["offer", "offers"]}>
-            {g.list.map((o) => <OfferRow key={o.id} o={o} segment={false} />)}
-          </ListGroup>
-        ))}
-        {orphans.length > 0 && (
-          <ListGroup as="h3" id="segment-gone" title="Segment no longer in the Brand Kit" count={orphans.length} noun={["offer", "offers"]}>
-            {orphans.map((o) => <OfferRow key={o.id} o={o} />)}
-          </ListGroup>
-        )}
-      </GroupedRows>
+      {/* The switch keeps its place whichever view is on; in cards the first segment's heading shares its line. */}
+      <div className="mb-2 flex min-h-10 items-center justify-between gap-x-4 gap-y-2">
+        {cards ? heading(all[0]) : <p className="m-0 text-meta text-mute-2">By segment: the same service, argued for each audience.</p>}
+        {offers.length > 1 && <ViewToggle value={view} onChange={onView} gridLabel="Cards" />}
+      </div>
+      {cards ? (
+        <div className="@container flex flex-col gap-4">
+          {grid(all[0])}
+          {all.slice(1).map((g) => (
+            <section key={g.key} aria-labelledby={`${g.key}-h`} className="flex flex-col gap-2">
+              {heading(g)}
+              {grid(g)}
+            </section>
+          ))}
+        </div>
+      ) : (
+        <GroupedRows>
+          {all.map((g) => (
+            <ListGroup key={g.key} as="h3" id={g.key} title={g.title} count={g.list.length} noun={["offer", "offers"]}>
+              {g.list.map((o) => <OfferRow key={o.id} o={o} segment={g.gone} />)}
+            </ListGroup>
+          ))}
+        </GroupedRows>
+      )}
       {missing.length > 0 && (
         <p className="m-0 mt-4 text-meta text-mute-2">
           Nothing written yet for{" "}

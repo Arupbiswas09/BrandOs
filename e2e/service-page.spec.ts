@@ -21,8 +21,8 @@ test("the five counts are the service page's tabs, and the choice stays in the a
   await expect(tab("Offers")).toHaveAttribute("aria-selected", "true");
   const panel = page.getByRole("tabpanel");
 
-  // Offers by segment, as compact rows.
-  await expect(panel.getByRole("heading", { name: /^Church\W*2 offers$/ })).toBeVisible();
+  // Offers by segment, as cards.
+  await expect(panel.getByRole("heading", { name: /^Church\W*\d+ offers$/ })).toBeVisible();
   await expect(panel.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
 
   await tab("Landing pages").click();
@@ -52,6 +52,37 @@ test("the five counts are the service page's tabs, and the choice stays in the a
   await expect(drawer).toHaveCount(0);
   await expect(page).toHaveURL(/\?tab=assets$/);
   await expect(tab("All assets")).toHaveAttribute("aria-selected", "true");
+});
+
+test("the service's offers are cards by segment, with rows one click away and the choice remembered", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/services/sv1");
+  await settle(page);
+  const panel = page.getByRole("tabpanel");
+  const view = panel.getByRole("group", { name: "View" });
+  await expect(view.getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
+  // Each segment is a heading with its count, over a list of cards.
+  // (The import test may have added one to Church, so the count is read from the heading.)
+  const heading = panel.getByRole("heading", { name: /^Church\W*\d+ offers$/ });
+  const n = Number((await heading.textContent())!.match(/(\d+) offers/)![1]);
+  const church = panel.getByRole("list", { name: /^Church\W*\d+ offers$/ });
+  await expect(church.getByRole("listitem")).toHaveCount(n);
+  const card = church.getByRole("link", { name: /Ad Grant for Church Reach/ });
+  await expect(card).toContainText("Every week somebody in your parish searches");
+  await expect(card).toContainText(/Active\W*\d+ assets?/);
+  await expect(card).toHaveAttribute("href", "/offers/of1");
+  // At 1440×900 the first cards are on screen without scrolling.
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const onScreen = await panel.getByRole("listitem").evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().bottom <= window.innerHeight).length);
+  expect(onScreen).toBeGreaterThanOrEqual(4);
+
+  await view.getByRole("button", { name: "List" }).click();
+  await expect(panel.getByRole("region", { name: /^Church/ })).toBeVisible();
+  await expect(panel.getByRole("region", { name: /^Church/ }).getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
+  await page.reload();
+  await settle(page);
+  await expect(page.getByRole("tabpanel").getByRole("group", { name: "View" }).getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("tabpanel").getByRole("group", { name: "View" }).getByRole("button", { name: "Cards" }).click();
 });
 
 test("the right-hand column says what the service is and what needs someone", async ({ page }) => {

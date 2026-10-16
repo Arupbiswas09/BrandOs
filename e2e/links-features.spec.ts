@@ -9,11 +9,14 @@ import { settle, signIn } from "./helpers";
 import { callAction } from "./server-action";
 
 /*
- * Broken-link checks, page pictures and tracked links, through the dev
- * preview (/dev/links) and the link actions. The pages being checked are
- * served by a tiny server on this machine; the dev server has to run with
- * BRANDOS_ALLOW_PRIVATE_FETCH=1 so it may fetch them (outside production
- * only; see src/server/link-fetcher.ts).
+ * Broken-link checks, page pictures and tracked links, through the link
+ * actions, the real dashboard and brand home (the "Links not responding"
+ * card), and the dev preview (/dev/links) for the pieces that live in the
+ * asset drawer and on the offer page; those steps move to the drawer and
+ * the offer page once they are mounted there, before the preview goes.
+ * The pages being checked are served by a tiny server on this machine; the
+ * dev server has to run with BRANDOS_ALLOW_PRIVATE_FETCH=1 so it may fetch
+ * them (outside production only; see src/server/link-fetcher.ts).
  */
 
 test.use({ viewport: { width: 1440, height: 940 } });
@@ -88,7 +91,7 @@ test.afterAll(() => new Promise<void>((r) => { server.closeAllConnections(); ser
 
 /** Creates (or, with `id`, updates) a brand asset with this link, the way the asset form does. */
 async function saveAsset(page: Page, fields: { id?: string; name: string; url: string; type?: string }) {
-  const body = await callAction(page, "/dev/links", "app/actions.ts", "saveAsset", [{
+  const body = await callAction(page, "/", "app/actions.ts", "saveAsset", [{
     ...(fields.id && { id: fields.id }), brandId: "br1", name: fields.name, type: fields.type ?? "Landing page", url: fields.url, offerIds: [],
   }]);
   expect(body).toContain('"ok":true');
@@ -96,6 +99,8 @@ async function saveAsset(page: Page, fields: { id?: string; name: string; url: s
 }
 
 const card = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
+/** The "Links not responding" card on the dashboard or a brand's home. */
+const brokenCard = (page: Page) => page.getByRole("heading", { name: /^Links not responding/ }).locator("xpath=ancestor::div[2]");
 
 test("tracked links: the rules, then the builder on the preview", async ({ page, context }) => {
   // The rules, straight from the pure module.
@@ -144,7 +149,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   await signIn(page);
   const id = await saveAsset(page, { name: `Link check test page ${tag}`, url: `${base}/missing` });
 
-  const body = await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [id]);
+  const body = await callAction(page, "/", "app/link-actions.ts", "checkLinkNow", [id]);
   expect(body).toContain('"status":404');
   await page.goto("/dev/links");
   await settle(page);
@@ -152,9 +157,20 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   await expect(row.getByText("Link not responding (404)")).toBeVisible();
   await expect(row.getByText(/checked \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}/)).toBeVisible();
   await expect(row.getByText("Link not responding", { exact: true })).toBeVisible(); // the badge
-  // Listed on the dashboard card and the brand card.
-  await expect(card(page, "Dashboard card").getByRole("button", { name: new RegExp(`^Link check test page ${tag}`) })).toBeVisible();
-  await expect(card(page, "Brand card").locator("li").filter({ hasText: `Link check test page ${tag}` }).getByText("Page not found (404)")).toBeVisible();
+  // Listed on the dashboard (with its brand) and on the brand's home, each opening the asset.
+  await page.goto("/");
+  await settle(page);
+  const dashboard = brokenCard(page);
+  await expect(dashboard.getByRole("button", { name: new RegExp(`^Link check test page ${tag}.*Page not found \\(404\\) · Quokka For Good`) })).toBeVisible();
+  await page.goto("/brands/br1");
+  await settle(page);
+  await expect(brokenCard(page).locator("li").filter({ hasText: `Link check test page ${tag}` }).getByText("Page not found (404)")).toBeVisible();
+  await expect(brokenCard(page).getByRole("button", { name: "Check all links" })).toBeVisible();
+  await brokenCard(page).getByRole("button", { name: new RegExp(`^Link check test page ${tag}`) }).click();
+  await expect(page.getByRole("dialog", { name: `Link check test page ${tag}` })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.goto("/dev/links");
+  await settle(page);
 
   // Check again: still 404, and it says so.
   await page.waitForTimeout(10_500); // a second press within 10 seconds reuses the last result
@@ -175,7 +191,13 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   await expect(row.getByTestId("check")).toHaveText("ok 200");
   expect(hits).toEqual(expect.arrayContaining(["HEAD /moved", "HEAD /ok", "GET /ok"]));
   await expect(row.getByText(/Link not responding/)).toHaveCount(0);
-  await expect(card(page, "Dashboard card").getByText(`Link check test page ${tag}`)).toHaveCount(0);
+  // Off the dashboard's list again (the card goes altogether once every link opens).
+  await page.goto("/");
+  await settle(page);
+  await expect(page.getByRole("button", { name: new RegExp(`^Check again: Link check test page ${tag}$`) })).toHaveCount(0);
+  await expect(brokenCard(page).getByText(`Link check test page ${tag}`)).toHaveCount(0);
+  await page.goto("/dev/links");
+  await settle(page);
 
   // When a link that opened stops opening, history says so once.
   movedBreaks = true;
@@ -186,7 +208,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   await settle(page);
   const drawer = page.getByRole("dialog", { name: `Link check test page ${tag}` });
   await drawer.getByRole("tab", { name: /^History/ }).click();
-  await expect(drawer.getByText(/Priya found a broken link on — Page not found \(404\)/)).toHaveCount(1);
+  await expect(drawer.getByText("Found a broken link on: Page not found (404)", { exact: true })).toHaveCount(1);
   movedBreaks = false;
 });
 
@@ -194,12 +216,12 @@ test("a link that never answers, or whose domain does not exist, says so plainly
   await signIn(page);
   const slow = await saveAsset(page, { name: `Slow page ${tag}`, url: `${base}/slow` });
   const started = Date.now();
-  const body = await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [slow]);
+  const body = await callAction(page, "/", "app/link-actions.ts", "checkLinkNow", [slow]);
   expect(body).toContain("Did not answer in 8 seconds");
   // A page that does not answer HEAD is not asked again with GET, so it takes one timeout, not two.
   expect(Date.now() - started).toBeLessThan(15_000);
   const nowhere = await saveAsset(page, { name: `Nowhere page ${tag}`, url: "no-such-place.invalid/landing" });
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [nowhere])).toMatch(/No such domain|The domain could not be looked up/);
+  expect(await callAction(page, "/", "app/link-actions.ts", "checkLinkNow", [nowhere])).toMatch(/No such domain|The domain could not be looked up/);
   await page.goto("/dev/links");
   await settle(page);
   await expect(card(page, `Slow page ${tag}`).getByText(/^Link not responding · Did not answer in 8 seconds · checked/)).toBeVisible();
@@ -220,11 +242,11 @@ test("the page's picture becomes the card picture; SVG and missing pictures are 
 
   // An SVG share picture is not used (it can carry script).
   const svgId = await saveAsset(page, { name: `SVG picture page ${tag}`, url: `${base}/svg-only` });
-  const svg = await callAction(page, "/dev/links", "app/link-actions.ts", "usePagePicture", [svgId]);
+  const svg = await callAction(page, "/", "app/link-actions.ts", "usePagePicture", [svgId]);
   expect(svg).toContain("is not a PNG, JPG, WebP, GIF or AVIF image");
   // A page that does not open has no picture.
   const gone = await saveAsset(page, { name: `Gone page ${tag}`, url: `${base}/nothing-here` });
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "usePagePicture", [gone])).toContain("The page did not open (404).");
+  expect(await callAction(page, "/", "app/link-actions.ts", "usePagePicture", [gone])).toContain("The page did not open (404).");
 });
 
 test("the server refuses people whose role does not allow it, and the cron needs its secret", async ({ page }) => {
@@ -232,13 +254,13 @@ test("the server refuses people whose role does not allow it, and the cron needs
   const id = await saveAsset(page, { name: `Permission test page ${tag}`, url: `${base}/ok` });
   // A reviewer cannot change work, so cannot check or take pictures.
   await signIn(page, "Tom Aldridge");
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [id])).toContain("Your role does not allow that.");
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "usePagePicture", [id])).toContain("Your role does not allow that.");
+  expect(await callAction(page, "/", "app/link-actions.ts", "checkLinkNow", [id])).toContain("Your role does not allow that.");
+  expect(await callAction(page, "/", "app/link-actions.ts", "usePagePicture", [id])).toContain("Your role does not allow that.");
   // An editor cannot check a whole brand; that is for admins and managers.
   await signIn(page, "Ines Batz");
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkBrandLinks", ["br1"])).toContain("Only admins and managers can check a whole brand");
+  expect(await callAction(page, "/", "app/link-actions.ts", "checkBrandLinks", ["br1"])).toContain("Only admins and managers can check a whole brand");
   // Ids are checked before anything is looked up.
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", ["../../etc"])).toContain("That is not a valid id.");
+  expect(await callAction(page, "/", "app/link-actions.ts", "checkLinkNow", ["../../etc"])).toContain("That is not a valid id.");
 
   const res = await page.request.get("/api/cron/links", { headers: { Authorization: "Bearer wrong" } });
   expect([401, 503]).toContain(res.status());
@@ -272,7 +294,7 @@ test("the preview, its warnings and the tracked links dialog meet WCAG 2.2 AA", 
   await signIn(page);
   // Make sure there is at least one broken link to show.
   const id = await saveAsset(page, { name: `A11y test page ${tag}`, url: `${base}/missing` });
-  await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [id]);
+  await callAction(page, "/", "app/link-actions.ts", "checkLinkNow", [id]);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/dev/links");

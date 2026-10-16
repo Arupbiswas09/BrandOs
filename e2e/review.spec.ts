@@ -84,10 +84,18 @@ test("the client page shows the primary contact, and activity keeps the change v
   await settle(page);
   await expect(page.getByText("Primary contact")).toBeVisible();
   await expect(page.getByText(/^Updated · client since /)).toBeVisible();
-  // One brand is "1 Brand", and with one brand its card does not repeat the strip's counts.
+  // One brand is "1 Brand"; every brand card says how many offers and assets it holds (asked for in the review).
   await expect(page.getByText("Brand", { exact: true })).toBeVisible();
-  await expect(page.getByText(/^\d+ offers$/)).toHaveCount(0);
+  const card = page.getByRole("link", { name: /^QG Quokka For Good/ }).locator("..");
+  await expect(card.getByText(/^\d+ offers?$/)).toBeVisible();
+  await expect(card.getByText(/^\d+ assets?$/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
+  // With a sub-brand the card counts the family, as its rows sit underneath it.
+  await page.goto("/clients/cl2");
+  await settle(page);
+  const parish = page.getByRole("link", { name: /^SA St Aidan Parish/ }).locator("..");
+  await expect(parish).toContainText(/3 offers\s*6 assets\s*1 sub-brand/);
+  await expect(page.getByRole("button", { name: "Star St Aidan Parish", exact: true })).toBeVisible();
 });
 
 test("share with the client is gone; the kit exports as a PDF", async ({ page }) => {

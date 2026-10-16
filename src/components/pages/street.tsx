@@ -13,6 +13,11 @@ import { markMentionsRead } from "@/app/actions";
 import { useApp } from "@/components/app/provider";
 import { noteWhere, useOnYou } from "@/components/app/inbox";
 import { ActivityRow } from "@/components/activity-row";
+import { StarredCard } from "@/components/features/stars/starred-card";
+import { useStarredItems } from "@/components/features/stars/starred-list";
+import { NAV_STARS } from "@/lib/stars";
+import { BrokenLinksCard } from "@/components/features/links/broken-links-card";
+import { StartFromExisting } from "@/components/features/onboarding/entry-points";
 import { Avatar, Btn, Card, Eyebrow, IconBtn, Page, cx } from "@/components/ui";
 
 const LIMIT = 6;
@@ -51,6 +56,7 @@ export function Street() {
 
   const clients = live(ws.d.clients);
   const brands = live(ws.d.brands);
+  const starred = useStarredItems().length;
 
   const waited = (since: number, act: "review" | "change") => {
     const days = Math.max(0, Math.floor((now - since) / DAY));
@@ -164,6 +170,12 @@ export function Street() {
         </Panel>
 
         <div className="flex min-w-0 flex-col gap-5 xl:col-start-1 xl:row-start-2 xl:gap-6">
+          {/*
+            What is stuck, beside what is waiting: links that stopped opening. In the wide column each
+            row has room for its brand and address. Nothing at all while every link opens.
+          */}
+          <BrokenLinksCard />
+
           <Panel title="Clients" action={ws.can("structure") && <Btn size="sm" variant="ghost" className="-mr-2" onClick={() => open({ kind: "client" })}><Plus aria-hidden className="size-4" />Add client</Btn>}>
             {clients.map((c) => {
               const bs = brands.filter((b) => b.clientId === c.id);
@@ -186,7 +198,13 @@ export function Street() {
                 </Link>
               );
             })}
-            {!clients.length && <div className="px-4 py-5 text-meta text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>}
+            {!clients.length && (
+              <div className="px-4 py-5">
+                <p className="m-0 text-meta text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one, or start from what you already have." : "You have not been given any clients yet. Ask an admin."}</p>
+                {/* An empty workspace: start a brand from its website (or import, once a brand exists). Nothing for people who can do neither. */}
+                <div className="mt-3 empty:hidden"><StartFromExisting /></div>
+              </div>
+            )}
           </Panel>
 
           {showSetup && (
@@ -205,7 +223,14 @@ export function Street() {
         </div>
 
         <div className="flex min-w-0 flex-col gap-5 xl:col-start-2 xl:row-start-2 xl:gap-6">
-          <Link href="/library" className="group flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-card transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-raise">
+          {/*
+            From 1024px the sidebar lists the first ten stars, so the card shows there only when it adds
+            something: nothing starred yet (it says what stars are for), or more than the sidebar holds.
+          */}
+          <StarredCard className={cx(starred > 0 && starred <= NAV_STARS && "lg:hidden")} />
+
+          {/* From 1024px the sidebar carries the Global Library, so it is not offered twice. */}
+          <Link href="/library" className="group flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-card transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-raise lg:hidden">
             <span aria-hidden className="flex size-8 flex-none items-center justify-center rounded-lg bg-soft text-accent theme-fade"><BookOpen className="size-4" /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-body font-semibold text-ink">Global Library</span>
