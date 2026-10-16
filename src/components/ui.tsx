@@ -40,10 +40,35 @@ export function SectionHead({ eyebrow, title, sub, actions, icon }: { eyebrow?: 
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
         {eyebrow && <Eyebrow className="mb-1.5">{eyebrow}</Eyebrow>}
-        <h2 className="m-0 flex items-center gap-2.5 text-[20px] font-semibold tracking-[-0.015em] text-ink">{icon && <IconTile>{icon}</IconTile>}{title}</h2>
+        <h2 className="display m-0 flex items-center gap-2.5 text-[30px] text-ink sm:text-[34px]">{icon && <IconTile>{icon}</IconTile>}{title}</h2>
         {sub && <p className="mb-0 mt-1.5 max-w-[68ch] text-[15px] text-mute-2 text-pretty">{sub}</p>}
       </div>
       {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
+    </div>
+  );
+}
+
+/**
+ * One row of filters: a search box and compact dropdowns, never several rows of
+ * chips. Each dropdown only appears when it offers a real choice (two or more
+ * options besides "All").
+ */
+export function FilterBar({ q, onQ, placeholder, selects, onClear, className }: {
+  q?: string; onQ?: (v: string) => void; placeholder?: string;
+  selects: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }[];
+  onClear?: () => void; className?: string;
+}) {
+  const shown = selects.filter((x) => x.options.length > 2);
+  const active = !!q || shown.some((x) => x.value !== x.options[0]?.value);
+  if (!onQ && !shown.length) return null;
+  return (
+    <div role="search" className={cx("mb-6 flex flex-wrap items-center gap-2", className)}>
+      {onQ && <input type="search" value={q} onChange={(e) => onQ(e.target.value)} placeholder={placeholder} aria-label={placeholder} className="field w-full max-w-[280px] py-2 text-[15px] sm:w-[280px]" />}
+      {shown.map((x) => (
+        <Select key={x.label} aria-label={x.label} value={x.value} onChange={x.onChange} options={x.options}
+          className={cx("w-auto py-2 pr-8 text-[14.5px]", x.value !== x.options[0]?.value && "border-accent font-semibold text-accent")} />
+      ))}
+      {active && onClear && <button type="button" onClick={onClear} className="px-1.5 text-[14px] font-medium text-mute-2 hover:text-ink hover:underline">Clear</button>}
     </div>
   );
 }
@@ -94,7 +119,8 @@ const variants: Record<BtnVariant, string> = {
   secondary: "border border-line bg-white text-ink-3 font-medium hover:bg-wash hover:border-line-strong",
   ghost: "border-0 bg-transparent text-mute-2 hover:text-ink",
   danger: "border border-line bg-white text-danger font-medium hover:border-[#C99A8E]",
-  dark: "border-0 bg-ink text-white font-semibold hover:bg-black",
+  // Kept as a name for older call sites; one accent only, so it is the primary look.
+  dark: "border-0 bg-accent text-on-accent font-semibold hover:brightness-110",
   approve: "border-0 bg-ok text-white font-semibold hover:brightness-110",
   change: "border border-line bg-white text-change-ink font-medium hover:border-[#C99A8E]",
   link: "border-0 bg-transparent p-0 text-accent font-semibold hover:underline",
@@ -227,8 +253,12 @@ export function Hint({ children, className }: { children: ReactNode; className?:
 /* ---------------------------------------------------------------- toggles */
 
 export function Pills<T extends string>({
-  options, value, onChange, tone = "accent", className, label,
-}: { options: { value: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void; tone?: "accent" | "dark"; className?: string; label?: string }) {
+  options, value, onChange, className, label,
+}: {
+  options: { value: T; label: string; count?: number }[]; value: T; onChange: (v: T) => void; className?: string; label?: string;
+  /** No longer changes anything: selection is always the accent. Kept so older call sites still compile. */
+  tone?: "accent" | "dark";
+}) {
   return (
     <div className={cx("flex flex-wrap gap-1.5", className)} role="group" aria-label={label}>
       {options.map((o) => {
@@ -241,7 +271,7 @@ export function Pills<T extends string>({
             onClick={() => onChange(o.value)}
             className={cx(
               "rounded-full border px-3 py-[5px] text-[14.5px] font-medium transition-colors duration-150",
-              on ? (tone === "dark" ? "border-ink bg-ink text-white" : "border-accent bg-accent text-on-accent") : "border-line bg-white text-mute-1 hover:border-mute-4 hover:text-ink",
+              on ? "border-accent bg-accent text-on-accent" : "border-line bg-white text-mute-1 hover:border-mute-4 hover:text-ink",
             )}
           >
             {o.label}

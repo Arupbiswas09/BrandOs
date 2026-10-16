@@ -109,7 +109,7 @@ export function Street() {
     <Page>
       <div className="head-band -mt-8 mb-6 pb-6 pt-8 sm:-mt-10 sm:pt-10">
         <Eyebrow className="mb-2">Dashboard</Eyebrow>
-        <h1 className="display m-0 mb-1.5 text-[34px] sm:text-[38px]">{greeting}</h1>
+        <h1 className="display m-0 mb-1.5 text-[32px] sm:text-[36px]">{greeting}</h1>
         <p className="m-0 max-w-[62ch] text-[15.5px] text-mute-2 text-pretty">{summary}</p>
       </div>
 
@@ -203,8 +203,8 @@ export function Street() {
                   <span className="block text-[16px] font-semibold tracking-[-0.01em]">{c.name}</span>
                   <span className="mt-[3px] block text-[14.5px] text-mute-2">{c.kind}</span>
                 </span>
-                <span className="flex flex-wrap gap-x-4 gap-y-1 border-t border-divider pt-3 text-[14px] text-mute-1">
-                  <span>{plural(bs.length, "brand")}</span><span>{plural(os, "offer")}</span><span>{plural(as, "asset")}</span>
+                <span className="block border-t border-divider pt-3 font-mono text-[11.5px] uppercase tracking-[0.08em] text-mute-2">
+                  {plural(bs.length, "brand")} · {plural(os, "offer")} · {plural(as, "asset")}
                 </span>
               </Link>
             );

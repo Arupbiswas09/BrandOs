@@ -14,7 +14,7 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, OfferCard } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { CtaButton } from "@/components/drawer/asset-drawer";
-import { ArchExpander, ArchivedNote, Btn, Card, Empty, H2, Mark, Page, Pills, SectionHead, Warn, cx } from "@/components/ui";
+import { ArchExpander, ArchivedNote, Btn, Card, Empty, FilterBar, H2, Mark, Page, SectionHead, Warn, cx } from "@/components/ui";
 import { FOCUS, IconTile, LIFT } from "@/components/polish";
 import { NotHere, useVisit } from "./common";
 import { BrandKit } from "./kit";
@@ -36,32 +36,14 @@ export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?:
       default: return <Home b={b} />;
     }
   })();
-  // The brand's sections are listed under it in the sidebar, so there is no
-  // second row of tabs here. Home carries the brand's own header; every other
-  // section gets one line saying which brand you are in.
+  // The brand's sections are listed under it in the sidebar, and the
+  // breadcrumb and the header's brand mark already say which brand this is,
+  // so a section starts straight with its own title.
   return (
     <Page>
-      {tab !== "home" && <BrandLine b={b} />}
+      {b.archived && tab !== "home" && <ArchivedNote className="mb-5">This brand is archived. Restore it from its Home.</ArchivedNote>}
       {body}
     </Page>
-  );
-}
-
-/** One line at the top of a brand section: which brand, and whose. */
-function BrandLine({ b }: { b: Brand }) {
-  const { ws } = useApp();
-  const client = ws.client(b.clientId);
-  const parent = ws.brand(b.parentId);
-  return (
-    <div className="-mt-2 mb-6 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 text-[14.5px] text-mute-2 sm:-mt-4">
-      <Link href={href.brand(b.id)} className={cx("flex min-w-0 items-center gap-2 rounded-md font-semibold text-ink hover:underline", FOCUS)}>
-        <Mark mark={b.mark} color={b.primary} size={26} radius={7} className="text-[11px]" />
-        <span className="truncate">{b.name}</span>
-      </Link>
-      {parent && <><span aria-hidden className="text-mute-4">/</span><span>Sub-brand of <Link href={href.brand(parent.id)} className="font-medium hover:text-ink hover:underline">{parent.name}</Link></span></>}
-      {client && client.name !== b.name && <><span aria-hidden className="text-mute-4">·</span><Link href={href.client(client.id)} className="truncate hover:text-ink hover:underline">{client.name}</Link></>}
-      {b.archived && <span className="rounded-md bg-chip px-2 py-0.5 text-[12.5px] font-semibold text-mute-2">Archived</span>}
-    </div>
   );
 }
 
@@ -304,11 +286,15 @@ function Offers({ b }: { b: Brand }) {
       <SectionHead eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
         sub={<>Each offer holds one piece of positioning and everything that supports it. Assets can sit in several at once.</>}
       />
-      {/* Filters only earn their place when there is something to choose between. */}
-      {liveAll.length > 1 && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter offers" aria-label="Filter offers" className="field mb-3 max-w-[280px] text-[15px]" />}
-      {segsPresent.length > 2 && <Pills className="mb-2.5" value={seg} onChange={setSeg} label="Segment" options={segsPresent.map((s) => ({ value: s, label: s, count: s === "All" ? liveAll.length : liveAll.filter((o) => o.segment === s).length }))} />}
-      {statusesPresent.length > 1 && <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...statusesPresent].map((s) => ({ value: s, label: s }))} />}
-      {!(segsPresent.length > 2 || statusesPresent.length > 1) && <div className="mb-4" />}
+      {/* Filters only earn their place when there is something to choose between, and fit on one row. */}
+      <FilterBar
+        q={q} onQ={liveAll.length > 1 ? setQ : undefined} placeholder="Filter offers"
+        onClear={() => { setQ(""); setSeg("All"); setStat("All"); }}
+        selects={[
+          { label: "Segment", value: seg, onChange: setSeg, options: segsPresent.map((s) => ({ value: s, label: s === "All" ? `Every segment (${liveAll.length})` : `${s} (${liveAll.filter((o) => o.segment === s).length})` })) },
+          { label: "Status", value: stat, onChange: setStat, options: ["All", ...statusesPresent].map((s) => ({ value: s, label: s === "All" ? "Any status" : s })) },
+        ]}
+      />
       <div className="grid gap-4 md:grid-cols-2">{shown.map((o) => <OfferCard key={o.id} o={o} />)}</div>
       <ArchExpander items={archivedOnly(filtered)} noun="offer" onOpen={(o) => router.push(href.offer(o.id))} />
       {!shown.length && (
@@ -362,10 +348,14 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
           </Warn>
         </button>
       )}
-      {liveCamp.length > 1 && <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter by name or tag" aria-label="Filter by name or tag" className="field mb-3 max-w-[280px] text-[15px]" />}
-      {types.length > 2 && <Pills className="mb-2" value={type} onChange={setType} label="Type" options={types.map((s) => ({ value: s, label: s }))} />}
-      {assetStatuses.length > 1 && <Pills className="mb-[26px]" value={stat} onChange={setStat} label="Status" options={["All", ...assetStatuses].map((s) => ({ value: s, label: s }))} />}
-      {!(types.length > 2 || assetStatuses.length > 1) && <div className="mb-4" />}
+      <FilterBar
+        q={q} onQ={liveCamp.length > 1 ? setQ : undefined} placeholder="Filter by name or tag"
+        onClear={() => { setQ(""); setType("All"); setStat("All"); setUnlinkedOnly(false); }}
+        selects={[
+          { label: "Type", value: type, onChange: setType, options: types.map((s) => ({ value: s, label: s === "All" ? `Every type (${liveCamp.length})` : `${s} (${liveCamp.filter((a) => a.type === s).length})` })) },
+          { label: "Status", value: stat, onChange: setStat, options: ["All", ...assetStatuses].map((s) => ({ value: s, label: s === "All" ? "Any stage" : s })) },
+        ]}
+      />
       <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
         {grid.map((a) => <AssetCard key={a.id} a={a} selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} />)}
       </div>
