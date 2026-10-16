@@ -15,6 +15,10 @@ import { FOCUS, LIFT } from "./polish";
 import { CardMenu, type CardMenuItem } from "./card-menu";
 import { ThumbnailPicker } from "./thumbnail-picker";
 import { fmtDate } from "@/lib/format";
+import { isLinkBroken } from "@/lib/link-health";
+import { LinkStatus } from "./features/links/link-status";
+import { PagePictureButton } from "./features/links/page-picture-button";
+import { ResultBadge } from "./features/results/result-badge";
 
 /* ---------------------------------------------------------------- the colour vocabulary */
 
@@ -178,6 +182,8 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
             <span aria-hidden>{a.type} · </span><span className={cx(n === 0 && "font-medium text-warn-text")}>{n === 0 ? "Not linked yet" : plural(n, "offer")}</span>
             {open > 0 && <> · {plural(open, "note")}</>}
           </span>
+          {/* Plain spans, no button: the whole card is the button. */}
+          {isLinkBroken(a) && <span className="mt-1.5 block"><LinkStatus asset={a} variant="badge" /></span>}
         </>
       )}
     </>
@@ -243,7 +249,8 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
         </span>
       )}
       {picking && (
-        <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image" fallback={tile} onClose={() => setPicking(false)} />
+        <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image" fallback={tile}
+          extra={<PagePictureButton asset={a} onDone={() => setPicking(false)} />} onClose={() => setPicking(false)} />
       )}
     </div>
   );
@@ -295,7 +302,10 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
               : <CodeTile code={code} color={color} size={40} style={{ fontSize: 12 }} />}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-body font-medium text-ink" title={a.name}>{a.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="min-w-0 truncate text-body font-medium text-ink" title={a.name}>{a.name}</span>
+              <LinkStatus asset={a} variant="badge" className="flex-none" />
+            </span>
             {servesText
               ? <span className="mt-0.5 hidden truncate text-small text-mute-2 @3xl:block">{servesText}</span>
               : <span className="mt-0.5 hidden truncate text-small text-mute-2 @3xl:block @4xl:hidden">{a.type}</span>}
@@ -342,7 +352,9 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
         </span>
       </div>
       {picking && (
-        <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image" fallback={<CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%", fontSize: 15 }} />} onClose={() => setPicking(false)} />
+        <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image"
+          fallback={<CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%", fontSize: 15 }} />}
+          extra={<PagePictureButton asset={a} onDone={() => setPicking(false)} />} onClose={() => setPicking(false)} />
       )}
     </li>
   );
@@ -394,7 +406,8 @@ export function OfferRow({ o, segment = true }: { o: Offer; /** Off where the li
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-baseline gap-2">
             {/* The name keeps its room; the label takes what is left. */}
-            <span className="max-w-full flex-none truncate text-body font-medium text-ink">{o.name}</span>
+            <span className="min-w-0 truncate text-body font-medium text-ink">{o.name}</span>
+            <ResultBadge offerId={o.id} />
             {label && <span className="hidden min-w-0 flex-1 truncate text-meta text-mute-2 @3xl:inline">{label}</span>}
           </span>
           <span className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-small text-mute-2 @2xl:hidden">
@@ -470,6 +483,7 @@ export function OfferCard({ o }: { o: Offer; /** Kept so older call sites compil
     <Link href={href.offer(o.id)} title={o.name} className={cx("flex flex-col gap-2 rounded-xl border border-line bg-surface p-4 text-left shadow-card", LIFT, FOCUS, o.archived && "opacity-55")}>
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta">
         <StateWord s={st} muted={st.word === "Active"} />
+        <ResultBadge offerId={o.id} />
         <SegmentTag name={o.segment} color={ws.segColor(o.segment, o.brandId)} className="text-small" />
         {o.dueAt && o.status !== "Archived" && <span className="text-small"><LaunchDate at={o.dueAt} now={ws.d.now} /></span>}
       </span>

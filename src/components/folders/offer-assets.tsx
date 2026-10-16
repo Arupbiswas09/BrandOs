@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type DragEvent } from "react";
-import { ArrowLeft, Folder, FolderMinus, FolderPlus, ImagePlus, Link2, Pencil, Plus } from "lucide-react";
+import { useId, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { ArrowLeft, Folder, FolderMinus, FolderPlus, ImagePlus, Link2, Pencil, Plus, Upload } from "lucide-react";
 import type { Asset, AssetFolder, Offer } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { plural } from "@/lib/ws";
@@ -12,11 +12,15 @@ import { CardMenu, type CardMenuItem } from "@/components/card-menu";
 import { FOCUS } from "@/components/polish";
 import { ThumbnailPicker } from "@/components/thumbnail-picker";
 import { Btn, Empty, cx } from "@/components/ui";
+import { BulkUpload } from "@/components/features/files/bulk-upload";
+import { filesFromDrop } from "@/components/features/files/drop";
 
 /*
  * The Assets tab of an offer: its assets, optionally grouped into
  * folders. A folder only groups this offer's links; the assets stay where
  * they live, and removing a folder puts its assets back at the top level.
+ * Files dropped anywhere on the tab (or chosen with "Upload files") become
+ * assets of this offer, filed in the open folder.
  */
 
 /* Columns follow the space the grid actually has (it shares the row with the summary column on wide screens). */
@@ -24,6 +28,7 @@ const GRID = "grid grid-cols-1 gap-3 @sm:grid-cols-2 @2xl:grid-cols-3 @5xl:grid-
 const HEAD = "m-0 text-small font-medium text-mute-2";
 const QUIET = cx("flex size-8 items-center justify-center rounded-lg text-mute-2 transition-colors hover:bg-hover hover:text-ink", FOCUS);
 const carriesAsset = (e: DragEvent) => e.dataTransfer.types.includes(ASSET_DRAG);
+const carriesFiles = (e: DragEvent) => e.dataTransfer.types.includes("Files");
 
 export function OfferAssets({ o }: { o: Offer }) {
   const { ws, open, toast } = useApp();
@@ -35,6 +40,15 @@ export function OfferAssets({ o }: { o: Offer }) {
   const [over, setOver] = useState<string | null>(null);
   const canEdit = ws.canChange(o);
   const canThumb = canEdit && ws.can("upload");
+  const canUpload = canEdit && ws.can("edit") && ws.can("upload");
+  // The upload panel: open or not, the files a drop brought, and a new key per drop so it starts with them.
+  const [adding, setAdding] = useState(false);
+  const [dropped, setDropped] = useState<File[] | undefined>(undefined);
+  const [dropKey, setDropKey] = useState(0);
+  const [filesOver, setFilesOver] = useState(false);
+  const uploadId = useId();
+  const uploadBtn = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const assets = ws.linkedAssets(o.id);
   const folders = ws.foldersOf(o.id);
   const current = folders.find((f) => f.id === at) ?? null;
@@ -63,6 +77,46 @@ export function OfferAssets({ o }: { o: Offer }) {
     },
   } : {};
 
+  const openUpload = (files?: File[]) => {
+    setDropped(files);
+    setDropKey((k) => k + 1);
+    setAdding(true);
+  };
+  const closeUpload = () => {
+    setAdding(false);
+    requestAnimationFrame(() => uploadBtn.current?.focus());
+  };
+  /** Files from the desktop, dropped anywhere on the tab. Card drags carry no files, so the folders keep those. */
+  const fileDrop = canUpload ? {
+    onDragOver: (e: DragEvent) => {
+      if (!carriesFiles(e) || e.defaultPrevented) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+      if (!filesOver) setFilesOver(true);
+    },
+    onDragLeave: (e: DragEvent) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFilesOver(false); },
+    onDrop: (e: DragEvent) => {
+      setFilesOver(false);
+      // The open panel takes a drop on itself; anything it leaves (say, while it is sending) is not opened by the browser either.
+      if (!carriesFiles(e) || e.defaultPrevented) return;
+      e.preventDefault();
+      if (adding) {
+        // On the panel itself it is busy sending; anywhere else, point at it.
+        if (!panel.current?.contains(e.target as Node)) toast("Drop them on the upload panel to add them to its list.", "info");
+        return;
+      }
+      // The files have to be read while the drop event is still running.
+      void filesFromDrop(e.dataTransfer).then((files) => { if (files.length) openUpload(files); });
+    },
+  } : {};
+  /** Escape closes the panel, except while it is sending files. */
+  const uploadKeys = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "Escape" || e.currentTarget.querySelector('[data-status="sending"], [data-status="saving"]')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    closeUpload();
+  };
+
   const remove = async (f: AssetFolder) => {
     const n = inside(f.id).length;
     const r = await run(removeFolder, f.id);
@@ -85,12 +139,17 @@ export function OfferAssets({ o }: { o: Offer }) {
       <Btn size="sm" onClick={() => { setAt(null); setNaming(true); }}><FolderPlus aria-hidden size={15} /><span className="max-sm:sr-only">New folder</span></Btn>
       <Btn size="sm" onClick={() => open({ kind: "link", offerId: o.id })}><Link2 aria-hidden size={15} /><span>Link existing<span className="max-sm:sr-only"> asset</span></span></Btn>
       <Btn size="sm" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}><Plus aria-hidden size={15} />New asset</Btn>
+      {canUpload && (
+        <Btn ref={uploadBtn} size="sm" aria-expanded={adding} aria-controls={uploadId} onClick={() => (adding ? closeUpload() : openUpload())}>
+          <Upload aria-hidden size={15} /><span className="max-sm:sr-only">Upload files</span>
+        </Btn>
+      )}
     </div>
   );
   const empty = !current && !assets.length && !folders.length;
 
   return (
-    <div className="@container">
+    <div {...fileDrop} className={cx("@container rounded-xl", filesOver && !adding && "outline-2 outline-offset-4 outline-accent outline-dashed")}>
       <div className="mb-3 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
         {current ? (
           <nav aria-label="Folders" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
@@ -129,6 +188,12 @@ export function OfferAssets({ o }: { o: Offer }) {
           }}
           className="mb-4 rounded-xl border border-line bg-surface p-3"
         />
+      )}
+
+      {adding && (
+        <div ref={panel} id={uploadId} onKeyDown={uploadKeys} className="mb-5">
+          <BulkUpload key={dropKey} brandId={o.brandId} offerId={o.id} folderId={current?.id ?? null} initialFiles={dropped} onClose={closeUpload} />
+        </div>
       )}
 
       {current ? (

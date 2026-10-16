@@ -9,14 +9,21 @@ import { settle, signIn } from "./helpers";
 import { callAction } from "./server-action";
 
 /*
- * Broken-link checks, page pictures and tracked links, through the dev
- * preview (/dev/links) and the link actions. The pages being checked are
- * served by a tiny server on this machine; the dev server has to run with
- * BRANDOS_ALLOW_PRIVATE_FETCH=1 so it may fetch them (outside production
- * only; see src/server/link-fetcher.ts).
+ * Broken-link checks, page pictures and tracked links where people meet
+ * them: the asset drawer (the warning, Check again, the page's picture), the
+ * offer page (key links with their badge and tracked links, asset cards), and
+ * the dashboard and brand home (the list of links not responding). The pages
+ * being checked are served by a tiny server on this machine; the dev server
+ * has to run with BRANDOS_ALLOW_PRIVATE_FETCH=1 so it may fetch them (outside
+ * production only; see src/server/link-fetcher.ts).
  */
 
 test.use({ viewport: { width: 1440, height: 940 } });
+
+/** Partner Co-Marketing: an offer no other spec counts, so the test pages can be linked to it. */
+const OFFER = "of16";
+/** Where server actions are posted from. */
+const FROM = "/brands/br1/assets";
 
 /** A plain PNG in one colour, built in memory. */
 function png(w = 64, h = 40, rgb: [number, number, number] = [0x1f, 0x6f, 0x5c]) {
@@ -86,18 +93,25 @@ test.beforeAll(async () => {
 
 test.afterAll(() => new Promise<void>((r) => { server.closeAllConnections(); server.close(() => r()); }));
 
-/** Creates (or, with `id`, updates) a brand asset with this link, the way the asset form does. */
-async function saveAsset(page: Page, fields: { id?: string; name: string; url: string; type?: string }) {
-  const body = await callAction(page, "/dev/links", "app/actions.ts", "saveAsset", [{
-    ...(fields.id && { id: fields.id }), brandId: "br1", name: fields.name, type: fields.type ?? "Landing page", url: fields.url, offerIds: [],
+/** Creates (or, with `id`, updates) a brand asset with this link, the way the asset form does; `linked` puts it on the test offer. */
+async function saveAsset(page: Page, fields: { id?: string; name: string; url: string; type?: string; linked?: boolean }) {
+  const body = await callAction(page, FROM, "app/actions.ts", "saveAsset", [{
+    ...(fields.id && { id: fields.id }), brandId: "br1", name: fields.name, type: fields.type ?? "Landing page", url: fields.url, offerIds: fields.linked ? [OFFER] : [],
   }]);
   expect(body).toContain('"ok":true');
   return fields.id ?? body.match(/"id":"(as[a-z0-9]+)"/)![1];
 }
 
-const card = (page: Page, name: string) => page.getByRole("region", { name, exact: true });
+/** The asset drawer, opened on the asset's own link. */
+async function drawerFor(page: Page, id: string, name: string) {
+  await page.goto(`${FROM}?asset=${id}`);
+  await settle(page);
+  return page.getByRole("dialog", { name });
+}
 
-test("tracked links: the rules, then the builder on the preview", async ({ page, context }) => {
+const TAGS = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
+
+test("tracked links: the rules, then the builder from the offer's key links and CTAs", async ({ page, context }) => {
   // The rules, straight from the pure module.
   expect(slug("Free Marketing Audit")).toBe("free-marketing-audit");
   expect(slug("Café & Co’s Giving Day!")).toBe("cafe-and-cos-giving-day");
@@ -116,9 +130,14 @@ test("tracked links: the rules, then the builder on the preview", async ({ page,
 
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await signIn(page);
-  await page.goto("/dev/links");
+  await page.goto("/offers/of15");
   await settle(page);
-  const meta = page.locator("li").filter({ has: page.getByText("Meta", { exact: true }) }).last();
+  // Campaign is the offer, content the landing page.
+  const trigger = page.getByRole("button", { name: "Tracked links for Free Audit Landing Page" });
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Tracked links" });
+  await expect(dialog).toContainText("For Free Audit Landing Page.");
+  const meta = dialog.locator("li").filter({ has: page.getByText("Meta", { exact: true }) });
   const want = "https://quokkaforgood.org/audit?utm_source=facebook&utm_medium=paid_social&utm_campaign=free-marketing-audit&utm_content=free-audit-landing-page";
   await expect(meta.locator("code")).toHaveText(want);
   await meta.getByRole("button", { name: "Copy" }).click();
@@ -126,67 +145,78 @@ test("tracked links: the rules, then the builder on the preview", async ({ page,
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(want);
 
   // Editing the campaign changes every row; the custom row takes any source and medium.
-  const builder = page.locator("ul").filter({ has: page.getByText("Custom", { exact: true }) }).last().locator("..");
-  await builder.getByLabel("Campaign").fill("Spring Push");
-  await expect(builder.locator("li").filter({ has: page.getByText("Google Ads", { exact: true }) }).locator("code"))
+  await dialog.getByLabel("Campaign").fill("Spring Push");
+  await expect(dialog.locator("li").filter({ has: page.getByText("Google Ads", { exact: true }) }).locator("code"))
     .toHaveText("https://quokkaforgood.org/audit?utm_source=google&utm_medium=cpc&utm_campaign=spring-push&utm_content=free-audit-landing-page");
-  const custom = builder.locator("li").filter({ has: page.getByText("Custom", { exact: true }) });
+  const custom = dialog.locator("li").filter({ has: page.getByText("Custom", { exact: true }) });
   await expect(custom.getByRole("button", { name: "Copy" })).toBeDisabled();
   await custom.getByLabel("Custom source").fill("Partner Site");
   await custom.getByLabel("Custom medium").fill("referral");
   await expect(custom.locator("code")).toHaveText(/utm_source=partner-site&utm_medium=referral&utm_campaign=spring-push/);
-  const social = builder.locator("li").filter({ has: page.getByText("Organic social", { exact: true }) });
+  const social = dialog.locator("li").filter({ has: page.getByText("Organic social", { exact: true }) });
   await social.getByLabel("Network").selectOption("instagram");
   await expect(social.locator("code")).toHaveText(/utm_source=instagram&utm_medium=social/);
+  // Escape closes it, not the page, and focus goes back.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+
+  // A CTA has its own, with its words as the content; a new dialog starts from the defaults again.
+  await page.getByRole("button", { name: "Tracked links for Book a Free Audit" }).click();
+  await expect(dialog.locator("li").filter({ has: page.getByText("Meta", { exact: true }) }).locator("code"))
+    .toHaveText("https://quokkaforgood.org/audit?utm_source=facebook&utm_medium=paid_social&utm_campaign=free-marketing-audit&utm_content=book-a-free-audit");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
 });
 
 test("a link that answers 404 is flagged, and one that opens is not", async ({ page }) => {
   await signIn(page);
-  const id = await saveAsset(page, { name: `Link check test page ${tag}`, url: `${base}/missing` });
+  const name = `Link check test page ${tag}`;
+  const id = await saveAsset(page, { name, url: `${base}/missing`, linked: true });
 
-  const body = await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [id]);
+  const body = await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
   expect(body).toContain('"status":404');
-  await page.goto("/dev/links");
+  // In the drawer: what failed and when, under the title.
+  let drawer = await drawerFor(page, id, name);
+  await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
+  await expect(drawer.getByText(/checked \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}/)).toBeVisible();
+  // On the offer: a badge on its card and beside its key link.
+  await page.goto(`/offers/${OFFER}`);
   await settle(page);
-  const row = card(page, `Link check test page ${tag}`);
-  await expect(row.getByText("Link not responding (404)")).toBeVisible();
-  await expect(row.getByText(/checked \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}/)).toBeVisible();
-  await expect(row.getByText("Link not responding", { exact: true })).toBeVisible(); // the badge
-  // Listed on the dashboard card and the brand card.
-  await expect(card(page, "Dashboard card").getByRole("button", { name: new RegExp(`^Link check test page ${tag}`) })).toBeVisible();
-  await expect(card(page, "Brand card").locator("li").filter({ hasText: `Link check test page ${tag}` }).getByText("Page not found (404)")).toBeVisible();
+  const card = page.getByRole("tabpanel", { name: /^Assets/ }).getByRole("button", { name: new RegExp(`^Landing page ${name}`) });
+  await expect(card.getByText("Link not responding", { exact: true })).toBeVisible();
+  const keyLinks = page.getByRole("complementary", { name: "Offer summary" });
+  await expect(keyLinks.locator("li").filter({ hasText: name }).getByText("Link not responding", { exact: true })).toBeVisible();
 
   // Check again: still 404, and it says so.
+  drawer = await drawerFor(page, id, name);
   await page.waitForTimeout(10_500); // a second press within 10 seconds reuses the last result
-  await row.getByRole("button", { name: "Check again" }).click();
+  await drawer.getByRole("button", { name: "Check again" }).click();
   await expect(page.getByText("Still not responding: Page not found (404)")).toBeVisible();
 
   // A new address hides the old result at once, before it is checked.
-  await saveAsset(page, { id, name: `Link check test page ${tag}`, url: `${base}/moved` });
-  await page.goto("/dev/links");
-  await settle(page);
-  await expect(row.getByText("Link not responding (404)")).toHaveCount(0);
-  await expect(row.getByTestId("check")).toHaveText("never checked");
+  await saveAsset(page, { id, name, url: `${base}/moved`, linked: true });
+  drawer = await drawerFor(page, id, name);
+  await expect(drawer.getByText(/Link not responding/)).toHaveCount(0);
 
   // It redirects to a page that refuses HEAD but opens with GET.
   hits.length = 0;
-  await row.getByRole("button", { name: "Check now" }).click();
-  await expect(page.getByText("Link opens")).toBeVisible();
-  await expect(row.getByTestId("check")).toHaveText("ok 200");
+  const ok = await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
+  expect(ok).toContain('"ok":true');
+  expect(ok).toContain('"status":200');
   expect(hits).toEqual(expect.arrayContaining(["HEAD /moved", "HEAD /ok", "GET /ok"]));
-  await expect(row.getByText(/Link not responding/)).toHaveCount(0);
-  await expect(card(page, "Dashboard card").getByText(`Link check test page ${tag}`)).toHaveCount(0);
+  drawer = await drawerFor(page, id, name);
+  await expect(drawer.getByText(/Link not responding/)).toHaveCount(0);
 
   // When a link that opened stops opening, history says so once.
   movedBreaks = true;
   await page.waitForTimeout(10_500);
-  await row.getByRole("button", { name: "Check now" }).click();
-  await expect(row.getByText("Link not responding (404)")).toBeVisible();
-  await page.goto(`/dev/links?asset=${id}`);
-  await settle(page);
-  const drawer = page.getByRole("dialog", { name: `Link check test page ${tag}` });
+  const broke = await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
+  expect(broke).toContain('"status":404');
+  drawer = await drawerFor(page, id, name);
+  await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
   await drawer.getByRole("tab", { name: /^History/ }).click();
-  await expect(drawer.getByText(/Priya found a broken link on — Page not found \(404\)/)).toHaveCount(1);
+  await expect(drawer.getByText("Found a broken link on: Page not found (404)")).toHaveCount(1);
   movedBreaks = false;
 });
 
@@ -194,37 +224,47 @@ test("a link that never answers, or whose domain does not exist, says so plainly
   await signIn(page);
   const slow = await saveAsset(page, { name: `Slow page ${tag}`, url: `${base}/slow` });
   const started = Date.now();
-  const body = await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [slow]);
+  const body = await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [slow]);
   expect(body).toContain("Did not answer in 8 seconds");
   // A page that does not answer HEAD is not asked again with GET, so it takes one timeout, not two.
   expect(Date.now() - started).toBeLessThan(15_000);
   const nowhere = await saveAsset(page, { name: `Nowhere page ${tag}`, url: "no-such-place.invalid/landing" });
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [nowhere])).toMatch(/No such domain|The domain could not be looked up/);
-  await page.goto("/dev/links");
-  await settle(page);
-  await expect(card(page, `Slow page ${tag}`).getByText(/^Link not responding · Did not answer in 8 seconds · checked/)).toBeVisible();
+  expect(await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [nowhere])).toMatch(/No such domain|The domain could not be looked up/);
+  const drawer = await drawerFor(page, slow, `Slow page ${tag}`);
+  await expect(drawer.getByText(/^Link not responding · Did not answer in 8 seconds · checked/)).toBeVisible();
 });
 
 test("the page's picture becomes the card picture; SVG and missing pictures are refused", async ({ page }) => {
   await signIn(page);
-  const id = await saveAsset(page, { name: `Picture test page ${tag}`, url: `${base}/ok` });
-  await page.goto("/dev/links");
-  await settle(page);
-  const row = card(page, `Picture test page ${tag}`);
-  await expect(row.getByTestId("thumb")).toHaveCount(0);
-  await row.getByRole("button", { name: "Use the page's picture" }).click();
+  const name = `Picture test page ${tag}`;
+  const id = await saveAsset(page, { name, url: `${base}/ok` });
+  const drawer = await drawerFor(page, id, name);
+  const thumb = drawer.locator(`img[src*="/api/assets/${id}/thumbnail/"]`);
+  await expect(thumb).toHaveCount(0);
+  // In the thumbnail panel, beside "Choose image".
+  await drawer.getByRole("button", { name: "More asset actions" }).click();
+  await page.getByRole("menuitem", { name: "Change thumbnail" }).click();
+  const panel = page.getByRole("dialog", { name: "Change thumbnail" });
+  await expect(panel.getByRole("button", { name: "Choose image" })).toBeVisible();
+  await panel.getByRole("button", { name: "Use the page's picture" }).click();
   await expect(page.getByText("Picture taken from the page")).toBeVisible();
-  const thumb = row.getByTestId("thumb");
-  await expect(thumb).toHaveAttribute("src", new RegExp(`/api/assets/${id}/thumbnail/`));
+  await expect(panel).toHaveCount(0);
+  await expect(thumb).toBeVisible();
   await expect.poll(() => thumb.evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(64);
 
   // An SVG share picture is not used (it can carry script).
   const svgId = await saveAsset(page, { name: `SVG picture page ${tag}`, url: `${base}/svg-only` });
-  const svg = await callAction(page, "/dev/links", "app/link-actions.ts", "usePagePicture", [svgId]);
+  const svg = await callAction(page, FROM, "app/link-actions.ts", "usePagePicture", [svgId]);
   expect(svg).toContain("is not a PNG, JPG, WebP, GIF or AVIF image");
   // A page that does not open has no picture.
   const gone = await saveAsset(page, { name: `Gone page ${tag}`, url: `${base}/nothing-here` });
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "usePagePicture", [gone])).toContain("The page did not open (404).");
+  expect(await callAction(page, FROM, "app/link-actions.ts", "usePagePicture", [gone])).toContain("The page did not open (404).");
+  // An asset without a link has nothing to take it from, so the panel does not offer it.
+  await page.goto("/offers/of1?asset=as41");
+  await settle(page);
+  await page.getByRole("dialog").getByRole("button", { name: "More asset actions" }).click();
+  await page.getByRole("menuitem", { name: "Change thumbnail" }).click();
+  await expect(page.getByRole("dialog", { name: "Change thumbnail" }).getByRole("button", { name: "Use the page's picture" })).toHaveCount(0);
 });
 
 test("the server refuses people whose role does not allow it, and the cron needs its secret", async ({ page }) => {
@@ -232,13 +272,11 @@ test("the server refuses people whose role does not allow it, and the cron needs
   const id = await saveAsset(page, { name: `Permission test page ${tag}`, url: `${base}/ok` });
   // A reviewer cannot change work, so cannot check or take pictures.
   await signIn(page, "Tom Aldridge");
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [id])).toContain("Your role does not allow that.");
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "usePagePicture", [id])).toContain("Your role does not allow that.");
-  // An editor cannot check a whole brand; that is for admins and managers.
+  expect(await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id])).toContain("Your role does not allow that.");
+  expect(await callAction(page, FROM, "app/link-actions.ts", "usePagePicture", [id])).toContain("Your role does not allow that.");
+  // For an editor, ids are checked before anything is looked up.
   await signIn(page, "Ines Batz");
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkBrandLinks", ["br1"])).toContain("Only admins and managers can check a whole brand");
-  // Ids are checked before anything is looked up.
-  expect(await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", ["../../etc"])).toContain("That is not a valid id.");
+  expect(await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", ["../../etc"])).toContain("That is not a valid id.");
 
   const res = await page.request.get("/api/cron/links", { headers: { Authorization: "Bearer wrong" } });
   expect([401, 503]).toContain(res.status());
@@ -250,47 +288,70 @@ test("the daily run checks links and gives a new landing page its picture, once"
   test.setTimeout(300_000);
   const auth = { Authorization: `Bearer ${process.env.CRON_SECRET}` };
   await signIn(page);
-  const id = await saveAsset(page, { name: `Auto picture page ${tag}`, url: `${base}/ok` });
+  const name = `Auto picture page ${tag}`;
+  const id = await saveAsset(page, { name, url: `${base}/ok` });
   const res = await page.request.get("/api/cron/links", { headers: auth, timeout: 280_000 });
   expect(res.status()).toBe(200);
   const r = await res.json();
   expect(r.ok).toBe(true);
   expect(r.checked).toBeGreaterThan(0);
   expect(r.pictures).toBeGreaterThanOrEqual(1);
-  await page.goto("/dev/links");
-  await settle(page);
-  const row = card(page, `Auto picture page ${tag}`);
-  await expect(row.getByTestId("check")).toHaveText("ok 200");
-  await expect(row.getByTestId("thumb")).toHaveAttribute("src", new RegExp(`/api/assets/${id}/thumbnail/`));
+  const drawer = await drawerFor(page, id, name);
+  await expect(drawer.getByText(/Link not responding/)).toHaveCount(0);
+  await expect(drawer.locator(`img[src*="/api/assets/${id}/thumbnail/"]`)).toBeVisible();
   // A second run straight after skips everything that is fresh.
   const again = await (await page.request.get("/api/cron/links", { headers: auth, timeout: 280_000 })).json();
   expect(again.checked).toBe(0);
   expect(again.fresh).toBeGreaterThanOrEqual(r.checked);
 });
 
-test("the preview, its warnings and the tracked links dialog meet WCAG 2.2 AA", async ({ page }) => {
+// Needs BrokenLinksCard on the dashboard (street.tsx) and the brand home (brand.tsx), with its "Check all links".
+test("links that stopped opening are listed on the dashboard and the brand home", async ({ page }) => {
   await signIn(page);
-  // Make sure there is at least one broken link to show.
-  const id = await saveAsset(page, { name: `A11y test page ${tag}`, url: `${base}/missing` });
-  await callAction(page, "/dev/links", "app/link-actions.ts", "checkLinkNow", [id]);
+  const name = `Listed broken page ${tag}`;
+  const id = await saveAsset(page, { name, url: `${base}/missing` });
+  await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
+  await page.goto("/");
+  await settle(page);
+  await expect(page.getByRole("button", { name: new RegExp(`^${name}`) })).toBeVisible();
+  await page.goto("/brands/br1");
+  await settle(page);
+  await expect(page.locator("li").filter({ hasText: name }).getByText("Page not found (404)")).toBeVisible();
+  // An editor cannot check a whole brand; that is for admins and managers.
+  await signIn(page, "Ines Batz");
+  expect(await callAction(page, "/brands/br1", "app/link-actions.ts", "checkBrandLinks", ["br1"])).toContain("Only admins and managers can check a whole brand");
+});
+
+test("the warnings and the tracked links dialog meet WCAG 2.2 AA, at 1440 and 390", async ({ page }) => {
+  await signIn(page);
+  // At least one broken link on the offer, so its badge and warning show.
+  const name = `A11y test page ${tag}`;
+  const id = await saveAsset(page, { name, url: `${base}/missing`, linked: true });
+  await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/dev/links");
+    await page.goto(`/offers/${OFFER}`);
     await settle(page);
-    await expect(card(page, `A11y test page ${tag}`).getByText("Link not responding (404)")).toBeVisible();
-    const tags = ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"];
-    const r = await new AxeBuilder({ page }).withTags(tags).analyze();
-    expect(r.violations.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    const keyLink = page.getByRole("complementary", { name: "Offer summary" }).locator("li").filter({ hasText: name });
+    await expect(keyLink.getByText("Link not responding", { exact: true })).toBeVisible();
+    let r = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(r.violations.map((v) => `${width} offer: ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
-    const trigger = card(page, `A11y test page ${tag}`).getByRole("button", { name: "Tracked links" });
+
+    const trigger = keyLink.getByRole("button", { name: `Tracked links for ${name}` });
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "Tracked links" });
     await expect(dialog).toBeVisible();
     await page.waitForTimeout(300); // let the opening fade finish before measuring contrast
-    const d = await new AxeBuilder({ page }).include("dialog").withTags(tags).analyze();
-    expect(d.violations.map((v) => `${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
+    r = await new AxeBuilder({ page }).include("dialog").withTags(TAGS).analyze();
+    expect(r.violations.map((v) => `${width} dialog: ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
     await expect(trigger).toBeFocused();
+
+    const drawer = await drawerFor(page, id, name);
+    await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
+    r = await new AxeBuilder({ page }).withTags(TAGS).analyze();
+    expect(r.violations.map((v) => `${width} drawer: ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
   }
 });

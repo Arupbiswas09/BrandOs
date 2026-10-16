@@ -5,12 +5,14 @@ import { useCallback, useEffect, useEffectEvent, useId, useLayoutEffect, useRef,
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  Archive, ArchiveRestore, Copy, CopyPlus, Download, ExternalLink, File as FileIcon, FileArchive, FileAudio, FileImage, FileText, FileType, FileVideo, ImagePlus,
+  Archive, ArchiveRestore, Copy, CopyPlus, Download, ExternalLink, Eye, EyeOff, File as FileIcon, FileArchive, FileAudio, FileImage, FileText, FileType, FileVideo, ImagePlus,
   Library as LibraryIcon, Link2, Pencil, Plus, RefreshCw, Trash2, Upload, X, type LucideIcon,
 } from "lucide-react";
 import type { Asset, FileRef } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, CHANNEL_COLOR } from "@/lib/constants";
+import { linkEmbed } from "@/lib/embeds";
+import { previewKind, primaryPreview } from "@/lib/files";
 import { href } from "@/lib/routes";
 import {
   addItem, listVersions, moveItem, removeFile, removeItem, resetList, restoreVersion,
@@ -22,15 +24,39 @@ import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, CodeTile, Hint, IconBtn, c
 import { FOCUS, PanelTabs, tabPanel } from "@/components/polish";
 import { assetDownload, assetLink } from "@/components/cards";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
-import { LinkBtn, displayUrl, useCopyLink } from "@/components/link-button";
+import { LinkBtn, displayUrl, linkBtn, useCopyLink } from "@/components/link-button";
 import { ReviewLine, StatusSelect } from "@/components/workflow";
 import { CtaTag } from "@/components/cta-tag";
 import { ThumbnailPicker, imageFrom, intoText, useThumbnail } from "@/components/thumbnail-picker";
 import { AiDraftButton } from "@/components/ai";
 import { ProofView } from "@/components/proof";
 import { PinLink, isPinned, proofFiles, type PinnedComment } from "@/components/proof-link";
+import { StarButton } from "@/components/features/stars/star-button";
+import { LinkStatus } from "@/components/features/links/link-status";
+import { PagePictureButton } from "@/components/features/links/page-picture-button";
+import { FileHistory } from "@/components/features/files/file-history";
+import { FilePreview, LinkPreview } from "@/components/features/files/file-preview";
 
 const IMAGE = /^image\/(png|jpe?g|gif|webp|avif)$/;
+
+/** Who the daily link check's history lines are from (LINK_CHECKER in src/server/link-fetcher.ts): BrandOS itself, not a person. */
+const LINK_CHECKER = "link-checker";
+
+/** A stored file the browser can show in place: a picture, PDF, video, audio or text. */
+const showable = (f: FileRef) => !!f.key && !!f.url && previewKind(f) !== "other";
+
+/**
+ * What the preview shows first, when there is something worth showing: a file
+ * that can be shown in place, or a link that can be framed (Figma, Google,
+ * YouTube, Vimeo, Loom). A plain web page is left out: the header already has
+ * Open and Copy link for it, and a card saying the same again adds nothing.
+ */
+function previewOf(a: Asset): { kind: "file"; file: FileRef } | { kind: "link"; url: string } | null {
+  const p = primaryPreview(a);
+  if (!p) return null;
+  if (p.kind === "file") return showable(p.file) ? p : null;
+  return linkEmbed(p.url) ? p : null;
+}
 
 type Tab = "overview" | "list" | "prompt" | "copy" | "proof" | "discussion" | "history";
 
@@ -82,6 +108,20 @@ function Drawer({ a }: { a: Asset }) {
   const link = assetLink(a);
   const file = link ? null : assetDownload(a);
 
+  // The full preview stays folded away until someone asks, so the sections stay in reach.
+  const first = previewOf(a);
+  const [showing, setShowing] = useState(false);
+  // A file chosen from the list; back to the first one when it is gone (replaced or removed).
+  const [chosen, setChosen] = useState<string | null>(null);
+  const chosenFile = (a.files ?? []).find((f) => f.key === chosen && showable(f)) ?? null;
+  const previewId = useId();
+  const previewBox = useRef<HTMLDivElement>(null);
+  const showFile = (f: FileRef) => {
+    setChosen(f.key ?? null);
+    setShowing(true);
+    requestAnimationFrame(() => previewBox.current?.scrollIntoView({ block: "nearest" }));
+  };
+
   const tabs: { key: Tab; label: string; count?: string | number }[] = [
     { key: "overview", label: "Overview" },
     ...(a.type === "Checklist" ? [{ key: "list" as Tab, label: "Checklist", count: `${done}/${items.length}` }] : []),
@@ -93,7 +133,7 @@ function Drawer({ a }: { a: Asset }) {
   ];
   // ?assetTab= opens a section (?tab= belongs to the page underneath). Older links said ?tab=; that still
   // works when it names one of these sections, except on an offer page, whose own tabs include Discussion.
-  // The old Files and Client tabs land on the overview.
+  // A section that no longer exists lands on the overview.
   const legacy = params.get("tab");
   const asked = params.get("assetTab") ?? (legacy === "discussion" && pathname.startsWith("/offers/") ? null : legacy);
   const [tab, setTab] = useState<Tab>(() => (tabs.some((t) => t.key === asked) ? (asked as Tab) : "overview"));
@@ -147,6 +187,7 @@ function Drawer({ a }: { a: Asset }) {
           <IconBtn label="Close" onClick={closeAsset}><X aria-hidden /></IconBtn>
           <h2 title={a.name} className="m-0 line-clamp-2 min-w-0 flex-1 text-body font-semibold leading-snug text-ink [overflow-wrap:anywhere]">{a.name}</h2>
           <div className="flex flex-none items-center gap-1.5">
+            <StarButton kind="asset" id={a.id} name={a.name} />
             {link && (
               <>
                 <LinkBtn variant="primary" href={link.href} target="_blank" rel="noreferrer" title={link.href}><ExternalLink aria-hidden size={15} /><span className="sr-only sm:not-sr-only">Open</span></LinkBtn>
@@ -166,7 +207,7 @@ function Drawer({ a }: { a: Asset }) {
           */}
           <div className="mb-4 flex min-h-16 items-center gap-4">
             {preview ? (
-              <Preview src={preview} contain={cat === "master"} busy={thumb.busy} onOpen={proof.images.length ? () => setTab("proof") : undefined} />
+              <Preview src={preview} contain={cat === "master"} busy={thumb.busy} onOpen={first ? () => setShowing((v) => !v) : undefined} />
             ) : (
               <CodeTile code={ws.codeOf(a)} color={color} size={52} className={cx(thumb.busy && "opacity-50")} />
             )}
@@ -185,8 +226,23 @@ function Drawer({ a }: { a: Asset }) {
                 <span>v{a.version}</span>
                 {link && <><span aria-hidden>·</span><span title={link.href} className="min-w-0 max-w-full truncate">{displayUrl(link.href)}</span></>}
               </p>
+              {first && (
+                <button type="button" aria-expanded={showing} aria-controls={previewId} onClick={() => setShowing((v) => !v)} className={cx(linkBtn("quiet"), "-ml-1.5 mt-1", FOCUS)}>
+                  {showing ? <EyeOff aria-hidden size={13} /> : <Eye aria-hidden size={13} />}{showing ? "Hide preview" : "Preview"}
+                </button>
+              )}
             </div>
           </div>
+
+          {first && showing && (
+            <div ref={previewBox} id={previewId} className="mb-4 scroll-mt-20">
+              {chosenFile ? <FilePreview key={chosenFile.key} file={chosenFile} asset={a} />
+                : first.kind === "file" ? <FilePreview key={first.file.key} file={first.file} asset={a} />
+                : <LinkPreview url={first.url} title={a.name} />}
+            </div>
+          )}
+
+          <LinkStatus asset={a} className="mb-4" />
 
           <dl className="m-0 mb-4 grid grid-cols-[64px_minmax(0,1fr)] items-baseline gap-x-3 gap-y-2.5 text-meta">
             <dt className="text-mute-2">Status</dt>
@@ -197,7 +253,7 @@ function Drawer({ a }: { a: Asset }) {
           {a.changeNote && a.review === "Changes requested" && <ChangeNote className="mb-4">{a.changeNote}</ChangeNote>}
           {a.archived && <ArchivedNote className="mb-4">Archived. Offers that link to it still show it, greyed out.</ArchivedNote>}
 
-          <AttachedFiles a={a} onProof={proof.images.length ? () => setTab("proof") : undefined} onEdit={canEdit ? editDraft : undefined} />
+          <AttachedFiles a={a} onProof={proof.images.length ? () => setTab("proof") : undefined} onEdit={canEdit ? editDraft : undefined} onPreview={showFile} />
 
           <div className="sticky z-[2] -mx-4 mb-5 border-b border-line bg-surface px-2 sm:-mx-6 sm:px-4" style={{ top: headH }}>
             <PanelTabs id="asset" label="Asset sections" value={tab} onChange={setTab} items={tabs} />
@@ -217,6 +273,7 @@ function Drawer({ a }: { a: Asset }) {
       {picking && (
         <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image"
           fallback={<span className="flex h-full w-full items-center justify-center font-mono text-body font-bold tracking-[0.1em]" style={{ background: hexA(color, 0.1), color: readable(color, 0.1) }}>{ws.codeOf(a)}</span>}
+          extra={<PagePictureButton asset={a} onDone={() => setPicking(false)} />}
           onClose={() => setPicking(false)} />
       )}
     </div>
@@ -224,7 +281,11 @@ function Drawer({ a }: { a: Asset }) {
   );
 }
 
-/** The asset's picture at 16:10, small enough that the sections stay in reach. */
+/**
+ * The asset's picture at 16:10, small enough that the sections stay in reach.
+ * With `onOpen` a click shows the full preview: a mouse shortcut for the
+ * Preview button beside it, which is the one keyboard and screen readers use.
+ */
 function Preview({ src, contain, busy, onOpen }: { src: string; contain: boolean; busy: boolean; onOpen?: () => void }) {
   const img = (
     // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; the asset's name is the dialog's name
@@ -232,7 +293,7 @@ function Preview({ src, contain, busy, onOpen }: { src: string; contain: boolean
   );
   const cls = "block aspect-[16/10] w-32 flex-none overflow-hidden rounded-lg border border-line bg-wash sm:w-48";
   return onOpen
-    ? <button type="button" onClick={onOpen} aria-label="Show the picture large in the proof view" className={cx(cls, "transition-[border-color,transform] duration-150 ease-snap hover:border-line-strong active:scale-[0.98]", FOCUS)}>{img}</button>
+    ? <button type="button" onClick={onOpen} tabIndex={-1} aria-hidden className={cx(cls, "cursor-zoom-in transition-[border-color,transform] duration-150 ease-snap hover:border-line-strong active:scale-[0.98]")}>{img}</button>
     : <span className={cls}>{img}</span>;
 }
 
@@ -503,7 +564,7 @@ function FileGlyph({ f }: { f: FileRef }) {
  * to find them. Download, Download all, Replace and upload all happen here.
  * Its link lives in the header (Open, Copy link), so it is not repeated here.
  */
-function AttachedFiles({ a, onProof, onEdit }: { a: Asset; onProof?: () => void; onEdit?: () => void }) {
+function AttachedFiles({ a, onProof, onEdit, onPreview }: { a: Asset; onProof?: () => void; onEdit?: () => void; onPreview: (f: FileRef) => void }) {
   const { ws, toast } = useApp();
   const [run] = useAction();
   const router = useRouter();
@@ -544,7 +605,7 @@ function AttachedFiles({ a, onProof, onEdit }: { a: Asset; onProof?: () => void;
     }
   };
 
-  /** Swaps one stored file for a new one in the same place in the list. The server drops the old copy once nothing points at it. */
+  /** Swaps one stored file for a new one in the same place in the list. The server keeps the old one as an earlier version of it. */
   const replace = async (key: string, f: File) => {
     const old = files.find((x) => x.key === key);
     if (!old) return;
@@ -558,7 +619,7 @@ function AttachedFiles({ a, onProof, onEdit }: { a: Asset; onProof?: () => void;
       const res = await fetch(`/api/assets/${a.id}/files`, { method: "POST", body: fd });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) toast(body.error ?? "The file could not be replaced.", "error");
-      else { toast(`Replaced ${old.name}`); router.refresh(); }
+      else { toast(`Replaced ${old.name}. The earlier file is kept under its earlier versions.`); router.refresh(); }
     } catch {
       toast("The file could not be replaced. Check your connection and try again.", "error");
     } finally {
@@ -619,30 +680,39 @@ function AttachedFiles({ a, onProof, onEdit }: { a: Asset; onProof?: () => void;
       {files.length > 0 && (
         <ul aria-label="Attached files" className="m-0 list-none overflow-hidden rounded-xl border border-line p-0">
           {rows.map((f) => (
-            <li key={f.name} className="group flex items-center gap-2.5 border-t border-divider px-3 py-2 first:border-t-0 sm:gap-3 sm:px-3.5">
-              <FileGlyph f={f} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium text-ink">{f.name}</span>
-                <span className="block text-small tabular-nums text-mute-2">{[f.size, extOf(f.name)].filter(Boolean).join(" · ")}</span>
-              </span>
-              {f.url ? (
-                <a href={f.url} download={f.name} aria-label={`Download ${f.name}`} title={`Download ${f.name}`} className={cx(ROW_BTN, "text-accent")}>
-                  <Download aria-hidden size={14} /><span className="hidden sm:inline">Download</span>
-                </a>
-              ) : (
-                <span title="Listed for reference. The file itself was never uploaded here." className="flex-none rounded-lg border border-dashed border-line px-2.5 py-1 text-small text-mute-2">Not uploaded</span>
-              )}
-              {canUpload && f.key && (
-                <button type="button" aria-label={`Replace ${f.name}`} title={`Replace ${f.name} with a new file`} disabled={busy || !!swapping} onClick={() => pick(f.key!)} className={cx(ROW_BTN, "text-ink-3")}>
-                  <RefreshCw aria-hidden size={14} className={cx(swapping === f.key && "animate-spin motion-reduce:animate-none")} /><span className="hidden sm:inline">Replace</span>
-                </button>
-              )}
-              {canEdit && (
-                <button type="button" aria-label={`Remove ${f.name}`} title={`Remove ${f.name}`} onClick={() => run(removeFile, a.id, f.name)}
-                  className="flex size-7 flex-none items-center justify-center rounded-lg text-mute-2 opacity-0 transition hover:bg-hover hover:text-danger group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100">
-                  <X aria-hidden size={15} />
-                </button>
-              )}
+            <li key={f.name} data-file={f.name} className="group border-t border-divider px-3 py-2 first:border-t-0 sm:px-3.5">
+              <div className="flex items-center gap-3">
+                <FileGlyph f={f} />
+                <span className="min-w-0 flex-1">
+                  {showable(f) ? (
+                    <button type="button" onClick={() => onPreview(f)} aria-label={`Preview ${f.name}`} title={`Preview ${f.name}`}
+                      className="block max-w-full truncate rounded-sm text-left text-body font-medium text-ink hover:underline">{f.name}</button>
+                  ) : (
+                    <span className="block truncate text-body font-medium text-ink">{f.name}</span>
+                  )}
+                  <span className="block text-small tabular-nums text-mute-2">{[f.size, extOf(f.name)].filter(Boolean).join(" · ")}</span>
+                </span>
+                {f.url ? (
+                  <a href={f.url} download={f.name} aria-label={`Download ${f.name}`} title={`Download ${f.name}`} className={cx(ROW_BTN, "text-accent")}>
+                    <Download aria-hidden size={14} /><span className="hidden sm:inline">Download</span>
+                  </a>
+                ) : (
+                  <span title="Listed for reference. The file itself was never uploaded here." className="flex-none rounded-lg border border-dashed border-line px-2.5 py-1 text-small text-mute-2">Not uploaded</span>
+                )}
+                {canUpload && f.key && (
+                  <button type="button" aria-label={`Replace ${f.name}`} title={`Replace ${f.name} with a new file. This one is kept as an earlier version.`} disabled={busy || !!swapping} onClick={() => pick(f.key!)} className={cx(ROW_BTN, "text-ink-3")}>
+                    <RefreshCw aria-hidden size={14} className={cx(swapping === f.key && "animate-spin motion-reduce:animate-none")} /><span className="hidden sm:inline">Replace</span>
+                  </button>
+                )}
+                {canEdit && (
+                  <button type="button" aria-label={`Remove ${f.name}`} title={`Remove ${f.name}`} onClick={() => run(removeFile, a.id, f.name)}
+                    className="flex size-7 flex-none items-center justify-center rounded-lg text-mute-2 opacity-0 transition hover:bg-hover hover:text-danger group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100">
+                    <X aria-hidden size={15} />
+                  </button>
+                )}
+              </div>
+              {/* Lined up with the file name: glyph 36px plus the 12px gap. */}
+              {f.key && <FileHistory assetId={a.id} fileKey={f.key} className="mt-1 pl-12" />}
             </li>
           ))}
           {rows.length < files.length && (
@@ -683,6 +753,7 @@ function History({ a }: { a: Asset }) {
     return () => { alive = false; };
   }, [a.id, a.version]);
   const acts = ws.d.activity.filter((x) => x.type === "asset" && x.itemId === a.id);
+  const who = (id: string) => (id === LINK_CHECKER ? { first: "BrandOS", initials: "B" } : { first: ws.first(id), initials: ws.user(id).initials });
   return (
     <div>
       <h3 className={SECTION}>Activity</h3>
@@ -690,10 +761,10 @@ function History({ a }: { a: Asset }) {
         <ul className="m-0 mb-6 list-none rounded-xl border border-line px-4 py-1">
           {acts.map((x) => (
             <li key={x.id} className="flex items-start gap-3 border-t border-divider py-2.5 first:border-t-0">
-              <Avatar initials={ws.user(x.userId).initials} size={22} className="mt-0.5" />
+              <Avatar initials={who(x.userId).initials} size={22} className="mt-0.5" />
               <span className="min-w-0 flex-1">
                 <span className="block break-words text-body text-ink-3">{x.action.charAt(0).toUpperCase() + x.action.slice(1)}{x.field ? `: ${x.field}` : ""}</span>
-                <span className="block text-small text-mute-2">{ws.first(x.userId)} · {ws.ago(x.createdAt)}</span>
+                <span className="block text-small text-mute-2">{who(x.userId).first} · {ws.ago(x.createdAt)}</span>
               </span>
             </li>
           ))}
