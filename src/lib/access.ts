@@ -26,9 +26,19 @@ export type Perm =
   | "kit"       // change a Brand Kit (colours, fonts, logo rules, voice)
   | "library"   // change the Global Library
   | "share"     // create and revoke client share links
-  | "del"       // delete and use the recycle bin
+  | "del"       // delete assets (files and all) and use the recycle bin; archive whole clients and brands
   | "export"    // download all the data
   | "access";   // invite people and change what they can see and do
+
+/**
+ * Clients, brands (sub-brands too), services and offers are never deleted,
+ * not even by an admin. They are archived instead, which hides them and can
+ * be undone; an offer that was cancelled or added by mistake goes back to
+ * draft. Assets and the files on them are the only work that can be deleted.
+ */
+export const NEVER_DELETED = ["client", "brand", "service", "offer"] as const;
+export const neverDeleted = (kind: string) => (NEVER_DELETED as readonly string[]).includes(kind);
+export const NEVER_DELETED_NOTE = "Clients, brands, services and offers are never deleted. Archive it instead — that hides it and can be undone.";
 
 /**
  * Roles offered when inviting people. BrandOS is internal only, so the
@@ -45,7 +55,7 @@ const row = (comment: boolean, review: boolean, edit: boolean, publish: boolean,
 export const PERMISSIONS: Record<Access, Record<Perm, boolean>> = {
   //                 comment review edit publish archive structure kit library share del export access
   Admin:       row(T, T, T, T, T, T, T, T, T, T, T, T),
-  // Deleting anything, and archiving whole clients or brands, is for admins only.
+  // Deleting assets, and archiving whole clients or brands, is for admins only. Nobody deletes the rest (see NEVER_DELETED).
   Manager:     row(T, T, T, T, T, T, T, T, T, F, F, F),
   Editor:      row(T, T, T, T, T, F, F, F, F, F, F, F),
   Contributor: row(T, F, T, F, F, F, F, F, F, F, F, F),
@@ -68,14 +78,14 @@ export const PERM_INFO: { perm: Perm | "view" | "own"; label: string; note: stri
   { perm: "kit", label: "Edit Brand Kits", note: "Colours, fonts, logo rules and voice." },
   { perm: "library", label: "Edit the Global Library", note: "Checklists, prompts, templates and SOPs." },
   { perm: "share", label: "Clear work to send", note: "Mark an asset as signed off and safe to send to the client." },
-  { perm: "del", label: "Delete, and archive clients or brands", note: "Anything that removes data or a whole client. Admins only; deleted things wait in the recycle bin for 30 days." },
+  { perm: "del", label: "Delete assets, and archive clients or brands", note: "Delete assets with their files, and CTAs, and use the recycle bin, where they wait 30 days. Clients, brands, services and offers are never deleted by anyone: they are archived." },
   { perm: "export", label: "Export all data", note: "Download everything as JSON." },
   { perm: "access", label: "Manage the team", note: "Invite people, set roles and choose what they see." },
 ];
 
 export const ROLE_INFO: Record<Access, { summary: string; color: string; guest?: boolean }> = {
-  Admin: { summary: "Everything, everywhere. The only role that manages the team, deletes, archives clients and exports data.", color: "#6D28D9" },
-  Manager: { summary: "Runs client work end to end: sets up brands and owns Brand Kits and strategy. Cannot delete.", color: "#1D4ED8" },
+  Admin: { summary: "Everything, everywhere. The only role that manages the team, deletes assets, archives whole clients and brands, and exports data.", color: "#6D28D9" },
+  Manager: { summary: "Runs client work end to end: sets up brands and owns Brand Kits and strategy. Cannot delete assets or archive whole clients.", color: "#1D4ED8" },
   Editor: { summary: "Creates and edits all work in their clients, reviews it and marks it Live.", color: "#047857" },
   Contributor: { summary: "Creates work and edits what they own, then sends it for review. Cannot approve.", color: "#0E7490" },
   Reviewer: { summary: "Reads, comments, approves or sends back. Changes nothing themselves.", color: "#B45309" },

@@ -1,67 +1,50 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
-import { onColor } from "@/lib/color";
-import { parsePath } from "@/lib/routes";
+import { NEVER_DELETED_NOTE, neverDeleted } from "@/lib/access";
+import { NEW_MENU_EVENT } from "@/components/app/new-menu";
 import { deleteGroup, deleteItem } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Btn } from "@/components/ui";
 import { Footer, Modal } from "./frame";
 import type { DeleteKind } from "./types";
 
-/** "What do you need?" — pick the thing, the system works out where it belongs. */
+/**
+ * The old "What do you need?" chooser is now the header's New menu. Anything
+ * that still asks for it (the N key) gets that menu instead of a dialog.
+ */
 export function NewModal() {
-  const { ws, open } = useApp();
-  const pathname = usePathname();
-  const p = parsePath(pathname);
-  const active =
-    p.view === "brand" ? ws.brand(p.id) :
-    p.view === "offer" ? ws.brand(ws.offer(p.id)?.brandId) :
-    p.view === "service" ? ws.brand(ws.service(p.id)?.brandId) : null;
-  const b = active ?? ws.d.brands.find((x) => !x.archived) ?? null;
-  const offerHere = p.view === "offer" ? ws.offer(p.id) : null;
-  const serviceHere = p.view === "service" ? ws.service(p.id) : null;
-  const clientId = active?.clientId ?? (p.view === "client" ? p.id : undefined) ?? ws.d.clients.find((c) => !c.archived)?.id;
-
-  const options = [
-    b && ws.can("edit") && { label: "A landing page, email or ad", sub: "A campaign asset that supports an offer", run: () => open({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: offerHere ? [offerHere.id] : [] }, step: 0 }) },
-    b && ws.can("edit") && { label: "An offer", sub: "Positioning, goals, promise and proof", run: () => open({ kind: "offer", draft: { brandId: b.id, serviceId: serviceHere?.id ?? null, segment: "All segments", status: "Ideation" } }) },
-    b && ws.can("edit") && { label: "A service", sub: "A capability you sell, positioned per segment", run: () => open({ kind: "service", draft: { brandId: b.id } }) },
-    b && (ws.can("structure") || ws.can("kit")) && { label: "A goal", sub: "A broad outcome offers can chase", run: () => open({ kind: "goal", brandId: b.id }) },
-    ws.can("library") && { label: "A checklist or prompt", sub: "Reusable process, kept in the Global Library", run: () => open({ kind: "asset", draft: { brandId: null, type: "Checklist", status: "Live", offerIds: [] }, step: 3 }) },
-    b && ws.can("edit") && { label: "A CTA", sub: "Reusable button with real colours", run: () => open({ kind: "cta", draft: { brandId: b.id, bg: b.primary, fg: onColor(b.primary), style: "solid" } }) },
-    clientId && ws.can("structure") && { label: "A brand", sub: "A new brand under a client", run: () => open({ kind: "brand", draft: { clientId } }) },
-    ws.can("structure") && { label: "A client", sub: "A new organisation you work for", run: () => open({ kind: "client" }) },
-  ].filter(Boolean) as { label: string; sub: string; run: () => void }[];
-
-  return (
-    <Modal title="What do you need?" sub={`Pick the thing you actually want. The system works out where it belongs.${b ? ` New work goes into ${b.name}.` : ""}`} bodyClass="gap-0 px-3.5 pb-4 pt-2">
-      {options.map((o, i) => (
-        <button key={o.label} type="button" data-autofocus={i === 0 ? "" : undefined} onClick={o.run} className="w-full rounded-[10px] p-3 text-left hover:bg-hover focus-visible:bg-hover">
-          <span className="mb-0.5 block text-[15px] font-semibold">{o.label}</span>
-          <span className="block text-[14.5px] text-mute-2">{o.sub}</span>
-        </button>
-      ))}
-    </Modal>
-  );
+  const { close } = useApp();
+  useEffect(() => {
+    close();
+    window.dispatchEvent(new CustomEvent(NEW_MENU_EVENT));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as it opens
+  }, []);
+  return null;
 }
 
-const CONFIRM_BODY: Record<DeleteKind, string> = {
-  asset: "The asset is removed and every link to it disappears. The offers stay.",
-  offer: "The offer is removed. Its assets stay in the library — only the links go.",
-  service: "The service goes. Its offers survive and become standalone.",
+/** What deleting each kind does. Clients, brands, services and offers are never deleted, so they have no entry. */
+const CONFIRM_BODY: Partial<Record<DeleteKind, string>> = {
+  asset: "The asset and its files are removed, and every link to it disappears. The offers stay.",
   cta: "The button is removed from every offer and asset that used it.",
   person: "They lose access straight away. What they made stays.",
   group: "The group goes. People in it lose whatever it gave them.",
-  brand: "Everything inside it goes too — sub-brands, services, offers, assets and CTAs.",
-  client: "Everything inside it goes too — every brand, offer and asset.",
 };
 
 export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: string; label: string; back?: string }) {
   const { close, closeAsset, assetId } = useApp();
   const router = useRouter();
   const [run, pending] = useAction();
+  const body = CONFIRM_BODY[item];
+  // Anything that still asks to delete a client, brand, service or offer gets the rule instead of a Delete button.
+  if (neverDeleted(item) || !body) {
+    return (
+      <Modal title={`${label} is never deleted`} width={420} footer={<Btn variant="primary" onClick={close}>Got it</Btn>}>
+        <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">{NEVER_DELETED_NOTE}</div>
+      </Modal>
+    );
+  }
   const go = async () => {
     const r = item === "group" ? await run(deleteGroup, id) : await run(deleteItem, item, id);
     if (!r.ok) return;
@@ -71,7 +54,7 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
   };
   return (
     <Modal title={`Delete ${label}?`} width={420} onSubmit={go} footer={<Footer saveLabel="Delete" pending={pending} saveVariant="danger-solid" />}>
-      <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">{CONFIRM_BODY[item]}</div>
+      <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">{body}</div>
       <div className="text-[14px] text-mute-3">It goes to the recycle bin for 30 days, and an admin can restore it from there.</div>
     </Modal>
   );
@@ -79,7 +62,7 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
 
 const KEYS: [string, string][] = [
   ["⌘ K  or  /", "Search everything"],
-  ["N", "Create something new"],
+  ["N", "Open the New menu"],
   ["I", "Open your queue"],
   ["[", "Fold or unfold the sidebar"],
   ["G then S", "Go to Dashboard"],

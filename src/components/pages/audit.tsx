@@ -5,7 +5,9 @@ import Link from "next/link";
 import { Download } from "lucide-react";
 import { useApp } from "@/components/app/provider";
 import { Avatar, Btn, Card, Empty, Field, Page, PageHead, Tabs, cx } from "@/components/ui";
+import { LocalTime } from "@/components/local-time";
 import { AUDIT_KINDS, AUDIT_PAGE_SIZE, SECURITY, auditSearch, type AuditQuery } from "@/lib/audit";
+import { fmtNumber } from "@/lib/format";
 
 export type AuditRow = { id: string; at: number; userId: string; who: string; action: string; type: string; label: string; field: string };
 
@@ -15,9 +17,6 @@ const TYPE: Record<string, string> = {
 };
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0] ?? "").join("").slice(0, 2).toUpperCase() || "?";
-
-/** The same instant for everyone, whatever their timezone, so server and browser agree. */
-const utc = (t: number) => new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC";
 
 export function AuditLog({ allowed, rows, people, total, query }: {
   allowed: boolean; rows: AuditRow[]; people: { id: string; name: string; access: string }[]; total: number; query: AuditQuery;
@@ -76,15 +75,15 @@ export function AuditLog({ allowed, rows, people, total, query }: {
         <Empty title={filtered ? "Nothing matches those filters" : "Nothing logged yet"} body={filtered ? "Try a wider date range, another person or a different search." : "Sign-ins, access changes, shares and deletions will show up here as they happen."} />
       ) : (
         <>
-          <p className="mb-2 mt-0 text-[13.5px] text-mute-3">Showing {first}–{last} of {total.toLocaleString("en")} · dates are in UTC</p>
+          <p className="mb-2 mt-0 text-[13.5px] text-mute-3">Showing {first}–{last} of {fmtNumber(total)} · times are your local time</p>
           <Card className="overflow-hidden">
             {rows.map((r) => {
               const failed = r.action.startsWith("failed");
               return (
                 <div key={r.id} className="flex flex-wrap items-start gap-x-4 gap-y-1.5 border-t border-divider px-5 py-3 transition-colors first:border-t-0 hover:bg-wash">
-                  <span className="w-[150px] flex-none pt-0.5 text-[13px] text-mute-3" title={utc(r.at)}>
+                  <span className="w-[150px] flex-none pt-0.5 text-[13px] text-mute-3">
                     <span className="block text-ink-3">{ws.ago(r.at)}</span>
-                    <span className="block font-mono text-[12px]">{utc(r.at)}</span>
+                    <LocalTime at={r.at} className="block font-mono text-[12px]" />
                   </span>
                   <span className="min-w-[220px] flex-1">
                     <span className="flex items-center gap-2 text-[15px]">

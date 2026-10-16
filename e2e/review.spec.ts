@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { settle, signIn } from "./helpers";
+import { callAction } from "./server-action";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
-// Checks for the 28 Sept client review.
+// Checks for the 28 Sep client review.
 
 test("brand sections live in the sidebar, not in a second row of tabs", async ({ page }) => {
   await signIn(page);
@@ -38,7 +39,7 @@ test("the dashboard opens on the lists, with no due dates or stat tiles", async 
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Launches" })).toBeVisible();
 });
 
-test("only admins archive or delete clients, and only admins see the team", async ({ page }) => {
+test("only admins archive clients, nobody deletes them, and only admins see the team", async ({ page }) => {
   await signIn(page, "Joss Weekes"); // Manager
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(nav.getByRole("link", { name: /Team and access/ })).toHaveCount(0);
@@ -54,7 +55,27 @@ test("only admins archive or delete clients, and only admins see the team", asyn
   await settle(page);
   await page.getByRole("button", { name: "More client actions" }).click();
   await expect(page.getByRole("menuitem", { name: "Archive client" })).toBeVisible();
-  await expect(page.getByRole("menuitem", { name: "Delete client" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /Delete/ })).toHaveCount(0);
+});
+
+test("nobody can delete a client, brand, sub-brand, service or offer, not even an admin", async ({ page }) => {
+  await signIn(page); // Admin
+  // Not offered anywhere.
+  for (const [path, more] of [["/clients/cl2", "More client actions"], ["/brands/br3", null], ["/services/sv1", null], ["/offers/of19", "More offer actions"]] as const) {
+    await page.goto(path);
+    await settle(page);
+    if (more && (await page.getByRole("button", { name: more }).count())) await page.getByRole("button", { name: more }).click();
+    await expect(page.getByRole("button", { name: /^Delete (client|brand|service|offer)/ })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: /^Delete (client|brand|service|offer)/ })).toHaveCount(0);
+  }
+  // And refused by the server when asked directly.
+  for (const [kind, id] of [["brand", "br3"], ["offer", "of19"], ["client", "cl2"], ["service", "sv1"]]) {
+    const body = await callAction(page, "/", "app/actions.ts", "deleteItem", [kind, id]);
+    expect(body).toContain("Clients, brands, services and offers are never deleted. Archive it instead");
+  }
+  await page.goto("/brands/br3/offers");
+  await settle(page);
+  await expect(page.getByText("Thursday Night Sign-ups")).toBeVisible();
 });
 
 test("the client page shows the primary contact, and activity keeps the change visible", async ({ page }) => {

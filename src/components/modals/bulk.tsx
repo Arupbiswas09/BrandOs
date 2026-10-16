@@ -39,7 +39,7 @@ export function BulkDeleteModal({ ids, onDone }: Props) {
   return (
     <Modal title={`Delete ${plural(ids.length, "asset")}?`} width={420} onSubmit={async () => { if (await go(ids, "delete")) close(); }}
       footer={<Footer saveLabel={`Delete ${ids.length}`} pending={pending} saveVariant="danger-solid" />}>
-      <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">Each one is unlinked from its offers, and its notes and earlier versions go with it.</div>
+      <div className="text-[15px] leading-[1.6] text-mute-1 text-pretty">Each one is unlinked from its offers, and its files, notes and earlier versions go with it.</div>
       <div className="text-[14px] text-mute-3">They go to the recycle bin for 30 days, and an admin can restore them from there.</div>
     </Modal>
   );

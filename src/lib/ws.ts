@@ -1,6 +1,7 @@
 import type { Asset, AssetFolder, Brand, Offer } from "@/db/schema";
 import { can, canChange, scopeLabel, type Perm } from "./access";
 import { ASSET_TYPES, GOAL_PALETTE, NEUTRAL, roleOf, type AssetCategory, type AssetRole } from "./constants";
+import { searchWorkspace, type SearchHit } from "./search";
 import { timeAgo } from "./time";
 import type { PublicUser, Workspace } from "./types";
 import { waitOn } from "./types";
@@ -280,33 +281,13 @@ export class WS {
   }
 
   /* ---------- search ---------- */
-  search(q: string) {
-    const t = q.trim().toLowerCase();
-    if (!t) return [];
-    const hit = (...v: (string | null | undefined)[]) => v.some((x) => (x ?? "").toLowerCase().includes(t));
-    type Row = { kind: string; id: string; title: string; sub: string; code: string; color: string; archived: boolean };
-    const out: Row[] = [];
-    const arch = (x: { archived?: boolean }) => (x.archived ? "Archived · " : "");
-    for (const c of this.d.clients) if (hit(c.name, c.kind)) out.push({ kind: "Client", id: c.id, title: c.name, sub: arch(c) + c.kind, code: "CL", color: NEUTRAL, archived: c.archived });
-    for (const b of this.d.brands) if (hit(b.name, b.tagline)) out.push({ kind: "Brand", id: b.id, title: b.name, sub: `${arch(b)}${this.client(b.clientId)?.name} · ${b.tagline}`, code: b.mark, color: b.primary, archived: b.archived });
-    for (const v of this.d.services) if (hit(v.name, v.short, v.description)) {
-      const b = this.brand(v.brandId);
-      out.push({ kind: "Service", id: v.id, title: v.name, sub: `${arch(v)}${b?.name} · ${this.offersOfService(v.id).length} offers`, code: "SVC", color: b?.primary ?? NEUTRAL, archived: v.archived });
-    }
-    for (const o of this.d.offers) if (hit(o.name, o.short, o.positioning, o.tags.join(" "))) {
-      const b = this.brand(o.brandId);
-      out.push({ kind: "Offer", id: o.id, title: o.name, sub: `${arch(o)}${b?.name} · ${o.segment}`, code: "OF", color: b?.primary ?? NEUTRAL, archived: o.archived });
-    }
-    for (const a of this.d.assets) if (hit(a.name, a.short, a.type, a.tags.join(" "), a.notes, a.copy?.headline, a.copy?.body)) {
-      const b = this.brand(a.brandId);
-      const n = this.linkedOfferIds(a.id).length;
-      out.push({ kind: "Asset", id: a.id, title: a.name, sub: `${arch(a)}${b ? b.name : "Global Library"} · ${a.type}${n ? ` · ${n} offers` : ""}`, code: this.codeOf(a), color: b?.primary ?? NEUTRAL, archived: a.archived });
-    }
-    for (const c of this.d.ctas) if (hit(c.text, c.url)) {
-      out.push({ kind: "CTA", id: c.id, title: c.text, sub: `${this.brand(c.brandId)?.name} · ${c.url}`, code: "CTA", color: c.bg === "transparent" ? c.fg : c.bg, archived: false });
-    }
-    // Archived things sink to the bottom; exact-prefix title matches rise.
-    return out.sort((x, y) => Number(x.archived) - Number(y.archived) || Number(!x.title.toLowerCase().startsWith(t)) - Number(!y.title.toLowerCase().startsWith(t)));
+
+  /**
+   * The one search: everything this person can see, best match first. The
+   * index is built once per workspace snapshot (see src/lib/search.ts).
+   */
+  search(q: string, opts?: { owner?: string | null; limit?: number }): SearchHit[] {
+    return searchWorkspace(this, q, opts);
   }
 }
 

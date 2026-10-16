@@ -17,7 +17,8 @@ import { useAction, useApp } from "./provider";
 import { PALETTES, PALETTE_KEYS, themeVars, type Palette, type Takeover } from "./theme";
 import { Avatar, Mark, cx } from "@/components/ui";
 import { AssetDrawer } from "@/components/drawer/asset-drawer";
-import { CommandPalette } from "./command-palette";
+import { HeaderSearch, SEARCH_INPUT_ID } from "./command-palette";
+import { NewMenu } from "./new-menu";
 import { Inbox, useOnYou } from "./inbox";
 import { ModalHost } from "@/components/modals/host";
 import { Toasts } from "./toasts";
@@ -78,7 +79,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       <MobileNav />
       <AssetDrawer />
-      <CommandPalette />
       <Inbox />
       <ModalHost />
       <Shortcuts />
@@ -314,7 +314,8 @@ function MobileNav() {
         <Link href="/calendar" className={item(p.view === "calendar")} aria-current={p.view === "calendar" ? "page" : undefined}>
           <span className={pill(p.view === "calendar")}><CalendarDays className={ic} /></span>Launches
         </Link>
-        <button type="button" onClick={() => setCmdk(true)} aria-haspopup="dialog" className={item(cmdk)}>
+        {/* Focused in the tap itself, so phones bring up the keyboard. */}
+        <button type="button" onClick={() => { document.getElementById(SEARCH_INPUT_ID)?.focus(); setCmdk(true); }} aria-controls={SEARCH_INPUT_ID} className={item(cmdk)}>
           <span className={pill(cmdk)}><Search className={ic} /></span>Search
         </button>
         <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog" className={item(inbox)}>
@@ -335,7 +336,7 @@ function MobileNav() {
 /* ================================================================ header */
 
 function Header({ mini }: { mini: boolean }) {
-  const { ws, open, setNav, setCmdk, setInbox } = useApp();
+  const { ws, setNav, setInbox } = useApp();
   const brand = useActiveBrand();
   const [mode] = useTakeover();
   const themed = mode !== "off" ? brand : null;
@@ -360,22 +361,14 @@ function Header({ mini }: { mini: boolean }) {
         <Menu className="h-5 w-5" />
       </button>
       {themed && <span aria-hidden title={themed.name} className="flex-none"><Mark mark={themed.mark} color={themed.primary} size={30} radius={8} className="text-[11px]" /></span>}
-      <button type="button" onClick={() => setCmdk(true)} aria-haspopup="dialog" className="flex h-10 min-w-0 max-w-2xl flex-1 items-center gap-2.5 rounded-lg border border-line bg-wash px-3 text-left text-[14.5px] text-mute-4 transition-colors duration-150 hover:border-line-strong hover:bg-white">
-        <Search className="h-[18px] w-[18px] flex-none text-mute-5" />
-        <span className="min-w-0 flex-1 truncate">Search clients, brands, offers, assets…</span>
-        <kbd className="kbd hidden flex-none sm:inline-flex">⌘K</kbd>
-      </button>
+      <HeaderSearch />
       <span className="flex-1" />
       {readOnly && (
         <span className="hidden flex-none rounded-md px-2.5 py-1 text-[13px] font-semibold xl:inline" style={{ background: hexA(ACCESS_COLOR[me.access], 0.12), color: readable(ACCESS_COLOR[me.access], 0.12) }}>
           {readOnly}
         </span>
       )}
-      {ws.can("edit") && (
-        <button type="button" onClick={() => open({ kind: "new" })} className="flex h-10 flex-none items-center gap-2 rounded-md bg-accent px-4 text-[14.5px] font-semibold text-on-accent transition hover:brightness-110 theme-fade">
-          <Plus className="h-4 w-4" /><span className="sr-only sm:not-sr-only">New</span>
-        </button>
-      )}
+      <NewMenu />
       <button type="button" onClick={() => setInbox(true)} aria-label={waiting ? `Inbox, ${waiting} waiting` : "Inbox"} title="Inbox ( I )" className="relative hidden h-10 w-10 flex-none items-center justify-center rounded-md text-mute-1 transition-colors hover:bg-hover hover:text-ink lg:flex">
         <Bell className="h-5 w-5" />
         {waiting > 0 && <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#E11D48] px-1 text-[11px] font-bold text-white ring-2 ring-white">{waiting}</span>}

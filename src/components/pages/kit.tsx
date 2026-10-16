@@ -1,16 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, type ReactNode } from "react";
-import { Check, CheckCircle2, Circle, Copy, Download, FileText, Pencil, Printer, X } from "lucide-react";
-import type { Brand, BrandColour } from "@/db/schema";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Check, CheckCircle2, Circle, Copy, Download, ExternalLink, FileText, Pencil, Printer, Upload, X } from "lucide-react";
+import type { Asset, Brand, BrandColour, FileRef } from "@/db/schema";
+import { saveAsset } from "@/app/actions";
 import { cmykText, onColor, rgbText, wcag } from "@/lib/color";
+import { fmtDate } from "@/lib/format";
 import { defaultScale, kitScore } from "@/lib/kit";
-import { live } from "@/lib/ws";
-import { useApp } from "@/components/app/provider";
+import { checkBatch } from "@/lib/upload-policy";
+import { live, type WS } from "@/lib/ws";
+import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard } from "@/components/cards";
 import { Btn, Card, cx } from "@/components/ui";
 
 const SECTIONS = [
+  ["kit-pdf", "Guidelines PDF"],
   ["kit-logo", "Logo"],
   ["kit-colour", "Colour"],
   ["kit-type", "Typography"],
@@ -100,6 +105,9 @@ export function BrandKit({ b }: { b: Brand }) {
           {canEdit && missing.length > 0 && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="mt-3 text-[14px] font-medium text-accent hover:underline">Fill in {missing[0].label.toLowerCase()} →</button>}
         </Card>
       </div>
+
+      {/* ---------- the guidelines document itself */}
+      <GuidelinesPdf b={b} />
 
       {/* ---------- logo */}
       <Section id="kit-logo" title="Logo" sub="The master files and the rules for using them.">
@@ -254,17 +262,151 @@ export function BrandKit({ b }: { b: Brand }) {
         <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
           {fontFiles.map((a) => <AssetCard key={a.id} a={a} variant="font" />)}
           {templates.map((a) => <AssetCard key={a.id} a={a} variant="kit" />)}
-          {b.guidelines.map((g) => (
-            <div key={g.name} className="flex items-center gap-3 rounded-[13px] border border-line bg-white px-4 py-3">
-              <FileText className="h-5 w-5 flex-none text-accent" />
-              <span className="min-w-0 flex-1"><span className="block truncate text-[14.5px] font-medium">{g.name}</span><span className="block text-[13px] text-mute-3">{g.size}</span></span>
-              {g.url && <a href={g.url} aria-label={`Download ${g.name}`} className="text-mute-3 hover:text-ink"><Download className="h-4 w-4" /></a>}
-            </div>
-          ))}
-          {!fontFiles.length && !templates.length && !b.guidelines.length && <div className="col-span-full"><EmptyBlock text="Fonts, guideline PDFs and templates added as master files show up here." /></div>}
+          {!fontFiles.length && !templates.length && <div className="col-span-full"><EmptyBlock text="Fonts, guideline documents and templates added as master files show up here." /></div>}
         </div>
       </Section>
     </>
+  );
+}
+
+/* ---------------------------------------------------------------- guidelines PDF */
+
+type GuideFile = { file: FileRef; asset: Asset | null };
+
+const isPdf = (f: Pick<FileRef, "name" | "type">) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
+/** Only files BrandOS stores can show inline: the page may frame its own origin and nothing else. */
+const embeddable = (f: FileRef) => !!f.url?.startsWith("/api/files/") && isPdf(f);
+
+/** The brand's live Guidelines assets, most recently changed first. */
+const guideAssets = (ws: WS, b: Brand) =>
+  live(ws.assetsOf(b.id)).filter((a) => a.type === "Guidelines").sort((x, y) => +new Date(y.updatedAt) - +new Date(x.updatedAt));
+
+/**
+ * Every guidelines file a brand has: the files on its Guidelines assets
+ * (newest asset first, newest upload first), then the files kept on the
+ * brand itself.
+ */
+function guideFiles(ws: WS, b: Brand): GuideFile[] {
+  return [
+    ...guideAssets(ws, b).flatMap((a) => [...a.files].reverse().map((file) => ({ file, asset: a }))),
+    ...b.guidelines.map((file) => ({ file, asset: null })),
+  ];
+}
+
+/**
+ * The brand's guidelines PDF, readable on the page: the newest PDF BrandOS
+ * holds for it. People who can upload add one, or a newer version, to the
+ * brand's Guidelines asset, which is made for them if there is none yet.
+ */
+function GuidelinesPdf({ b }: { b: Brand }) {
+  const { ws, toast } = useApp();
+  const [run] = useAction();
+  const router = useRouter();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState<string | null>(null);
+
+  const files = guideFiles(ws, b);
+  const pdfs = files.filter((g) => embeddable(g.file));
+  const shown = pdfs.find((g) => g.file.key === pick) ?? pdfs[0] ?? null;
+  const others = files.filter((g) => g !== shown);
+  // New uploads go to the newest Guidelines asset, so they sit with the files already there.
+  const target = guideAssets(ws, b)[0] ?? null;
+  const canUpload = ws.d.uploadsEnabled && ws.can("upload") && (target ? ws.canChange(target) : ws.can("edit"));
+
+  const upload = async (f: File) => {
+    if (!isPdf({ name: f.name, type: f.type })) { toast("Pick a PDF file.", "error"); return; }
+    const problem = checkBatch([{ name: f.name, size: f.size }], ws.d.uploads.mine);
+    if (problem) { toast(problem, "error"); return; }
+    setBusy(true);
+    try {
+      let id = target?.id;
+      if (!id) {
+        const r = await run(saveAsset, { brandId: b.id, name: "Brand guidelines", type: "Guidelines", channel: "Owned", status: "Ready", offerIds: [] });
+        if (!r.ok || !r.id) return;
+        id = r.id;
+      }
+      const fd = new FormData();
+      fd.append("file", f);
+      const res = await fetch(`/api/assets/${id}/files`, { method: "POST", body: fd });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) { toast(body.error ?? "The PDF did not upload. Try again.", "error"); return; }
+      setPick(null);
+      toast(`${f.name} is up`);
+      router.refresh();
+    } catch {
+      toast("The PDF did not upload. Check your connection and try again.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadBtn = (label: string, primary = false) => (
+    <Btn size="sm" variant={primary ? "primary" : "secondary"} disabled={busy} onClick={() => input.current?.click()}>
+      <Upload aria-hidden className="h-3.5 w-3.5" />{busy ? "Uploading…" : label}
+    </Btn>
+  );
+  // The guidelines' own version when the kit records one, otherwise the asset's.
+  const version = b.kit?.version ? `v${b.kit.version}` : shown?.asset ? `v${shown.asset.version}` : "";
+  const linkBtn = "inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-[7px] border border-line bg-white px-[11px] py-[5px] text-[14px] font-medium text-ink-3 transition-colors hover:border-line-strong hover:bg-wash";
+
+  return (
+    <Section id="kit-pdf" title="Guidelines PDF" sub="The full guidelines document, readable here without downloading it.">
+      {canUpload && (
+        <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" tabIndex={-1} aria-hidden
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
+      )}
+      {shown ? (
+        <Card className="overflow-hidden">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-divider px-4 py-3.5 sm:px-5">
+            <span className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] bg-soft text-accent"><FileText aria-hidden className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[16px] font-semibold tracking-[-0.01em]">{shown.asset?.name ?? shown.file.name.replace(/\.pdf$/i, "")}</span>
+              <span className="block truncate text-[13px] text-mute-3" suppressHydrationWarning>
+                {[version, shown.asset && `Updated ${fmtDate(shown.asset.updatedAt)}`, shown.file.name, shown.file.size].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+            <span className="flex flex-wrap gap-2">
+              <a href={`${shown.file.url}?inline=1`} target="_blank" rel="noopener" className={linkBtn}><ExternalLink aria-hidden className="h-3.5 w-3.5" />Open full screen<span className="sr-only"> (opens in a new tab)</span></a>
+              <a href={shown.file.url} download={shown.file.name} className={linkBtn}><Download aria-hidden className="h-3.5 w-3.5" />Download</a>
+            </span>
+          </div>
+          <iframe key={shown.file.key} src={`${shown.file.url}?inline=1`} title={`${b.name} guidelines: ${shown.file.name}`} className="block h-[520px] w-full border-0 bg-wash sm:h-[78vh]" />
+        </Card>
+      ) : (
+        <div className="flex flex-col items-center gap-3 rounded-[13px] border border-dashed border-line-strong px-6 py-8 text-center">
+          <p className="m-0 max-w-[52ch] text-[15px] text-mute-1 text-pretty">There is no guidelines PDF for {b.name} yet{canUpload ? "" : ". Someone who can upload files can add it"}.</p>
+          {canUpload && uploadBtn("Upload the guidelines PDF", true)}
+        </div>
+      )}
+      {shown && (others.length > 0 || canUpload) && (
+        <div className="mb-2 mt-4 flex items-center gap-3">
+          <span className="eyebrow flex-1">{others.length ? "Other guideline files" : ""}</span>
+          {canUpload && uploadBtn("Upload a new version")}
+        </div>
+      )}
+      {others.length > 0 && (
+        <div className={cx("rounded-[13px] border border-line bg-white", !shown && "mt-3")}>
+          {others.map((g, i) => (
+            <div key={`${g.asset?.id ?? "brand"}-${g.file.key ?? g.file.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-divider px-4 py-2.5 first:border-t-0 sm:px-5">
+              <FileText aria-hidden className="h-4 w-4 flex-none text-mute-4" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14.5px] font-medium">{g.file.name}</span>
+                <span className="block truncate text-[13px] text-mute-3">{[g.asset?.name ?? "Kept on the brand", g.file.size].filter(Boolean).join(" · ")}</span>
+              </span>
+              {!g.file.url ? (
+                <span className="text-[13px] text-mute-3">Not uploaded yet</span>
+              ) : (
+                <span className="flex items-center gap-1.5">
+                  {embeddable(g.file) && <Btn size="sm" variant="ghost" onClick={() => { setPick(g.file.key ?? null); document.getElementById("kit-pdf")?.scrollIntoView({ block: "start" }); }}>Show here</Btn>}
+                  <a href={g.file.url} download={g.file.name} aria-label={`Download ${g.file.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-mute-3 hover:bg-wash hover:text-ink"><Download aria-hidden className="h-4 w-4" /></a>
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
 
@@ -407,10 +549,11 @@ function ContrastGrid({ colours }: { colours: BrandColour[] }) {
   );
 }
 
+/** One logo rule on a plain card; only the small mark carries the colour. */
 function Rule({ children, bad }: { children: ReactNode; bad?: boolean }) {
   return (
-    <div className={cx("flex items-start gap-2 rounded-[11px] border px-3.5 py-2.5 text-[14px]", bad ? "border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]" : "border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]")}>
-      {bad ? <X className="mt-0.5 h-4 w-4 flex-none" /> : <Check className="mt-0.5 h-4 w-4 flex-none" />}
+    <div className="flex items-start gap-2 rounded-[11px] border border-line bg-white px-3.5 py-2.5 text-[14px] text-ink-3">
+      {bad ? <X aria-hidden className="mt-0.5 h-4 w-4 flex-none text-danger" /> : <Check aria-hidden className="mt-0.5 h-4 w-4 flex-none text-ok" />}
       <span>{children}</span>
     </div>
   );

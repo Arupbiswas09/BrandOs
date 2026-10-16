@@ -3,22 +3,24 @@ import { settle, signIn } from "./helpers";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
-test("a deleted brand comes back from the recycle bin with everything inside", async ({ page }) => {
+test("a deleted asset comes back from the recycle bin with its links", async ({ page }) => {
   await signIn(page);
-  await page.goto("/brands/br3");
+  await page.goto("/offers/of19?asset=as24");
   await settle(page);
-  await page.getByRole("button", { name: "Delete brand" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
-  await page.waitForURL(/\/clients\//);
-  await expect(page.getByRole("navigation", { name: "Main" }).getByText("St Aidan Youth")).toHaveCount(0);
+  const drawer = page.getByRole("dialog", { name: "Youth Instagram Set" });
+  await drawer.getByRole("button", { name: "Delete", exact: true }).click();
+  await page.getByRole("dialog", { name: "Delete Youth Instagram Set?" }).getByRole("button", { name: "Delete" }).click();
+  await expect(drawer).toHaveCount(0);
+  await expect(page.getByText("Youth Instagram Set")).toHaveCount(0);
 
   await page.goto("/trash");
   await settle(page);
-  await expect(page.getByText("St Aidan Youth")).toBeVisible();
-  await page.getByRole("button", { name: "Restore" }).first().click();
-  await expect(page.getByText("St Aidan Youth is back")).toBeVisible();
+  await expect(page.getByText("Youth Instagram Set")).toBeVisible();
+  await page.getByRole("button", { name: "Restore Youth Instagram Set" }).click();
+  await expect(page.getByText("Youth Instagram Set is back")).toBeVisible();
 
-  await page.goto("/brands/br3/offers");
+  // Back where it was: linked to its offer again.
+  await page.goto("/offers/of19");
   await settle(page);
-  await expect(page.getByText("Thursday Night Sign-ups")).toBeVisible();
+  await expect(page.getByText("Youth Instagram Set").first()).toBeVisible();
 });
