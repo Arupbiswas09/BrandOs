@@ -1,59 +1,102 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { settle, signIn } from "./helpers";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
-// Checks for the 16 Oct client review: brand home, the services tab and the service page.
+// Checks for the 16 Oct client review (brand home, services tab, service page) and the 17 Oct reorganisation.
 
 /** A 1×1 PNG, so the tests need no fixture files. */
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const ADS = "Google Search Ads — Grant Intent"; // as3, linked to offers of Google Ad Grant (sv1)
 
-const tile = (page: Page, label: string) => page.getByRole("button", { name: new RegExp(`^\\d+\\s*${label}$`) });
-
-test("the count tiles take you to their section", async ({ page }) => {
+test("the five counts are the service page's tabs, and the choice stays in the address", async ({ page }) => {
   await signIn(page);
   await page.goto("/services/sv1");
   await settle(page);
   await expect(page.getByText(/^SERVICE · Quokka For Good$/i)).toBeVisible();
-  await expect(page.getByText(/^\d+ assets? linked across \d+ offers?$/)).toBeVisible();
-  // The old "needs attention" list is gone; every asset is listed instead.
-  await expect(page.getByRole("heading", { name: "Needs attention" })).toHaveCount(0);
+  await expect(page.getByText(/^Updated .+ by \w+$/)).toBeVisible();
+  const tabs = page.getByRole("tablist", { name: "What this service holds" });
+  const tab = (label: string) => tabs.getByRole("tab", { name: new RegExp(`^\\d+\\s*${label}$`) });
+  await expect(tabs.getByRole("tab")).toHaveCount(6);
+  await expect(tab("Offers")).toHaveAttribute("aria-selected", "true");
+  const panel = page.getByRole("tabpanel");
 
-  await tile(page, "Landing pages").click();
-  await expect(page.getByRole("heading", { name: "All assets" })).toBeFocused();
-  await expect(page.getByRole("button", { name: /^Landing pages\s*\d/ })).toHaveAttribute("aria-pressed", "true");
-  const assets = page.getByRole("region", { name: "All assets" });
-  await expect(assets.getByRole("button", { name: /Free Audit Landing Page/ })).toBeVisible();
-  await expect(assets.getByRole("button", { name: new RegExp(ADS) })).toHaveCount(0);
+  // Offers by segment, as compact rows.
+  await expect(panel.getByRole("heading", { name: /^Church\W*2 offers$/ })).toBeVisible();
+  await expect(panel.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
 
-  await tile(page, "Automations").click();
-  await expect(page.getByRole("button", { name: /^Automations\s*\d/ })).toHaveAttribute("aria-pressed", "true");
-  await expect(assets.getByRole("button", { name: /Audit Request Nurture Flow/ })).toBeVisible();
+  await tab("Landing pages").click();
+  await expect(page).toHaveURL(/\?tab=landing-pages$/);
+  await expect(panel.getByRole("button", { name: /^Free Audit Landing Page/ })).toBeVisible();
+  await expect(panel.getByRole("button", { name: new RegExp(`^${ADS}`) })).toHaveCount(0);
 
-  await tile(page, "Funnels").click();
-  await expect(page.getByRole("heading", { name: "Funnels" })).toBeFocused();
-  const funnels = page.getByRole("region", { name: "Funnels" });
-  await expect(funnels.getByText("No entry point")).toBeVisible();
-  await expect(funnels.getByText("These offers have no landing page or lead magnet linked.")).toBeVisible();
+  // Arrow keys move between the tabs.
+  await page.keyboard.press("ArrowRight");
+  await expect(tab("Funnels")).toBeFocused();
+  await expect(tab("Funnels")).toHaveAttribute("aria-selected", "true");
+  await expect(panel.getByText("No entry point", { exact: true })).toBeVisible();
+  await expect(panel.getByText("These offers have no landing page or lead magnet linked.")).toBeVisible();
 
-  await tile(page, "Offers").click();
-  await expect(page.getByRole("heading", { name: "Offers", exact: true })).toBeFocused();
-  await expect(page.getByRole("region", { name: "Offers" }).getByRole("heading", { name: /^Church\W*2 offers$/ })).toBeVisible();
+  await tab("Automations").click();
+  await expect(panel.getByRole("button", { name: /^Audit Request Nurture Flow/ })).toBeVisible();
 
-  // A funnel's offer goes to the offer; a row in the asset list opens the asset.
-  await assets.getByRole("button", { name: /^All\s*\d/ }).click();
-  await assets.getByRole("button", { name: new RegExp(ADS) }).click();
-  await expect(page.getByRole("dialog", { name: ADS })).toBeVisible();
+  // A reload keeps the tab; a row in the asset list opens the asset, and closing it keeps the tab.
+  await tab("All assets").click();
+  await page.reload();
+  await settle(page);
+  await expect(tab("All assets")).toHaveAttribute("aria-selected", "true");
+  await panel.getByRole("button", { name: new RegExp(`^${ADS}`) }).click();
+  const drawer = page.getByRole("dialog", { name: ADS });
+  await expect(drawer).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer).toHaveCount(0);
+  await expect(page).toHaveURL(/\?tab=assets$/);
+  await expect(tab("All assets")).toHaveAttribute("aria-selected", "true");
+});
+
+test("the right-hand column says what the service is and what needs someone", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/services/sv1");
+  await settle(page);
+  const about = page.getByRole("complementary", { name: "About this service" });
+  await expect(about.getByRole("heading", { name: "About" })).toBeVisible();
+  await expect(about.getByText(/Account rebuild and ongoing management/)).toBeVisible();
+  await expect(about.getByRole("heading", { name: /^Needs attention · \d+$/ })).toBeVisible();
+  await expect(about.getByText("No entry point").first()).toBeVisible();
+  await about.getByRole("link", { name: "Ad Grant for School Enrolment" }).click();
+  await expect(page).toHaveURL(/\/offers\/of2$/);
+
+  // Below 1280px it folds into a Details disclosure above the tabs.
+  await page.setViewportSize({ width: 1024, height: 900 });
+  await page.goto("/services/sv1");
+  await settle(page);
+  const details = page.getByRole("button", { name: /^Details/ });
+  await expect(details).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByText(/Account rebuild and ongoing management/)).toBeHidden();
+  await details.click();
+  await expect(page.getByText(/Account rebuild and ongoing management/)).toBeVisible();
+});
+
+test("archiving a service sits in the … menu, never Delete", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/services/sv1");
+  await settle(page);
+  await expect(page.getByRole("button", { name: "Archive service" })).toHaveCount(0);
+  await page.getByRole("button", { name: "More service actions" }).click();
+  const menu = page.getByRole("menu", { name: "More service actions" });
+  await expect(menu.getByRole("menuitem", { name: "Archive service" })).toBeVisible();
+  await expect(menu.getByRole("menuitem", { name: /Delete/ })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(menu).toHaveCount(0);
 });
 
 test("every asset row downloads its files or opens its link", async ({ page }) => {
   await signIn(page);
   const up = await page.request.post("/api/assets/as3/files", { multipart: { file: { name: "service-row.png", mimeType: "image/png", buffer: PNG } } });
   expect(up.status()).toBe(200);
-  await page.goto("/services/sv1");
+  await page.goto("/services/sv1?tab=assets");
   await settle(page);
-  const assets = page.getByRole("region", { name: "All assets" });
+  const assets = page.getByRole("tabpanel");
 
   // One file downloads directly; several come as one zip.
   const download = assets.getByRole("link", { name: new RegExp(`^Download (all of )?${ADS}$`) });
@@ -62,16 +105,17 @@ test("every asset row downloads its files or opens its link", async ({ page }) =
   expect(file.suggestedFilename()).toMatch(/\.(zip|png)$/);
   await expect(page.getByRole("dialog", { name: ADS })).toHaveCount(0);
 
-  // A Drive link opens the link in a new tab instead.
+  // A Drive link opens the link in a new tab instead, and its link can be copied.
   const drive = assets.getByRole("link", { name: "Open link to Grant Application Source Files" });
   await expect(drive).toHaveAttribute("href", /^https:\/\//);
   await expect(drive).toHaveAttribute("target", "_blank");
+  await expect(assets.getByRole("button", { name: "Copy link to Grant Application Source Files" })).toBeVisible();
 
   // Nothing uploaded and no link: a quiet note, not a dead button.
   await expect(assets.getByText("No files yet").first()).toBeVisible();
 });
 
-test("the brand home leads with its services", async ({ page }) => {
+test("the brand home leads with its services, codes explained above them", async ({ page }) => {
   await signIn(page);
   await page.goto("/brands/br1");
   await settle(page);
@@ -80,6 +124,11 @@ test("the brand home leads with its services", async ({ page }) => {
   await expect(services.getByRole("link", { name: /^Google Ad Grant/ })).toBeVisible();
   await expect(services.getByRole("link", { name: /^Standalone offers/ })).toBeVisible();
   await expect(page.getByText("MAG lead magnets")).toBeVisible();
+  // The legend comes before the cards, and every count says its words.
+  const legend = await page.getByText("MAG lead magnets").boundingBox();
+  const card = await services.getByRole("link", { name: /^Google Ad Grant/ }).boundingBox();
+  expect(legend!.y).toBeLessThan(card!.y);
+  await expect(services.getByRole("link", { name: /^Google Ad Grant/ })).toContainText(/\d+ offers/);
   await expect(page.getByText("Everything in this brand")).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Delete/ })).toHaveCount(0);
 
@@ -88,7 +137,12 @@ test("the brand home leads with its services", async ({ page }) => {
   await expect(services.getByRole("link", { name: /^Website Design/ })).toBeVisible();
   await page.getByRole("searchbox", { name: "Find a service" }).fill("");
 
-  await page.getByRole("group", { name: "Show services" }).getByRole("button", { name: /^Needs attention · \d+$/ }).click();
+  // The switch counts the same things the cards count.
+  const attention = page.getByRole("group", { name: "Show services" }).getByRole("button", { name: /^Needs attention · \d+$/ });
+  const total = Number((await attention.textContent())!.match(/(\d+)$/)![1]);
+  const each = await services.getByText(/^\d+ things? needs? attention/).allTextContents();
+  expect(each.reduce((n, t) => n + Number(t.match(/^(\d+)/)![1]), 0)).toBe(total);
+  await attention.click();
   await expect(services.getByRole("link").first()).toContainText(/needs? attention/);
 
   await services.getByRole("link", { name: /^Google Ad Grant/ }).click();
@@ -106,4 +160,52 @@ test("the services tab has no coverage grid and no asset squares", async ({ page
   await page.goto("/brands/br1/strategy");
   await settle(page);
   await expect(page.getByRole("button", { name: "+ New type" })).toBeVisible();
+});
+
+test("the brand's offers are rows grouped by service, with a Cards view that is remembered", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/brands/br1/offers");
+  await settle(page);
+  const group = page.getByRole("region", { name: /^Google Ad Grant/ });
+  await expect(group.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /^Standalone/ })).toBeVisible();
+
+  // Groups fold away and come back.
+  const fold = group.getByRole("button", { name: /^Google Ad Grant/ });
+  await fold.click();
+  await expect(fold).toHaveAttribute("aria-expanded", "false");
+  await expect(group.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeHidden();
+  await fold.click();
+  await expect(group.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
+
+  const view = page.getByRole("group", { name: "View" });
+  await expect(view.getByRole("button", { name: "List" })).toHaveAttribute("aria-pressed", "true");
+  await view.getByRole("button", { name: "Cards" }).click();
+  await page.reload();
+  await settle(page);
+  await expect(page.getByRole("group", { name: "View" }).getByRole("button", { name: "Cards" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "List" }).click();
+});
+
+test("brand assets: a list by default, a grid with no empty picture frames, and a Not linked filter", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/brands/br1/assets");
+  await settle(page);
+  await expect(page.getByText(/not linked to any offer/)).toHaveCount(0);
+  const list = page.getByRole("list", { name: "Assets" });
+  await expect(list.getByRole("button", { name: /^Free Audit Landing Page/ })).toBeVisible();
+  // Not linked is a filter beside the others, shown while anything is unlinked (other tests may have linked the seeded one).
+  const notLinked = page.getByRole("button", { name: /^Not linked \(\d+\)$/ });
+  if (await notLinked.count()) {
+    const n = Number((await notLinked.textContent())!.match(/\((\d+)\)/)![1]);
+    await notLinked.click();
+    await expect(notLinked).toHaveAttribute("aria-pressed", "true");
+    await expect(list.getByRole("listitem")).toHaveCount(n);
+    await notLinked.click();
+  }
+
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Grid" }).click();
+  await expect(page.getByRole("list", { name: "Assets" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Landing page Free Audit Landing Page/ })).toBeVisible();
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "List" }).click();
 });

@@ -34,6 +34,8 @@ test("clients, brands and services can be archived but never deleted", async ({ 
   await expect(page.getByRole("button", { name: /Delete/ })).toHaveCount(0);
   await page.goto("/services/sv6");
   await settle(page);
-  await expect(page.getByRole("button", { name: "Archive service" })).toBeVisible();
+  await page.getByRole("button", { name: "More service actions" }).click();
+  await expect(page.getByRole("menuitem", { name: "Archive service" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: /Delete/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Delete/ })).toHaveCount(0);
 });
