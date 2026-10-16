@@ -14,7 +14,7 @@ import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
 import { removeStoredFile } from "@/server/storage";
 import { putUploadPolicy } from "@/server/limits";
-import { fileKeys, restoreSnapshot, snapshot } from "@/server/trash";
+import { fileKeys, restoreSnapshot, snapshot, unreferenced } from "@/server/trash";
 import { appUrl } from "@/server/mail";
 import { itemUrl, notifyPeople } from "@/server/notify";
 import { postSlack, slackEnabled, slackEsc, slackLater, slackLink } from "@/server/slack";
@@ -963,6 +963,7 @@ export async function deleteItem(kind: Kind, id: string) {
           await tx.delete(s.links).where(eq(s.links.assetId, id));
           await tx.delete(s.comments).where(and(eq(s.comments.kind, "asset"), eq(s.comments.itemId, id)));
           await tx.delete(s.assetVersions).where(eq(s.assetVersions.assetId, id));
+          await tx.delete(s.fileVersions).where(eq(s.fileVersions.assetId, id));
           await tx.delete(s.assets).where(eq(s.assets.id, id));
           await log(tx, me.id, "deleted", "asset", id, a.name);
           break;
@@ -1359,7 +1360,7 @@ export async function deleteForever(entryId: string | "all") {
         await log(tx, me.id, EV.deletedForever, e.kind === "group" ? "person" : e.kind, e.itemId, e.label, entryId === "all" ? "emptied the recycle bin" : "from the recycle bin");
       }
     });
-    for (const k of list.flatMap((e) => fileKeys(e.rows))) await removeStoredFile(k);
+    for (const k of await unreferenced(db, list.flatMap((e) => fileKeys(e.rows)))) await removeStoredFile(k);
   });
 }
 
@@ -1472,6 +1473,7 @@ export async function bulkAssets(ids: string[], op: BulkOp, payload: BulkPayload
             await tx.delete(s.links).where(eq(s.links.assetId, id));
             await tx.delete(s.comments).where(and(eq(s.comments.kind, "asset"), eq(s.comments.itemId, id)));
             await tx.delete(s.assetVersions).where(eq(s.assetVersions.assetId, id));
+            await tx.delete(s.fileVersions).where(eq(s.fileVersions.assetId, id));
             await tx.delete(s.assets).where(eq(s.assets.id, id));
             await log(tx, me.id, "deleted", "asset", id, a.name);
             break;

@@ -11,7 +11,7 @@ export type TrashKind = "client" | "brand" | "service" | "offer" | "asset" | "ct
 /** Table registry in the order rows must be restored (parents first). */
 const TABLES = {
   clients: s.clients, brands: s.brands, services: s.services, ctas: s.ctas, offers: s.offers, assets: s.assets,
-  links: s.links, comments: s.comments, assetVersions: s.assetVersions, shareLinks: s.shareLinks, users: s.users, groups: s.groups,
+  links: s.links, comments: s.comments, assetVersions: s.assetVersions, fileVersions: s.fileVersions, shareLinks: s.shareLinks, users: s.users, groups: s.groups,
 } as const;
 
 const rows = <T extends object>(list: T[]) => list.map((r) => ({ ...r }) as Record<string, unknown>);
@@ -32,6 +32,8 @@ export async function snapshot(db: Tx, all: All, kind: TrashKind, id: string): P
     put("links", rows(all.links.filter((l) => ids.has(l.assetId))));
     put("comments", rows(all.comments.filter((c) => c.kind === "asset" && ids.has(c.itemId))));
     put("assetVersions", rows(await db.select().from(s.assetVersions).where(inArray(s.assetVersions.assetId, assetIds))));
+    // Earlier versions of their files go to the bin with them and come back with them.
+    put("fileVersions", rows(await db.select().from(s.fileVersions).where(inArray(s.fileVersions.assetId, assetIds))));
   };
   const withOffers = (offerIds: string[]) => {
     const ids = new Set(offerIds);
@@ -118,9 +120,32 @@ export async function restoreSnapshot(tx: Tx, snap: Snapshot, groupId?: string) 
   }
 }
 
-/** Storage keys of every file inside a snapshot, for when the bin is emptied. */
+/**
+ * Storage keys of every file inside a snapshot (current files, earlier
+ * versions and custom thumbnails), for when the bin is emptied. Callers
+ * should still skip keys that something outside the bin points at.
+ */
 export function fileKeys(snap: Snapshot): string[] {
-  return (snap.assets ?? []).flatMap((a) => ((a.files as { key?: string }[] | undefined) ?? []).map((f) => f.key).filter((k): k is string => !!k));
+  const keys = [
+    ...(snap.assets ?? []).flatMap((a) => ((a.files as { key?: string }[] | undefined) ?? []).map((f) => f.key)),
+    ...(snap.assets ?? []).map((a) => (a.thumbnail as { key?: string } | null | undefined)?.key),
+    ...(snap.fileVersions ?? []).map((v) => (v.file as { key?: string } | undefined)?.key),
+  ];
+  return [...new Set(keys.filter((k): k is string => !!k))];
+}
+
+/** Keys from `keys` that no live asset, file version or folder still uses (clones can share a stored file). */
+export async function unreferenced(db: DB, keys: string[]): Promise<string[]> {
+  if (!keys.length) return [];
+  const want = new Set(keys);
+  const used = new Set<string>();
+  for (const a of await db.select({ files: s.assets.files, thumbnail: s.assets.thumbnail }).from(s.assets)) {
+    for (const f of a.files) if (f.key && want.has(f.key)) used.add(f.key);
+    if (a.thumbnail?.key && want.has(a.thumbnail.key)) used.add(a.thumbnail.key);
+  }
+  for (const v of await db.select({ file: s.fileVersions.file }).from(s.fileVersions)) if (v.file?.key && want.has(v.file.key)) used.add(v.file.key);
+  for (const f of await db.select({ thumbnail: s.assetFolders.thumbnail }).from(s.assetFolders)) if (f.thumbnail?.key && want.has(f.thumbnail.key)) used.add(f.thumbnail.key);
+  return keys.filter((k) => !used.has(k));
 }
 
 export const BIN_DAYS = 30;
@@ -131,5 +156,5 @@ export async function purgeExpiredTrash(db: DB) {
   const old = await db.select().from(s.trash).where(lt(s.trash.deletedAt, cutoff));
   if (!old.length) return;
   await db.delete(s.trash).where(lt(s.trash.deletedAt, cutoff));
-  for (const k of old.flatMap((e) => fileKeys(e.rows))) await removeStoredFile(k);
+  for (const k of await unreferenced(db, old.flatMap((e) => fileKeys(e.rows)))) await removeStoredFile(k);
 }
