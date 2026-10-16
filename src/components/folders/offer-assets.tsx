@@ -11,6 +11,7 @@ import { ASSET_DRAG, AssetCard } from "@/components/cards";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
 import { FOCUS } from "@/components/polish";
 import { ThumbnailPicker } from "@/components/thumbnail-picker";
+import { MoreMenu } from "@/components/more-menu";
 import { Btn, Empty, cx } from "@/components/ui";
 import { BulkUpload } from "@/components/features/files/bulk-upload";
 import { filesFromDrop } from "@/components/features/files/drop";
@@ -136,9 +137,12 @@ export function OfferAssets({ o }: { o: Offer }) {
 
   const actions = canEdit && (
     <div className="ml-auto flex flex-wrap justify-end gap-2">
-      <Btn size="sm" onClick={() => { setAt(null); setNaming(true); }}><FolderPlus aria-hidden size={15} /><span className="max-sm:sr-only">New folder</span></Btn>
-      <Btn size="sm" onClick={() => open({ kind: "link", offerId: o.id })}><Link2 aria-hidden size={15} /><span>Link existing<span className="max-sm:sr-only"> asset</span></span></Btn>
-      <Btn size="sm" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}><Plus aria-hidden size={15} />New asset</Btn>
+      {/* One menu for the ways of adding, instead of a row of buttons; Upload files stays out because it opens a panel here. */}
+      <MoreMenu label="Add to this offer" text="Add" icon={<Plus aria-hidden size={15} />} items={[
+        { label: "New asset", icon: <Plus aria-hidden size={16} className="text-mute-3" />, onSelect: () => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 }) },
+        { label: "Link existing asset", icon: <Link2 aria-hidden size={16} className="text-mute-3" />, onSelect: () => open({ kind: "link", offerId: o.id }) },
+        { label: "New folder", icon: <FolderPlus aria-hidden size={16} className="text-mute-3" />, onSelect: () => { setAt(null); setNaming(true); } },
+      ]} />
       {canUpload && (
         <Btn ref={uploadBtn} size="sm" aria-expanded={adding} aria-controls={uploadId} onClick={() => (adding ? closeUpload() : openUpload())}>
           <Upload aria-hidden size={15} /><span className="max-sm:sr-only">Upload files</span>

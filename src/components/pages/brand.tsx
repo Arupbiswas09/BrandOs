@@ -258,7 +258,7 @@ function Services({ b }: { b: Brand }) {
                 <IconTile icon={Layers} color={b.primary} size={40} />
                 <span className="min-w-0 flex-1"><span className="block text-title font-semibold leading-[1.25] tracking-[-0.015em] text-ink">{v.name}</span>{v.short && <span className="mt-1 block text-body text-mute-2">{v.short}</span>}</span>
               </span>
-              {v.description && <span className="line-clamp-3 block text-body leading-[1.55] text-ink-3 text-pretty">{v.description}</span>}
+              {v.description && <span className="line-clamp-3 text-body leading-[1.55] text-ink-3 text-pretty">{v.description}</span>}
               {segs.size > 0 && <span className="flex flex-wrap gap-1.5 text-small">{[...segs].map((n) => <SegmentTag key={n} name={n} color={ws.segColor(n, b.id)} />)}</span>}
               <span className="mt-auto flex gap-4 border-t border-divider pt-3 text-body text-mute-2">
                 <span className="inline-flex items-center gap-1.5"><Megaphone aria-hidden size={15} />{plural(st.offers, "offer")}</span>

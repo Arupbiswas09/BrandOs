@@ -14,7 +14,8 @@ test("create an offer from a service page, link an asset, discuss, review", asyn
   await page.waitForURL(/\/offers\//);
   await expect(page.getByRole("heading", { name: "Playwright Offer" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Link existing asset" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Link existing asset" }).click();
   await page.getByPlaceholder("Search the library").fill("compliance");
   await page.getByRole("button", { name: "Link", exact: true }).first().click();
   await expect(page.getByText("is now linked to this offer")).toBeVisible();

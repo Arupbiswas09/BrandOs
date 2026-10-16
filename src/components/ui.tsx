@@ -8,6 +8,15 @@ export function cx(...c: (string | false | null | undefined)[]) {
   return c.filter(Boolean).join(" ");
 }
 
+/** The type scale in px (globals.css): text inside tiles and avatars snaps to it, ties going down. */
+const SCALE = [12, 13, 14, 16, 18, 20, 26, 32];
+export function onScale(px: number) {
+  return SCALE.reduce((best, s) => (Math.abs(s - px) < Math.abs(best - px) ? s : best), SCALE[0]);
+}
+
+/** The one pill shape for small labels: status words, roles, counts in words. Chip adds a colour. */
+export const PILL = "inline-flex h-[22px] flex-none items-center whitespace-nowrap rounded-full px-2.5 text-small font-medium leading-none";
+
 /* ---------------------------------------------------------------- type */
 
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
@@ -16,14 +25,14 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
 
 /** The white header band at the top of a page. `tabs` sit flush on its bottom edge. */
 export function PageHead({
-  eyebrow, title, sub, actions, size = 26, children, tabs,
-}: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; size?: number; children?: ReactNode; tabs?: ReactNode }) {
+  eyebrow, title, sub, actions, children, tabs,
+}: { eyebrow?: ReactNode; title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode; tabs?: ReactNode }) {
   return (
     <div className={cx("head-band -mt-8 mb-7 pt-8 sm:-mt-10 sm:pt-10", tabs ? "pb-0" : "pb-6")}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           {eyebrow && <Eyebrow className="mb-2">{eyebrow}</Eyebrow>}
-          <h1 className="display m-0 text-ink" style={{ fontSize: Math.round(size * 1.3) }}>{title}</h1>
+          <h1 className="display m-0 text-display text-ink">{title}</h1>
           {sub && <p className="mb-0 mt-2 max-w-[68ch] text-body text-mute-2 text-pretty">{sub}</p>}
         </div>
         {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
@@ -160,9 +169,9 @@ export const IconBtn = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBu
  * `round` is kept for older call sites; every chip is a pill now.
  */
 export function Chip({ color, children, size = "sm", className, title }: { color: string; children: ReactNode; round?: boolean; size?: "xs" | "sm" | "md"; className?: string; title?: string }) {
-  const s = { xs: "h-[22px] px-2 text-small", sm: "h-[22px] px-2.5 text-small", md: "h-[26px] px-3 text-meta" }[size];
+  const s = { xs: "px-2", sm: "", md: "h-[26px] px-3 text-meta" }[size];
   return (
-    <span title={title} className={cx("inline-flex flex-none items-center whitespace-nowrap rounded-full font-medium leading-none", s, className)} style={{ background: hexA(color, 0.12), color: readable(color, 0.12) }}>
+    <span title={title} className={cx(PILL, s, className)} style={{ background: hexA(color, 0.12), color: readable(color, 0.12) }}>
       {children}
     </span>
   );
@@ -173,7 +182,7 @@ export function Avatar({ initials, size = 22, mono, className, title }: { initia
     <span
       title={title}
       className={cx("flex flex-none items-center justify-center rounded-full bg-avatar font-semibold text-mute-1", mono && "font-mono font-semibold", className)}
-      style={{ width: size, height: size, fontSize: Math.max(12, Math.round(size * 0.42 * 10) / 10) }}
+      style={{ width: size, height: size, fontSize: onScale(size * 0.42) }}
     >
       {initials}
     </span>
@@ -184,7 +193,7 @@ export function Mark({ mark, color, size = 28, radius, fg, className }: { mark: 
   return (
     <span
       className={cx("flex flex-none items-center justify-center font-semibold theme-fade", className)}
-      style={{ width: size, height: size, borderRadius: radius ?? Math.round(size / 4), background: color, color: fg ?? (color.startsWith("var(") ? "#FFFFFF" : onColor(color)), fontSize: Math.max(12, Math.round(size * 0.36)), letterSpacing: "-0.01em" }}
+      style={{ width: size, height: size, borderRadius: radius ?? Math.round(size / 4), background: color, color: fg ?? (color.startsWith("var(") ? "#FFFFFF" : onColor(color)), fontSize: onScale(size * 0.36), letterSpacing: "-0.01em" }}
     >
       {mark}
     </span>
@@ -198,7 +207,7 @@ export function CodeTile({ code, color, size = 28, height, className, style }: {
       style={{
         width: height ? undefined : size, height: height ?? size, borderRadius: height ? 0 : Math.round(size / 4.2),
         background: hexA(color, height ? 0.1 : 0.12), color: readable(color), letterSpacing: height ? "0.1em" : "0.06em",
-        fontSize: height ? 15 : Math.max(12, Math.round(size * 0.36)), ...style,
+        fontSize: height ? 14 : onScale(size * 0.36), ...style,
       }}
     >
       {code}

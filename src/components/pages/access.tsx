@@ -3,10 +3,10 @@
 import { Check, Minus } from "lucide-react";
 import { NO_ACCESS_LABEL, PERMISSIONS, PERM_INFO, ROLES, ROLE_INFO, scopeOf, seesBrand, seesClient } from "@/lib/access";
 import type { Access } from "@/db/schema";
-import { hexA, readable } from "@/lib/color";
+import { NEUTRAL } from "@/lib/constants";
 import { live, plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
-import { Avatar, Card, Hint } from "@/components/ui";
+import { Avatar, Card, Chip, Hint } from "@/components/ui";
 
 type Cell = "yes" | "no" | "own";
 
@@ -118,8 +118,7 @@ export function AccessMap() {
   );
 }
 
-/** A person's role as a small tinted chip. The old Client role reads "No access". */
+/** A person's role as a quiet grey pill: the words carry it, not a colour per role. The old Client role reads "No access". */
 export function RoleChip({ role }: { role: Access }) {
-  const c = ROLE_INFO[role].color;
-  return <span className="inline-block flex-none whitespace-nowrap rounded-sm px-2 py-0.5 text-small font-semibold" style={{ background: hexA(c, 0.12), color: readable(c, 0.2) }}>{role === "Client" ? NO_ACCESS_LABEL : role}</span>;
+  return <Chip color={NEUTRAL}>{role === "Client" ? NO_ACCESS_LABEL : role}</Chip>;
 }

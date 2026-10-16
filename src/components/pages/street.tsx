@@ -18,7 +18,7 @@ import { useStarredItems } from "@/components/features/stars/starred-list";
 import { NAV_STARS } from "@/lib/stars";
 import { BrokenLinksCard } from "@/components/features/links/broken-links-card";
 import { StartFromExisting } from "@/components/features/onboarding/entry-points";
-import { Avatar, Btn, Card, Eyebrow, IconBtn, Page, cx } from "@/components/ui";
+import { Avatar, Btn, Card, Eyebrow, IconBtn, PILL, Page, cx } from "@/components/ui";
 
 const LIMIT = 6;
 const DAY = 86_400_000;
@@ -138,7 +138,7 @@ export function Street() {
                   <span className={cx(r.stuck && "font-semibold text-warn-text")}>{r.waited}</span> · {r.sub}
                 </span>
               </span>
-              <span className={cx("flex-none rounded-sm px-2 py-0.5 text-small font-semibold", TONE[r.tone])}>{r.badge}</span>
+              <span className={cx(PILL, TONE[r.tone])}>{r.badge}</span>
             </RowButton>
           ))}
           {!rows.length && (
@@ -277,7 +277,7 @@ function RowButton({ onClick, children, disabled }: { onClick: () => void; child
 /** The 28px code square in a brand's colour ("OF", "LP", a brand's mark). */
 function CodeTile({ code, color }: { code: string; color: string }) {
   return (
-    <span aria-hidden className="flex h-7 min-w-8 flex-none items-center justify-center rounded-md px-1 font-mono text-micro font-bold tracking-[0.02em]" style={{ background: hexA(color, 0.12), color: readable(color) }}>
+    <span aria-hidden className="flex h-7 min-w-8 flex-none items-center justify-center rounded-md px-1 font-mono text-micro font-semibold tracking-[0.02em]" style={{ background: hexA(color, 0.12), color: readable(color) }}>
       {code}
     </span>
   );

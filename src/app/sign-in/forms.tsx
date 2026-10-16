@@ -1,14 +1,13 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { hexA, readable } from "@/lib/color";
-import { ACCESS_COLOR, ACCESS_NOTE } from "@/lib/constants";
+import { ACCESS_NOTE, NEUTRAL } from "@/lib/constants";
 import type { Access } from "@/db/schema";
 import { signInAs } from "@/app/actions";
 import { signInWithPassword } from "@/app/auth-actions";
 import { FormError, Req } from "@/components/auth-shell";
 import { PasswordInput } from "@/components/password-input";
-import { Btn } from "@/components/ui";
+import { Btn, Chip } from "@/components/ui";
 
 type Person = { id: string; name: string; initials: string; role: string; access: Access };
 
@@ -25,11 +24,11 @@ export function DemoPicker({ people }: { people: Person[] }) {
           className="flex w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 py-3 text-left transition-[border-color,box-shadow,transform] duration-150 ease-snap hover:border-line-strong hover:shadow-raise enabled:active:scale-[0.98] disabled:opacity-60"
           title={ACCESS_NOTE[p.access]}
         >
-          <span aria-hidden className="flex size-9 flex-none items-center justify-center rounded-full bg-avatar font-mono text-meta font-bold text-mute-1">{p.initials}</span>
+          <span aria-hidden className="flex size-9 flex-none items-center justify-center rounded-full bg-avatar text-meta font-semibold text-mute-1">{p.initials}</span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-body font-semibold">{p.name}</span>
             <span className="mt-0.5 flex items-center gap-1.5">
-              <span className="flex-none rounded-sm px-1.5 py-px text-micro font-semibold" style={{ background: hexA(ACCESS_COLOR[p.access], 0.12), color: readable(ACCESS_COLOR[p.access], 0.12) }}>{p.access}</span>
+              <Chip color={NEUTRAL} size="xs">{p.access}</Chip>
               <span className="truncate text-small text-mute-2">{p.role}</span>
             </span>
           </span>

@@ -65,8 +65,8 @@ export function CodeBadge({ code, color, size = 28 }: { code: string; color: str
   return (
     <span
       aria-hidden
-      className="flex flex-none items-center justify-center rounded-lg px-1 font-mono font-bold tracking-[0.04em]"
-      style={{ height: size, minWidth: size, fontSize: size >= 28 ? 11 : 10.5, background: solidTint(color, 0.12), color: readable(color, 0.12) }}
+      className="flex flex-none items-center justify-center rounded-lg px-1 font-mono text-micro font-semibold tracking-[0.04em]"
+      style={{ height: size, minWidth: size, background: solidTint(color, 0.12), color: readable(color, 0.12) }}
     >
       {code}
     </span>

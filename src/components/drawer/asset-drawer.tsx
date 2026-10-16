@@ -274,7 +274,7 @@ function Drawer({ a }: { a: Asset }) {
       </div>
       {picking && (
         <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image"
-          fallback={<span className="flex h-full w-full items-center justify-center font-mono text-body font-bold tracking-[0.1em]" style={{ background: hexA(color, 0.1), color: readable(color, 0.1) }}>{ws.codeOf(a)}</span>}
+          fallback={<span className="flex h-full w-full items-center justify-center font-mono text-body font-semibold tracking-[0.1em]" style={{ background: hexA(color, 0.1), color: readable(color, 0.1) }}>{ws.codeOf(a)}</span>}
           extra={<PagePictureButton asset={a} onDone={() => setPicking(false)} />}
           onClose={() => setPicking(false)} />
       )}

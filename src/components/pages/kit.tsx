@@ -677,9 +677,9 @@ function ClearSpace({ b }: { b: Brand }) {
       <rect x="1" y="1" width="238" height="118" rx="10" fill="#F7F9F8" stroke="#E1E7E4" />
       <rect x="50" y="22" width="140" height="76" rx="6" fill="none" stroke="#93A09A" strokeDasharray="4 4" />
       <rect x="80" y="42" width="80" height="36" rx="6" fill={b.primary} />
-      <text x="120" y="66" textAnchor="middle" fontSize="15" fontWeight="700" fill={onColor(b.primary)}>{b.mark}</text>
+      <text x="120" y="66" textAnchor="middle" fontSize="16" fontWeight="600" fill={onColor(b.primary)}>{b.mark}</text>
       {[[65, 60, "x"], [175, 60, "x"], [120, 34, "x"], [120, 92, "x"]].map(([x, y, t], i) => <text key={i} x={x} y={Number(y) + 4} textAnchor="middle" fontSize="11" fontStyle="italic" fill="#5E6C66">{t}</text>)}
-      <text x="120" y="114" textAnchor="middle" fontSize="9.5" fill="#5E6C66">x = minimum clear space on every side</text>
+      <text x="120" y="115" textAnchor="middle" fontSize="12" fill="#56645E">x = clear space on every side</text>
     </svg>
   );
 }

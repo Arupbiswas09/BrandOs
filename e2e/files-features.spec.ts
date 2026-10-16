@@ -212,7 +212,7 @@ test("bulk upload: files dropped anywhere on the Assets tab open the panel with 
     return d;
   }, id);
   // Dropped on the row of buttons, nowhere near a drop zone: the whole tab takes files.
-  const where = tab.getByRole("button", { name: "New folder" });
+  const where = tab.getByRole("button", { name: "Add", exact: true });
   await where.dispatchEvent("dragover", { dataTransfer: files });
   await where.dispatchEvent("drop", { dataTransfer: files });
   const panel = bulkPanel(page);

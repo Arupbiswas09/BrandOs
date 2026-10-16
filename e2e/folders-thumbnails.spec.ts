@@ -85,7 +85,8 @@ test("folders group an offer's assets, and removing one keeps every asset", asyn
   const count = page.getByRole("tab", { name: /^Assets/ });
   const before = await count.textContent();
 
-  await page.getByRole("button", { name: "New folder" }).click();
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New folder" }).click();
   await page.getByRole("textbox", { name: "Folder name" }).fill("Launch pages");
   await page.getByRole("button", { name: "Create folder" }).click();
   await expect(page.getByText("Created Launch pages")).toBeVisible();

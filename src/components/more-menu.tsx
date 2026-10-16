@@ -1,16 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
-import { cx } from "@/components/ui";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { Btn, cx } from "@/components/ui";
 
 export type MoreItem = { label: string; icon?: ReactNode; onSelect: () => void; danger?: boolean };
 
 /**
  * A "…" button with a short menu, for actions that should not sit next to
  * the everyday ones (archiving or deleting a whole client, for example).
+ * With `text` it is a labelled button instead ("Add ▾"), for a few ways of
+ * doing one thing that would otherwise be a row of buttons.
  */
-export function MoreMenu({ items, label = "More actions" }: { items: MoreItem[]; label?: string }) {
+export function MoreMenu({ items, label = "More actions", text, icon }: { items: MoreItem[]; label?: string; text?: string; icon?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -36,12 +38,18 @@ export function MoreMenu({ items, label = "More actions" }: { items: MoreItem[];
 
   return (
     <div ref={wrap} className="relative">
-      <button ref={button} type="button" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}
-        className="flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-line bg-surface text-mute-2 transition hover:border-line-strong hover:text-ink">
-        <MoreHorizontal aria-hidden className="h-[18px] w-[18px]" />
-      </button>
+      {text ? (
+        <Btn ref={button} size="sm" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+          {icon}{text}<ChevronDown aria-hidden size={14} className={cx("-mr-0.5 text-mute-3 transition-transform duration-150 ease-snap", open && "rotate-180")} />
+        </Btn>
+      ) : (
+        <button ref={button} type="button" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((v) => !v)}
+          className="flex size-9 items-center justify-center rounded-lg border border-line bg-surface text-mute-2 transition hover:border-line-strong hover:text-ink">
+          <MoreHorizontal aria-hidden className="h-[18px] w-[18px]" />
+        </button>
+      )}
       {open && (
-        <div role="menu" aria-label={label} onKeyDown={move} className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[200px] overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-card">
+        <div role="menu" aria-label={label} onKeyDown={move} className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[220px] origin-top-right animate-pop overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-pop">
           {items.map((it) => (
             <button key={it.label} type="button" role="menuitem" onClick={() => { setOpen(false); it.onSelect(); }}
               className={cx("flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-body font-medium outline-none hover:bg-wash focus-visible:bg-wash", it.danger ? "text-danger" : "text-ink-3")}>

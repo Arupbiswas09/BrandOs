@@ -7,7 +7,7 @@ import { href } from "@/lib/routes";
 import type { QueueItem, WS } from "@/lib/ws";
 import { markMentionsRead } from "@/app/actions";
 import { useApp } from "./provider";
-import { Avatar, IconBtn, cx } from "@/components/ui";
+import { Avatar, IconBtn, PILL, cx } from "@/components/ui";
 
 type Note = WS["d"]["comments"][number];
 
@@ -101,7 +101,7 @@ function Panel({ onClose }: { onClose: () => void }) {
       <button key={m.id} type="button" onClick={() => openItem(m.kind, m.itemId)} className={cx("lift flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-3 text-left", isNew ? "border-accent/40 bg-soft" : "border-line bg-surface")}>
         <Avatar initials={ws.user(m.userId).initials} size={26} mono />
         <span className="min-w-0 flex-1">
-          <span className="line-clamp-3 block text-body leading-[1.5] text-ink-3">{m.text}</span>
+          <span className="line-clamp-3 text-body leading-[1.5] text-ink-3">{m.text}</span>
           <span className="mt-1 block text-small text-mute-3">{ws.first(m.userId)} · on {noteWhere(ws, m)} · {ws.ago(m.createdAt)}</span>
         </span>
         {isNew && <span className="mt-1.5 h-2 w-2 flex-none rounded-full bg-change" role="img" aria-label="New" />}
@@ -142,7 +142,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                     return (
                       <button key={x.key} type="button" onClick={() => openItem(q.kind, q.id)} className="lift w-full rounded-xl border border-line bg-surface px-4 py-3 text-left shadow-card">
                         <span className="mb-1.5 flex flex-wrap items-center gap-2">
-                          <span className={cx("rounded-sm px-2 py-0.5 text-small font-semibold", q.act === "review" ? "bg-warn/12 text-warn-ink" : "bg-change/10 text-change-ink")}>{q.verb}</span>
+                          <span className={cx(PILL, q.act === "review" ? "bg-warn/12 text-warn-ink" : "bg-change/10 text-change-ink")}>{q.verb}</span>
                           <span className="flex-1" /><span className="text-small text-mute-3">{q.act === "review" ? `In review ${q.ago.replace(/ ago$/, "")}` : `Sent back ${q.ago}`}</span>
                         </span>
                         <span className="block text-body font-semibold leading-[1.35]">{q.name}</span>

@@ -56,7 +56,7 @@
   /* Soft green-grey neutrals: ink, secondary and tertiary text. The tertiary grey still clears 4.5:1 on chips. */
   --color-surface: var(--surface);
   --color-ink: #101614;
-  --color-ink-2: #2a3833;
+  --color-ink-2: #3e4a45;
   --color-ink-3: #3e4a45;
   --color-mute-1: #3e4a45;
   --color-mute-2: #56645e;

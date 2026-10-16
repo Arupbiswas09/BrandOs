@@ -475,7 +475,7 @@ function RowMark({ row }: { row: Row }) {
   if (row.avatar) return <span className="flex h-6 w-8 flex-none items-center justify-center"><Avatar initials={row.code} size={24} /></span>;
   // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file
   if (row.thumb) return <img src={row.thumb} alt="" className="h-6 w-8 flex-none rounded-lg border border-line object-cover" />;
-  return <span className="flex h-6 w-8 flex-none items-center justify-center rounded-lg font-mono text-micro font-bold tracking-[0.02em]" style={{ background: hexA(row.color, 0.12), color: readable(row.color) }}>{row.code}</span>;
+  return <span className="flex h-6 w-8 flex-none items-center justify-center rounded-lg font-mono text-micro font-semibold tracking-[0.02em]" style={{ background: hexA(row.color, 0.12), color: readable(row.color) }}>{row.code}</span>;
 }
 
 function Hint({ keys, children }: { keys: string[]; children: ReactNode }) {

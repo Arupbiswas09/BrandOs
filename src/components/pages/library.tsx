@@ -218,7 +218,7 @@ function AddMenu({ label, onPick, first }: { label: string; onPick: (type: strin
             {kinds.map((k) => (
               <button key={k.type} type="button" role="menuitem" onClick={() => { setAt(null); onPick(k.type); }}
                 className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-hover focus-visible:bg-hover focus-visible:outline-none">
-                <span aria-hidden className="flex h-8 w-11 flex-none items-center justify-center rounded-lg bg-chip font-mono text-micro font-bold tracking-[0.05em] text-mute-1">{ASSET_TYPES[k.type]?.code}</span>
+                <span aria-hidden className="flex h-8 w-11 flex-none items-center justify-center rounded-lg bg-chip font-mono text-micro font-semibold tracking-[0.05em] text-mute-1">{ASSET_TYPES[k.type]?.code}</span>
                 <span className="min-w-0 flex-1 text-body font-medium text-ink">{k.type}</span>
               </button>
             ))}

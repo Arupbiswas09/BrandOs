@@ -32,7 +32,7 @@ export function StarTile({ item, size = "sm" }: { item: StarredItem; size?: "sm"
   const style = solid ? { background: item.color, color: onColor(item.color) } : { background: hexA(item.color, 0.12), color: readable(item.color) };
   const box = { sm: "h-5 w-9 rounded-sm", md: "h-8 w-10 rounded-md", square: "h-9 w-9 rounded-lg" }[size];
   return (
-    <span aria-hidden className={cx("flex flex-none items-center justify-center overflow-hidden font-mono text-micro font-bold leading-none tracking-[0.04em]", box)} style={style}>
+    <span aria-hidden className={cx("flex flex-none items-center justify-center overflow-hidden font-mono text-micro font-semibold leading-none tracking-[0.04em]", box)} style={style}>
       {item.code}
     </span>
   );

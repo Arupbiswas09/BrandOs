@@ -160,16 +160,17 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
   const preview = ws.previewOf(a);
   const primary = assetPrimary(a);
   const code = ws.codeOf(a);
-  const tile = <CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%", fontSize: 15 }} />;
+  const tile = <CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%" }} />;
   const draggable = !selecting && !!move?.folders.length;
   const words = (
     <>
       {/* Read out type first, as the card always has been; on screen the type follows in the line below. */}
       <span className="sr-only">{a.type} </span>
-      <span className="block truncate text-body font-semibold leading-[1.35] text-ink">{a.name}</span>
+      {/* Two lines before it cuts off: names are what people scan for. */}
+      <span className="line-clamp-2 break-words text-body font-semibold leading-[1.35] text-ink">{a.name}</span>
       {variant === "kit" && a.short && <span className="mt-0.5 block truncate text-meta text-mute-2">{a.short}</span>}
       {variant === "library" && (
-        <span className="mt-0.5 line-clamp-2 block text-meta leading-[1.45] text-mute-2">
+        <span className="mt-0.5 line-clamp-2 text-meta leading-[1.45] text-mute-2">
           {a.type === "Checklist" && <>{(a.items ?? []).length} checks · </>}
           {a.type === "Prompt" && a.promptFor && <>{a.promptFor} · </>}
           {a.short}
@@ -353,7 +354,7 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
       </div>
       {picking && (
         <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image"
-          fallback={<CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%", fontSize: 15 }} />}
+          fallback={<CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%" }} />}
           extra={<PagePictureButton asset={a} onDone={() => setPicking(false)} />} onClose={() => setPicking(false)} />
       )}
     </li>
@@ -491,7 +492,7 @@ export function OfferCard({ o }: { o: Offer; /** Kept so older call sites compil
         <span className="block text-lead font-semibold leading-[1.3] tracking-[-0.012em] text-ink">{o.name}</span>
         {label && <span className="mt-0.5 block text-meta text-mute-2">{label}</span>}
       </span>
-      {o.positioning && <span className="line-clamp-3 block text-body leading-[1.5] text-ink-3 text-pretty">{o.positioning}</span>}
+      {o.positioning && <span className="line-clamp-3 text-body leading-[1.5] text-ink-3 text-pretty">{o.positioning}</span>}
       {o.goals.length > 0 && <span className="block text-meta text-mute-2"><span className="text-ink-3">Goal:</span> {o.goals.join(", ")}</span>}
       <span className="mt-auto flex w-full items-center gap-3 border-t border-divider pt-2.5 text-meta">
         <span className={cx("min-w-0 truncate", ac === 0 ? "font-medium text-warn-text" : "text-mute-2")}>

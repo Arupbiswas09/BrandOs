@@ -188,7 +188,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                   <button key={k} type="button" aria-pressed={d.type === k}
                     onClick={() => { setType(k); setStep(d.offerIds.length && d.brandId ? 3 : d.brandId === null && draft.brandId === null ? 3 : 1); }}
                     className={cx("rounded-xl border p-3 text-left transition hover:border-mute-2", d.type === k ? "border-accent bg-soft" : "border-line bg-surface")}>
-                    <span className="mb-1.5 block font-mono text-micro font-bold tracking-[0.06em] text-mute-4">{t.code}</span>
+                    <span className="mb-1.5 block font-mono text-micro font-semibold tracking-[0.06em] text-mute-4">{t.code}</span>
                     <span className="block text-body font-semibold leading-[1.3]">{k}</span>
                   </button>
                 ))}
