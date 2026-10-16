@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BrandColour, BrandFont, BrandKit, ColourRole, TypeStyle } from "@/db/schema";
 import { cmykText, isHex } from "@/lib/color";
 import { SEGMENT_PALETTE } from "@/lib/constants";
@@ -14,6 +14,16 @@ import { Footer, Modal } from "./frame";
 const ROLES: ColourRole[] = ["Primary", "Secondary", "Accent", "Neutral", "Background", "Text"];
 const TABS = [["colour", "Colour"], ["type", "Typography"], ["logo", "Logo"], ["voice", "Voice"], ["rules", "Imagery and rules"], ["segments", "Segments"]] as const;
 type Tab = (typeof TABS)[number][0];
+export type KitTab = Tab;
+
+/*
+ * Where the editor opens. The Brand Kit sets this just before it opens the
+ * modal, so "Edit kit" on the Voice section starts on Voice.
+ */
+let startOn: Tab | null = null;
+export function kitStartsOn(tab: Tab | null) {
+  startOn = tab;
+}
 
 type Keyed<T> = T & { key: number };
 let seq = 0;
@@ -29,7 +39,8 @@ export function KitModal({ brandId }: { brandId: string }) {
   const [run, pending] = useAction();
   const b = ws.brand(brandId)!;
   const k = b.kit ?? {};
-  const [tab, setTab] = useState<Tab>("colour");
+  const [tab, setTab] = useState<Tab>(() => startOn ?? "colour");
+  useEffect(() => kitStartsOn(null), []);
 
   const [colours, setColours] = useState(b.colours.map((c) => keyed<BrandColour>(c)));
   const [fonts, setFonts] = useState(b.fonts.map((f) => keyed<BrandFont>(f)));
@@ -84,7 +95,7 @@ export function KitModal({ brandId }: { brandId: string }) {
 
       {tab === "colour" && (
         <section className="flex flex-col gap-3">
-          <p className="m-0 text-meta text-mute-2">HEX and RGB are for screens. Add CMYK and Pantone for print — leave CMYK empty and it is worked out from the hex.</p>
+          <p className="m-0 text-meta text-mute-2">HEX and RGB are for screens. Add CMYK and Pantone for print. Leave CMYK empty and it is worked out from the hex.</p>
           {colours.map((c) => (
             <div key={c.key} className="rounded-xl border border-line p-3">
               <div className="grid gap-2 sm:grid-cols-[auto_1fr_140px_auto]">
@@ -95,7 +106,7 @@ export function KitModal({ brandId }: { brandId: string }) {
               </div>
               <div className="mt-2 grid gap-2 sm:grid-cols-[1.6fr_1fr_1fr]">
                 <input className="field" placeholder="Where it is used" aria-label="Usage" value={c.usage} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, usage: e.target.value } : x)))} />
-                <input className="field font-code text-meta" placeholder={isHex(c.hex) ? cmykText(c.hex) : "CMYK"} title="CMYK — leave empty to use the value worked out from the hex" aria-label="CMYK" value={c.cmyk ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, cmyk: e.target.value } : x)))} />
+                <input className="field font-code text-meta" placeholder={isHex(c.hex) ? cmykText(c.hex) : "CMYK"} title="CMYK: leave empty to use the value worked out from the hex" aria-label="CMYK" value={c.cmyk ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, cmyk: e.target.value } : x)))} />
                 <input className="field font-code text-meta" placeholder="Pantone, e.g. 7722 C" aria-label="Pantone" value={c.pantone ?? ""} onChange={(e) => setColours((l) => l.map((x) => (x.key === c.key ? { ...x, pantone: e.target.value } : x)))} />
               </div>
             </div>

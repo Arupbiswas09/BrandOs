@@ -8,9 +8,11 @@ const upload = (page: Page, name: string, mimeType: string, bytes: number) =>
 
 test("admins switch off a kind of file and cap sizes; the server holds to it", async ({ page }) => {
   await signIn(page);
-  await page.goto("/team");
+  // Upload limits live in Settings, under Workspace.
+  await page.goto("/settings");
   await settle(page);
-  await page.getByRole("tab", { name: "Upload limits" }).click();
+  await page.getByRole("tablist", { name: "Settings sections" }).getByRole("tab", { name: "Upload limits" }).click();
+  await expect(page).toHaveURL(/\/settings\?section=uploads$/);
   await page.getByRole("switch", { name: "Allow video" }).click();
   await page.getByLabel("Largest images file in MB").fill("1");
   await page.getByRole("button", { name: "Save limits" }).click();

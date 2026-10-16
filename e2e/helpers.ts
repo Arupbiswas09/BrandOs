@@ -27,6 +27,8 @@ export const PAGES: [string, string][] = [
   ["brand-offers", "/brands/br1/offers"],
   ["brand-assets", "/brands/br1/assets"],
   ["brand-kit", "/brands/br1/kit"],
+  ["brand-kit-colour", "/brands/br1/kit#kit-colour"],
+  ["brand-kit-voice", "/brands/br1/kit#kit-voice"],
   ["brand-strategy", "/brands/br1/strategy"],
   // A light brand colour (St Aidan Youth's orange): its accent must still read as text.
   ["light-brand", "/brands/br3/offers"],
@@ -35,5 +37,7 @@ export const PAGES: [string, string][] = [
   ["offer", "/offers/of1"],
   ["asset-drawer", "/offers/of1?asset=as1"],
   ["settings", "/settings"],
+  ["settings-notifications", "/settings?section=notifications"],
+  ["settings-uploads", "/settings?section=uploads"],
   ["calendar", "/calendar"],
 ];

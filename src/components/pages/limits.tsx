@@ -6,7 +6,7 @@ import { saveUploadPolicy } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Avatar, Btn, Card, Hint, cx } from "@/components/ui";
 
-/** Team and access → Limits: what may be uploaded, how big, and how much space people get. */
+/** Upload limits (Settings, and Team and access): what may be uploaded, how big, and how much space people get. */
 export function UploadLimits() {
   const { ws, open } = useApp();
   const admin = ws.d.uploads.admin;
@@ -36,40 +36,40 @@ function Editor({ initial, usage, onPerson }: {
     .sort((a, b) => b.bytes - a.bytes);
 
   return (
-    <div className="flex flex-col gap-5">
-      <Card className="px-5 py-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <div className="text-meta font-medium text-mute-2">Storage used</div>
-            <div className="text-heading font-semibold tracking-[-0.02em]">{sizeLabel(usage.workspaceBytes)}{quotaBytes && <span className="text-lead font-normal text-mute-3"> of {sizeLabel(quotaBytes)}</span>}</div>
+    <div className="flex flex-col gap-4">
+      <Card className="px-5 py-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-meta font-medium text-mute-2">Storage used</span>
+            <span className="text-title font-semibold tracking-[-0.015em]">{sizeLabel(usage.workspaceBytes)}{quotaBytes && <span className="text-body font-normal text-mute-2"> of {sizeLabel(quotaBytes)}</span>}</span>
           </div>
-          <p className="m-0 max-w-[48ch] text-meta text-mute-3">Limits apply to new uploads. Nothing already stored is removed. The server never accepts a single file over {sizeLabel(usage.hardCapBytes)} (MAX_UPLOAD_MB).</p>
+          <p className="m-0 text-meta text-mute-2">Limits apply to new uploads; nothing stored is removed. The server takes no file over {sizeLabel(usage.hardCapBytes)}.</p>
         </div>
         {pct != null && (
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-wash" role="progressbar" aria-label="Storage used" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-            <div className={cx("h-full rounded-full", pct > 90 ? "bg-[#DC2626]" : pct > 70 ? "bg-[#D97706]" : "bg-accent")} style={{ width: `${pct}%` }} />
+            <div className={cx("h-full rounded-full", pct > 90 ? "bg-danger" : pct > 70 ? "bg-warn" : "bg-accent")} style={{ width: `${pct}%` }} />
           </div>
         )}
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-small font-semibold uppercase tracking-[0.05em] text-mute-2">What people may upload</div>
+        <h3 className="m-0 border-b border-divider px-5 py-3 text-body font-semibold">What people may upload</h3>
         {FILE_KINDS.map(({ kind, label, examples }) => {
           const k = p.kinds[kind];
           return (
-            <div key={kind} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-divider px-5 py-3 last:border-b-0">
+            <div key={kind} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-divider px-5 py-2 last:border-b-0">
               <button type="button" role="switch" aria-checked={k.allowed} aria-label={`Allow ${label.toLowerCase()}`} onClick={() => setKind(kind, { allowed: !k.allowed })}
-                className={cx("relative h-6 w-11 flex-none rounded-full transition", k.allowed ? "bg-accent" : "bg-line-strong")}>
-                <span className={cx("absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-all", k.allowed ? "left-[22px]" : "left-0.5")} />
+                className={cx("relative h-6 w-11 flex-none rounded-full transition-colors duration-150", k.allowed ? "bg-accent" : "bg-line-strong")}>
+                <span aria-hidden className={cx("absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow-card transition-transform duration-200 ease-snap motion-reduce:transition-none", k.allowed && "translate-x-5")} />
               </button>
               <span className="min-w-[180px] flex-1">
                 <span className="block text-body font-semibold">{label}</span>
-                <span className="block text-small text-mute-3">{examples}</span>
+                <span className="block text-small text-mute-2">{examples}</span>
               </span>
               <label className={cx("flex items-center gap-2 text-meta text-mute-2", !k.allowed && "opacity-40")}>
                 Largest file
                 <input type="number" min={1} max={capMb} disabled={!k.allowed} value={k.maxMb} aria-label={`Largest ${label.toLowerCase()} file in MB`}
-                  onChange={(e) => setKind(kind, { maxMb: Math.max(1, Math.min(capMb, Number(e.target.value) || 1)) })} className="field w-[96px] py-1.5 text-right" />
+                  onChange={(e) => setKind(kind, { maxMb: Math.max(1, Math.min(capMb, Number(e.target.value) || 1)) })} className="field w-24 py-1 text-right" />
                 MB
               </label>
             </div>
@@ -90,7 +90,7 @@ function Editor({ initial, usage, onPerson }: {
 
       {people.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="border-b border-divider bg-wash-2 px-5 py-2.5 text-small font-semibold uppercase tracking-[0.05em] text-mute-2">Who is using the space</div>
+          <h3 className="m-0 border-b border-divider px-5 py-3 text-body font-semibold">Who is using the space</h3>
           {people.map(({ u, bytes }) => {
             const quota = u.storageQuotaMb ?? p.personQuotaMb;
             return (

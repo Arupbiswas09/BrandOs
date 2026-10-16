@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Plus, Search } from "lucide-react";
+import type { Asset } from "@/db/schema";
 import { ASSET_TYPES } from "@/lib/constants";
-import { archivedOnly, live } from "@/lib/ws";
+import { archivedOnly, live, plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
 import { AssetCard } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
-import { ArchExpander, Btn, Empty, Page, PageHead, Pills, cx } from "@/components/ui";
+import { ArchExpander, Btn, Card, CodeTile, Empty, Page, PageHead, Tick, cx } from "@/components/ui";
 
 /** What the Global Library holds. Each is a filter pill, an entry in the "Add to library" menu and an empty state. */
 const KINDS = [
@@ -18,22 +19,30 @@ const KINDS = [
   { type: "SOP", plural: "SOPs", noun: "SOP", many: "SOPs", one: "an SOP", holds: "How we do repeatable work, written down once so nobody has to ask twice." },
   { type: "Ad creative", plural: "Ad creatives", noun: "ad creative", many: "ad creatives", one: "an ad creative", holds: "Ads that worked, with their images, video and copy, ready to adapt for another client." },
 ] as const;
+type Kind = (typeof KINDS)[number];
 
-const TABS = [{ value: "All", label: "All" }, ...KINDS.map((k) => ({ value: k.type as string, label: k.plural }))];
+const slug = (k: Kind) => `lib-${k.noun.replace(/\W+/g, "-")}`;
 
 export function Library() {
   const { ws, open, openAsset } = useApp();
   const [tab, setTab] = useState("All");
   const [q, setQ] = useState("");
   const all = ws.d.assets.filter((a) => !a.brandId);
-  const t = q.toLowerCase();
+  const t = q.trim().toLowerCase();
   const filtered = all.filter((a) => (tab === "All" || a.type === tab) && (!t || `${a.name} ${a.short} ${a.tags.join(" ")}`.toLowerCase().includes(t)));
   const shown = live(filtered);
   const sel = useSelection();
-  // In select mode archived items join the grid, so they can be restored in bulk too.
-  const grid = sel.on ? [...shown, ...archivedOnly(filtered)] : shown;
+  // In select mode archived items join the list, so they can be restored in bulk too.
+  const list = sel.on ? [...shown, ...archivedOnly(filtered)] : shown;
   const add = (type: string) => open({ kind: "asset", draft: { brandId: null, type, status: "Live", offerIds: [] }, step: 3 });
   const kind = KINDS.find((k) => k.type === tab);
+  const has = (type: string) => live(all).some((a) => a.type === type);
+  // A group per kind that has something in it; one kind when a pill is on.
+  const groups = KINDS.filter((k) => tab === "All" || k === kind)
+    .map((k) => ({ k, items: list.filter((a) => a.type === k.type) }))
+    .filter((g) => g.items.length > 0);
+  const row = (a: Asset) => <LibraryRow key={a.id} a={a} selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} onOpen={() => openAsset(a.id)} />;
+
   return (
     <Page>
       <PageHead eyebrow="Shared across every client" title="Global Library" actions={(ws.can("library") || canBulk(ws, true)) && (
@@ -42,37 +51,95 @@ export function Library() {
             {ws.can("library") && <AddMenu label="Add to library" onPick={add} first={kind?.type} />}
           </>
         )}
-        sub={<>{live(all).length} shared items — checklists, prompts, templates, SOPs and ad creatives. Nothing here belongs to a brand, so nothing here is themed. Clone one into a brand when you actually run it.</>}
+        sub="Checklists, prompts, templates, SOPs and ad creatives for every client. Nothing here belongs to a brand: clone one into a brand when you run it."
       />
       {all.length > 0 && (
-        <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <label className="relative block w-full max-w-[300px]">
-            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-4" />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field pl-9 text-body" />
+            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-2" />
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field py-2 pl-9 text-body" />
           </label>
-          {/* Every kind shows, even at 0: they are the library's categories, not search results. */}
-          <Pills tone="dark" value={tab} onChange={setTab} options={TABS.map((x) => ({ ...x, count: live(all).filter((a) => x.value === "All" || a.type === x.value).length }))} label="Type" />
+          {/* Every kind stays, as the library's categories; empty ones are quiet. The counts sit once, on the groups below. */}
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Type">
+            {[{ type: "All", plural: "All" }, ...KINDS].map((k) => {
+              const on = tab === k.type;
+              const empty = k.type !== "All" && !has(k.type);
+              return (
+                <button key={k.type} type="button" aria-pressed={on} onClick={() => setTab(k.type)}
+                  className={cx("min-h-8 rounded-full border px-3 py-1 text-body transition-colors duration-150",
+                    on ? "border-accent bg-soft font-semibold text-accent"
+                      : empty ? "border-dashed border-line-strong text-mute-2 hover:text-ink"
+                        : "border-line bg-surface font-medium text-mute-1 hover:border-line-strong hover:text-ink")}>
+                  {k.plural}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
-      <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">
-        {grid.map((a) => <AssetCard key={a.id} a={a} variant="library" selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} />)}
-      </div>
+
+      {tab === "All" ? groups.length > 0 && (
+        <div className="gap-x-5 lg:columns-2">
+          {groups.map(({ k, items }) => (
+            <section key={k.type} aria-labelledby={slug(k)} className="mb-6 break-inside-avoid">
+              <h2 id={slug(k)} className="m-0 mb-2 flex items-baseline gap-2 text-body font-semibold text-ink">
+                {k.plural}<span className="text-meta font-normal tabular-nums text-mute-2">{items.length}</span>
+              </h2>
+              <KindList k={k} items={items} row={row} />
+            </section>
+          ))}
+        </div>
+      ) : kind && groups[0] && <KindList k={kind} items={groups[0].items} row={row} />}
+
       {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="item" onOpen={(a) => openAsset(a.id)} />}
-      {sel.on && <BulkBar s={sel} shown={grid} library />}
-      {!grid.length && (q ? (
+      {sel.on && <BulkBar s={sel} shown={list} library />}
+      {!list.length && (t ? (
         <Empty title="Nothing matches that search" body={`Try another word, or clear the search to see every ${kind ? kind.noun : "item"}.`}>
           <Btn onClick={() => setQ("")}>Clear the search</Btn>
         </Empty>
       ) : kind ? (
         <Empty title={`No ${kind.many} yet`} body={kind.holds}>
-          {ws.can("library") && <Btn variant="dark" size="lg" onClick={() => add(kind.type)}><Plus aria-hidden className="h-4 w-4" />Add {kind.one}</Btn>}
+          {ws.can("library") && <Btn onClick={() => add(kind.type)}><Plus aria-hidden className="h-4 w-4" />Add {kind.one}</Btn>}
         </Empty>
       ) : (
-        <Empty title="Nothing in the library yet" body="Checklists, prompts, templates, SOPs and ad creatives that every client can use live here, files included.">
-          {ws.can("library") && <AddMenu label="Add something" onPick={add} />}
-        </Empty>
+        <Empty title="Nothing in the library yet" body="Checklists, prompts, templates, SOPs and ad creatives that every client can use live here, files included." />
       ))}
     </Page>
+  );
+}
+
+/** One kind's items as compact rows. Ad creatives with a picture keep their picture cards. */
+function KindList({ k, items, row }: { k: Kind; items: Asset[]; row: (a: Asset) => ReactNode }) {
+  const { ws } = useApp();
+  const pictures = k.type === "Ad creative" ? items.filter((a) => ws.previewOf(a)) : [];
+  const rows = items.filter((a) => !pictures.includes(a));
+  return (
+    <>
+      {pictures.length > 0 && (
+        <div className={cx("grid grid-cols-2 gap-3 sm:grid-cols-3", rows.length > 0 && "mb-3")}>
+          {pictures.map((a) => <AssetCard key={a.id} a={a} variant="library" />)}
+        </div>
+      )}
+      {rows.length > 0 && <Card className="overflow-hidden">{rows.map(row)}</Card>}
+    </>
+  );
+}
+
+/** One library item on one line: its code, its name and what it is for. */
+function LibraryRow({ a, selecting, selected, onToggle, onOpen }: { a: Asset; selecting: boolean; selected: boolean; onToggle: () => void; onOpen: () => void }) {
+  const { ws } = useApp();
+  const meta = a.type === "Checklist" ? plural((a.items ?? []).length, "check") : a.type === "Prompt" ? a.promptFor : "";
+  return (
+    <button type="button" onClick={selecting ? onToggle : onOpen} {...(selecting && { role: "checkbox", "aria-checked": selected })}
+      className={cx("focus-inset flex min-h-14 w-full items-center gap-3 border-t border-divider px-4 py-2 text-left transition-colors duration-150 first:border-t-0 hover:bg-hover", selected && "bg-soft", a.archived && "opacity-60")}>
+      {selecting && <Tick on={selected} />}
+      <CodeTile code={ws.codeOf(a)} color={ws.colorOf(a)} size={36} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-body font-medium text-ink">{a.name}{a.archived && <span className="font-normal text-mute-2"> (archived)</span>}</span>
+        {a.short && <span className="block truncate text-meta text-mute-2">{a.short}</span>}
+      </span>
+      {meta && <span className="hidden flex-none text-meta text-mute-2 sm:block">{meta}</span>}
+    </button>
   );
 }
 
@@ -128,14 +195,14 @@ function AddMenu({ label, onPick, first }: { label: string; onPick: (type: strin
 
   return (
     <>
-      <Btn ref={btn} variant="dark" size="lg" onClick={toggle} aria-haspopup="menu" aria-expanded={on} aria-controls={on ? id : undefined}>
-        <Plus aria-hidden className="h-4 w-4" />{label}<ChevronDown aria-hidden className={cx("h-4 w-4 transition-transform motion-reduce:transition-none", on && "rotate-180")} />
+      <Btn ref={btn} variant="primary" onClick={toggle} aria-haspopup="menu" aria-expanded={on} aria-controls={on ? id : undefined}>
+        <Plus aria-hidden className="h-4 w-4" />{label}<ChevronDown aria-hidden className={cx("h-4 w-4 transition-transform duration-150 ease-snap motion-reduce:transition-none", on && "rotate-180")} />
       </Btn>
       {at && createPortal(
         <>
           <div className="fixed inset-0 z-[70]" onClick={() => setAt(null)} />
           <div ref={menu} id={id} role="menu" aria-label="What to add" style={{ top: at.top, left: at.left, width: Math.min(MENU_W, window.innerWidth - 32) }}
-            className="fixed z-[71] animate-pop rounded-lg border border-line bg-surface p-1.5 text-left shadow-card">
+            className="fixed z-[71] origin-top-right animate-pop rounded-lg border border-line bg-surface p-1.5 text-left shadow-pop">
             {kinds.map((k) => (
               <button key={k.type} type="button" role="menuitem" onClick={() => { setAt(null); onPick(k.type); }}
                 className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-hover focus-visible:bg-hover focus-visible:outline-none">

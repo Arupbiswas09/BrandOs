@@ -89,7 +89,7 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
                       {c.usage && <div className="mb-2 text-meta text-[#46534D]">{c.usage}</div>}
                       <table className="w-full text-small">
                         <tbody>
-                          {[["HEX", c.hex.toUpperCase()], ["RGB", rgbText(c.hex)], ["CMYK", c.cmyk || cmykText(c.hex) + "*"], ["Pantone", c.pantone || "—"]].map(([kk, v]) => (
+                          {[["HEX", c.hex.toUpperCase()], ["RGB", rgbText(c.hex)], ["CMYK", c.cmyk || cmykText(c.hex) + "*"], ["Pantone", c.pantone || "Not set"]].map(([kk, v]) => (
                             <tr key={kk}><th scope="row" className="w-[70px] py-0.5 text-left font-semibold uppercase tracking-[0.05em] text-[#5E6C66]">{kk}</th><td className="py-0.5 font-mono text-[#101614]">{v}</td></tr>
                           ))}
                         </tbody>
@@ -178,7 +178,7 @@ function Sec({ n, title, children }: { n: string; title: string; children: React
 }
 
 function Spec({ k, v }: { k: string; v?: string }) {
-  return <div><dt className="text-micro font-semibold uppercase tracking-[0.05em] text-[#5E6C66]">{k}</dt><dd className="m-0 mt-0.5 text-body">{v || "—"}</dd></div>;
+  return <div><dt className="text-micro font-semibold uppercase tracking-[0.05em] text-[#5E6C66]">{k}</dt><dd className="m-0 mt-0.5 text-body">{v || "Not set"}</dd></div>;
 }
 
 function Rules({ title, items, bad }: { title: string; items: string[]; bad?: boolean }) {
