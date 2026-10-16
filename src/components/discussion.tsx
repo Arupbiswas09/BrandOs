@@ -1,8 +1,8 @@
 "use client";
 
-import { useContext, useMemo, useRef, useState } from "react";
+import { useContext, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin } from "lucide-react";
+import { ChevronRight, MapPin } from "lucide-react";
 import type { Comment } from "@/db/schema";
 import { href } from "@/lib/routes";
 import { deleteComment, editComment, postComment, toggleResolve } from "@/app/actions";
@@ -40,7 +40,7 @@ function useSegments() {
 export function CommentText({ c }: { c: Comment }) {
   const segs = useSegments()(c);
   return (
-    <div className="whitespace-pre-wrap text-lead leading-[1.6] text-ink-2 text-pretty">
+    <span className="block whitespace-pre-wrap text-body text-ink-2 text-pretty">
       {segs.map((s, i) =>
         s.chip ? (
           <span
@@ -55,9 +55,12 @@ export function CommentText({ c }: { c: Comment }) {
           <span key={i}>{s.text}</span>
         ),
       )}
-    </div>
+    </span>
   );
 }
+
+const NOTE_BASE = "inline-flex h-6 items-center rounded-lg px-1.5 text-small text-mute-2 transition-colors hover:bg-hover";
+const NOTE_BTN = `${NOTE_BASE} hover:text-ink`;
 
 function Note({ c }: { c: Comment }) {
   const { ws } = useApp();
@@ -67,27 +70,21 @@ function Note({ c }: { c: Comment }) {
   const mine = c.userId === ws.me.id;
   const save = async () => { const r = await run(editComment, c.id, text); if (r.ok) setEditing(false); };
   return (
-    <div
-      className="rounded-xl border px-4 py-3.5"
-      style={{
-        opacity: c.resolved ? 0.65 : 1,
-        background: c.resolved ? "#F7F9F8" : c.isChange ? "rgba(194,65,18,.06)" : "#FFFFFF",
-        borderColor: c.resolved ? "var(--bos-border)" : c.isChange ? "rgba(194,65,18,.28)" : "var(--bos-border)",
-      }}
-    >
+    <div className={cx("rounded-xl border px-4 py-3", c.resolved ? "border-line bg-wash" : c.isChange ? "border-change/30 bg-change/5" : "border-line bg-surface")}>
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <Avatar initials={ws.user(c.userId).initials} size={26} mono />
         <span className="text-body font-semibold">{ws.first(c.userId)}</span>
-        {c.isChange && <span className="eyebrow rounded bg-[rgba(194,65,18,.10)] px-2 py-1 text-change-ink">Change request</span>}
+        {c.isChange && <span className="rounded-sm bg-change/10 px-1.5 py-0.5 text-small font-semibold text-change-ink">Change request</span>}
+        {c.resolved && <span className="rounded-sm bg-chip px-1.5 py-0.5 text-small font-medium text-mute-2">Resolved</span>}
         {isPinned(c) && <PinChip c={c} />}
         <span className="flex-1" />
-        <span className="font-mono text-small text-mute-4">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
-        {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className="px-1 py-0.5 text-small text-mute-3 hover:text-ink">Edit</button>}
+        <span className="text-small text-mute-2">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
+        {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className={NOTE_BTN}>Edit</button>}
         {(mine || ws.can("del")) && !editing && (
-          <button type="button" disabled={pending} onClick={() => { if (window.confirm("Delete this note?")) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-small text-mute-3 hover:text-danger">Delete</button>
+          <button type="button" disabled={pending} onClick={() => { if (window.confirm("Delete this note?")) void run(deleteComment, c.id); }} className={`${NOTE_BASE} hover:text-danger`}>Delete</button>
         )}
         {ws.can("comment") && !editing && (
-          <button type="button" onClick={() => run(toggleResolve, c.id)} className="px-1 py-0.5 text-small text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
+          <button type="button" onClick={() => run(toggleResolve, c.id)} className={NOTE_BTN}>{c.resolved ? "Reopen" : "Resolve"}</button>
         )}
       </div>
       {editing ? (
@@ -121,14 +118,31 @@ function PinChip({ c }: { c: PinnedComment }) {
   );
 }
 
+/** The notes on an offer or asset. Open ones show; resolved ones fold away behind "3 resolved". */
 export function Thread({ kind, id }: { kind: "offer" | "asset"; id: string }) {
   const { ws } = useApp();
+  const [showResolved, setShowResolved] = useState(false);
   const list = ws.commentsOf(kind, id);
+  const open = list.filter((c) => !c.resolved);
+  const resolved = list.filter((c) => c.resolved);
+  const panel = useId();
   return (
     <div className="flex flex-col gap-2">
-      {list.map((c) => <Note key={c.id} c={c} />)}
+      {resolved.length > 0 && (
+        <>
+          <button type="button" aria-expanded={showResolved} aria-controls={panel} onClick={() => setShowResolved((v) => !v)}
+            className="-ml-2 inline-flex h-8 items-center gap-1 self-start rounded-lg px-2 text-meta font-medium text-mute-2 transition-colors hover:bg-hover hover:text-ink">
+            <ChevronRight aria-hidden size={15} className={cx("transition-transform duration-200 ease-snap", showResolved && "rotate-90")} />
+            {resolved.length} resolved
+          </button>
+          <div id={panel} hidden={!showResolved} className="flex flex-col gap-2">
+            {showResolved && resolved.map((c) => <Note key={c.id} c={c} />)}
+          </div>
+        </>
+      )}
+      {open.map((c) => <Note key={c.id} c={c} />)}
       {!list.length && (
-        <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-body text-mute-2">No notes yet. Write down the thing you would otherwise say in a meeting.</div>
+        <div className="rounded-xl border border-dashed border-line-strong px-6 py-5 text-center text-body text-mute-2">No notes yet. Write down the thing you would otherwise say in a meeting.</div>
       )}
       {ws.can("comment") && <Composer kind={kind} id={id} />}
     </div>
@@ -190,7 +204,7 @@ function Composer({ kind, id }: { kind: "offer" | "asset"; id: string }) {
   };
 
   return (
-    <div className="relative mt-1 rounded-xl border border-line bg-surface px-3.5 py-3">
+    <div className="relative mt-1 rounded-xl border border-line bg-surface px-3.5 py-3 focus-within:border-accent">
       <textarea
         ref={box}
         rows={2}
@@ -199,11 +213,11 @@ function Composer({ kind, id }: { kind: "offer" | "asset"; id: string }) {
         onKeyDown={onKey}
         placeholder="Add a note. Type # to tag an offer, @ to pull someone in"
         aria-label="Add a note"
-        className="w-full resize-y border-0 bg-transparent text-lead leading-[1.55] outline-none"
+        className="w-full resize-y border-0 bg-transparent text-body outline-none"
       />
       {rows.length > 0 && (
-        <div className="absolute bottom-full left-2.5 right-2.5 z-20 mb-1.5 animate-pop rounded-xl border border-line bg-surface p-1.5 shadow-card">
-          <div className="eyebrow px-2.5 pb-1 pt-1.5 text-micro">{tk?.sign === "#" ? "Offers" : "People"}</div>
+        <div className="absolute bottom-full left-2.5 right-2.5 z-20 mb-1.5 origin-bottom animate-pop rounded-xl border border-line bg-surface p-1.5 shadow-pop">
+          <div className="px-2.5 pb-1 pt-1.5 text-small font-medium text-mute-2">{tk?.sign === "#" ? "Offers" : "People"}</div>
           {rows.map((r, i) => (
             <button key={r.id} type="button" onMouseDown={(e) => { e.preventDefault(); pick(r); }} className={cx("flex w-full items-baseline gap-2 rounded-lg px-2.5 py-2 text-left", i === sel ? "bg-hover" : "hover:bg-hover")}>
               <span className="flex-none text-body font-semibold">{r.sign}{r.label}</span>
@@ -213,7 +227,7 @@ function Composer({ kind, id }: { kind: "offer" | "asset"; id: string }) {
         </div>
       )}
       <div className="mt-2 flex items-center gap-2.5 border-t border-divider pt-2.5">
-        <span className="flex-1 text-meta text-[#5A6862]">Everyone on the team sees this · ⌘↵ to post</span>
+        <span className="flex-1 text-small text-mute-2">Everyone on the team sees this · ⌘↵ to post</span>
         <Btn variant="primary" onClick={post} disabled={pending || !text.trim()}>Post note</Btn>
       </div>
     </div>

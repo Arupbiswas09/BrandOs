@@ -1,46 +1,121 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { Archive, ArchiveRestore, CalendarDays, Clock, Layers, Megaphone, Pencil, Split, Undo2, Workflow } from "lucide-react";
-import { hexA, readable } from "@/lib/color";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Megaphone, Pencil, Split, Undo2 } from "lucide-react";
+import type { Asset, Cta, Offer } from "@/db/schema";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
-import type { Offer } from "@/db/schema";
+import { plural } from "@/lib/ws";
 import { setArchived, setDue, setStatus } from "@/app/actions";
 import { toDateInput } from "@/lib/time";
+import { fmtDate } from "@/lib/format";
 import { useAction, useApp } from "@/components/app/provider";
-import { GoalChips } from "@/components/cards";
+import { assetDownload, assetLink } from "@/components/cards";
 import { OfferAssets } from "@/components/folders/offer-assets";
 import { CommentText, Thread } from "@/components/discussion";
-import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
-import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, Eyebrow, Page } from "@/components/ui";
-import { EntityHeader, IconTile, MetaItem } from "@/components/polish";
-import { MoreMenu } from "@/components/more-menu";
+import { ArchivedNote, Avatar, Btn, ChangeNote, Page, cx } from "@/components/ui";
+import { EntityHeader, FOCUS, IconTile, PanelTabs, tabPanel } from "@/components/polish";
+import { CardMenu, type CardMenuItem } from "@/components/card-menu";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
+import { CodeBadge } from "@/components/funnel/linked";
+import { CtaTag } from "@/components/cta-tag";
+import { ReviewLine, StatusSelect } from "@/components/workflow";
+import { displayUrl, linkBtn, useCopyLink } from "@/components/link-button";
 import { NotHere, useVisit } from "./common";
-import { fmtDate } from "@/lib/format";
+
+/*
+ * An offer: what it is in the header, its assets, funnel and discussion in
+ * tabs, and on wide screens a summary column with the links people ask for
+ * on calls (Key links), the positioning and where it stands.
+ */
+
+type OfferTab = "assets" | "funnel" | "discussion";
+const TABS: OfferTab[] = ["assets", "funnel", "discussion"];
+const isTab = (v: string | null): v is OfferTab => !!v && (TABS as string[]).includes(v);
+
+/** Small section labels in the summary column. */
+const HEAD = "m-0 text-small font-medium text-mute-2";
 
 export function OfferPage({ id }: { id: string }) {
-  const { ws, open, openAsset, nudge, setNudge, toast } = useApp();
-  const [run] = useAction();
+  const { ws } = useApp();
   const o = ws.offer(id);
   useVisit("offer", id, !!o);
-  useEffect(() => () => setNudge(null), [id, setNudge]);
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#discussion") {
-      document.getElementById("discussion")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [id]);
   if (!o) return <NotHere what="offer" />;
+  return <OfferView key={o.id} o={o} />;
+}
+
+/**
+ * The open tab, kept in the URL (`?tab=funnel`) so links and reloads keep it.
+ * An open asset keeps its own section in `?assetTab=`, so opening and closing
+ * one never changes this.
+ */
+function useOfferTab(): [OfferTab, (t: OfferTab) => void] {
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const asked = params.get("tab");
+  const fromUrl: OfferTab = isTab(asked) ? asked : "assets";
+  // Shown at once on a click; the address follows a moment later, and back/forward or a link moves it again.
+  const [tab, setTabState] = useState<OfferTab>(fromUrl);
+  const [seen, setSeen] = useState(asked);
+  if (seen !== asked) {
+    setSeen(asked);
+    setTabState(fromUrl);
+  }
+  const urlFor = useCallback((t: OfferTab) => {
+    const next = new URLSearchParams(params.toString());
+    next.set("tab", t);
+    return `${pathname}?${next}`;
+  }, [params, pathname]);
+  // Search, the inbox and mentions link to "#discussion": open that tab.
+  useEffect(() => {
+    const check = () => { if (window.location.hash === "#discussion") router.replace(urlFor("discussion"), { scroll: false }); };
+    check();
+    window.addEventListener("hashchange", check);
+    return () => window.removeEventListener("hashchange", check);
+  }, [router, urlFor]);
+  const setTab = (t: OfferTab) => {
+    setTabState(t);
+    router.replace(urlFor(t), { scroll: false });
+  };
+  return [tab, setTab];
+}
+
+function OfferView({ o }: { o: Offer }) {
+  const { ws, open, nudge, setNudge, toast } = useApp();
+  const [run] = useAction();
+  const [tab, setTab] = useOfferTab();
+  useEffect(() => () => setNudge(null), [setNudge]);
 
   const b = ws.brand(o.brandId);
   const sv = ws.service(o.serviceId);
   const canEdit = ws.canChange(o);
-  const mentions = ws.mentionsOf("offer", o.id);
-  const openNotes = ws.openCount("offer", o.id);
+  const assets = ws.linkedAssets(o.id);
   const nudgeAsset = nudge?.offerId === o.id ? ws.asset(nudge.assetId) : null;
-  const missing = missingPieces(o);
+
+  const adapt = () => {
+    const taken = new Set(ws.offersOf(o.brandId).filter((x) => x.serviceId === o.serviceId && !x.archived).map((x) => x.segment));
+    const next = b?.segments.find((sg) => sg.name !== "All segments" && !taken.has(sg.name))?.name ?? o.segment;
+    open({ kind: "offer", draft: { ...o, id: undefined, name: `${o.name} (${next})`, segment: next, status: "Ideation", review: "None" } });
+  };
+  // Offers are never deleted. One that was cancelled, or added by mistake, goes back to draft.
+  const more: CardMenuItem[] = [
+    ...(canEdit ? [{ kind: "item" as const, label: "Adapt for another segment", icon: <Split aria-hidden size={16} className="text-mute-2" />, onSelect: adapt }] : []),
+    ...(canEdit && o.status !== "Ideation" ? [{
+      kind: "item" as const, label: "Move back to draft", icon: <Undo2 aria-hidden size={16} className="text-mute-2" />,
+      onSelect: async () => { if ((await run(setStatus, "offer", o.id, "Ideation")).ok) toast("Moved back to draft"); },
+    }] : []),
+    ...(ws.can("archive") ? [{
+      kind: "item" as const, label: o.archived ? "Restore" : "Archive",
+      icon: o.archived ? <ArchiveRestore aria-hidden size={16} className="text-mute-2" /> : <Archive aria-hidden size={16} className="text-mute-2" />,
+      onSelect: () => void run(setArchived, "offer", o.id, !o.archived),
+    }] : []),
+  ];
+
+  const quiet = "mr-2 inline-flex items-center gap-1.5 text-meta text-mute-2";
+  const dot = (c: string) => <span aria-hidden className="size-2 flex-none rounded-full" style={{ background: c }} />;
 
   return (
     <Page>
@@ -51,172 +126,267 @@ export function OfferPage({ id }: { id: string }) {
         sub={o.short}
         meta={
           <>
-            <Chip color={OFFER_STATUS[o.status]} size="sm">{o.status}</Chip>
-            <Chip color={ws.segColor(o.segment, o.brandId)} size="sm">{o.segment}</Chip>
+            <span className={quiet}>{dot(OFFER_STATUS[o.status])}{o.status}</span>
+            <span className={quiet}>{dot(ws.segColor(o.segment, o.brandId))}{o.segment}</span>
             {sv ? (
-              <Link href={href.service(sv.id)} className="inline-flex items-center gap-1 rounded-sm border border-line bg-surface px-2 py-0.5 text-small font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
-                <Layers aria-hidden size={13} />{sv.name}
-              </Link>
+              <Link href={href.service(sv.id)} className={cx(quiet, "rounded-sm hover:text-ink hover:underline")}><Layers aria-hidden size={14} />{sv.name}</Link>
             ) : (
-              <span className="rounded-sm border border-dashed border-line-strong px-2 py-0.5 text-small font-semibold text-mute-3">Standalone</span>
+              <span className={quiet}><Layers aria-hidden size={14} />Standalone</span>
             )}
-            <span aria-hidden className="mx-0.5 h-4 w-px bg-line" />
-            <MetaItem icon={Clock}><span>Updated {ws.ago(o.updatedAt)}</span></MetaItem>
-            <MetaItem><Avatar initials={ws.user(o.ownerId).initials} size={20} />{ws.user(o.ownerId).name}</MetaItem>
+            <span className={quiet}><Clock aria-hidden size={14} />Updated {ws.ago(o.updatedAt)}</span>
           </>
         }
-        actions={(canEdit || ws.can("archive")) && (
+        actions={(canEdit || more.length > 0) && (
           <>
-            {canEdit && <Btn onClick={() => {
-              const taken = new Set(ws.offersOf(o.brandId).filter((x) => x.serviceId === o.serviceId && !x.archived).map((x) => x.segment));
-              const next = b?.segments.find((sg) => sg.name !== "All segments" && !taken.has(sg.name))?.name ?? o.segment;
-              open({ kind: "offer", draft: { ...o, id: undefined, name: `${o.name} — ${next}`, segment: next, status: "Ideation", review: "None" } });
-            }}><Split aria-hidden size={16} />Adapt for another segment</Btn>}
-            {ws.can("archive") && <Btn onClick={() => run(setArchived, "offer", o.id, !o.archived)}>{o.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{o.archived ? "Restore" : "Archive"}</Btn>}
             {canEdit && <Btn variant="primary" onClick={() => open({ kind: "offer", draft: o })}><Pencil aria-hidden size={16} />Edit</Btn>}
-            {/* Offers are never deleted. One that was cancelled, or added by mistake, goes back to draft. */}
-            <MoreMenu label="More offer actions" items={canEdit && o.status !== "Ideation" ? [{ label: "Move back to draft", icon: <Undo2 aria-hidden size={16} />, onSelect: async () => { if ((await run(setStatus, "offer", o.id, "Ideation")).ok) toast("Moved back to draft"); } }] : []} />
+            <CardMenu label="More offer actions" items={more} triggerClassName={MORE_BTN} />
           </>
         )}
       />
 
-      {o.archived && <ArchivedNote className="mb-4">Archived. Its assets are still in the library — only this offer is closed.</ArchivedNote>}
+      {o.archived && <ArchivedNote className="-mt-2 mb-6">Archived. Its assets are still in the library; only this offer is closed.</ArchivedNote>}
 
-      <Card className="mb-5 overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-divider px-5 py-3">
-          <Workflow aria-hidden size={16} className="text-mute-4" />
-          <h2 className="m-0 text-body font-semibold">Workflow</h2>
-        </div>
-        <div className="flex flex-wrap items-start gap-x-8 gap-y-4 px-5 py-4">
-          <div className="min-w-0 flex-1">
-            <div className="eyebrow mb-2">Status</div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {!canEdit && <Chip color={OFFER_STATUS[o.status]} size="md" className="rounded-lg px-3 py-1">{o.status}</Chip>}
-              {canEdit && (Object.keys(OFFER_STATUS) as Offer["status"][]).map((k) => {
-                const on = o.status === k; const c = OFFER_STATUS[k];
-                return (
-                  <button key={k} type="button" aria-pressed={on} onClick={() => !on && run(setStatus, "offer", o.id, k)} className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1 text-meta font-medium transition hover:border-line-strong"
-                    style={{ borderColor: on ? hexA(c, 0.45) : "var(--bos-border)", background: on ? hexA(c, 0.16) : "#FFF", color: on ? readable(c) : "#56645E" }}>
-                    <span aria-hidden className="h-2 w-2 rounded-full" style={{ background: c }} />{k}
-                  </button>
-                );
-              })}
-            </div>
+      <div className={cx("grid gap-6 xl:gap-8", tab !== "funnel" && "xl:grid-cols-[minmax(0,1fr)_360px]")}>
+        {/* First in the reading order, so on narrower screens the links sit above the tabs. On the funnel the board takes the whole width. */}
+        <Summary o={o} assets={assets} className={cx("xl:col-start-2 xl:row-start-1", tab === "funnel" && "xl:hidden")} />
+
+        <div className="min-w-0 xl:col-start-1 xl:row-start-1">
+          <div className="mb-5 border-b border-line">
+            <PanelTabs
+              id="offer"
+              label="Offer sections"
+              value={tab}
+              onChange={setTab}
+              items={[
+                { key: "assets", label: "Assets", count: assets.length },
+                { key: "funnel", label: "Funnel" },
+                { key: "discussion", label: "Discussion", count: ws.openCount("offer", o.id) || undefined },
+              ]}
+            />
           </div>
-          <div className="flex-none">
-            <div className="eyebrow mb-2">Launch</div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              {canEdit ? (
-                <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
-                  onChange={(e) => run(setDue, "offer", o.id, e.target.value || null)} className="rounded-lg border border-line bg-surface px-2.5 py-1 text-meta" />
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-body text-ink-3"><CalendarDays aria-hidden size={15} className="text-mute-4" />{o.dueAt ? fmtDate(o.dueAt) : "Not scheduled"}</span>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="border-t border-divider [&>div]:mb-0 [&>div]:rounded-none [&>div]:border-0 [&>div]:px-5">
-          <ReviewBar kind="offer" item={o} />
-        </div>
-      </Card>
-      {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mb-5">{o.changeNote}</ChangeNote>}
 
-      {missing.length > 0 && o.status !== "Archived" && (
-        <div className="mb-3 rounded-xl border border-dashed border-[rgba(201,154,46,.45)] bg-[rgba(201,154,46,.06)] px-4 py-3 text-body text-warn-ink">
-          Before this goes out: {missing.join(", ")}.
-        </div>
-      )}
-
-      <div className="mb-8 overflow-hidden rounded-2xl border border-line bg-surface">
-        <div className="border-b border-line px-6 py-6 sm:px-7">
-          <Eyebrow className="mb-2.5">Positioning</Eyebrow>
-          <p className="m-0 max-w-[52ch] text-title font-medium leading-[1.45] tracking-[-0.012em] text-ink text-pretty sm:text-title">
-            {o.positioning || <span className="text-mute-4">No positioning written yet.</span>}
-          </p>
-        </div>
-        <div className="grid md:grid-cols-3">
-          <div className="border-b border-line px-6 py-5 sm:px-7 md:border-b-0 md:border-r">
-            <Eyebrow className="mb-2">Goals</Eyebrow>
-            <div className="mb-3">
-              {o.goals.length ? <GoalChips ws={ws} o={o} size="md" /> : <span className="text-body text-warn-text">No goal set, so this offer is not comparable to anything.</span>}
-            </div>
-            {o.offerType && <div className="text-body text-mute-2">Offer type · <span className="font-medium text-ink-3">{o.offerType}</span></div>}
-          </div>
-          <div className="border-b border-line px-6 py-5 sm:px-7 md:border-b-0 md:border-r">
-            <Eyebrow className="mb-2">Promise</Eyebrow>
-            <p className="m-0 text-lead leading-[1.55] text-ink-3 text-pretty">{o.promise || <span className="text-mute-4">Not written yet.</span>}</p>
-          </div>
-          <div className="px-6 py-5 sm:px-7">
-            <Eyebrow className="mb-2">Proof</Eyebrow>
-            <p className="m-0 text-lead leading-[1.55] text-ink-3 text-pretty">{o.proof || <span className="text-mute-4">Not written yet.</span>}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 border-t border-line bg-wash-2 px-6 py-4 sm:px-7">
-          <Eyebrow>Calls to action</Eyebrow>
-          {o.primaryCtaId && <CtaButton id={o.primaryCtaId} />}
-          {o.secondaryCtaId && <CtaButton id={o.secondaryCtaId} />}
-          {!o.primaryCtaId && !o.secondaryCtaId && <span className="text-body text-warn-text">None set — readers do not know what to do next.</span>}
-        </div>
-      </div>
-
-      <FunnelBoard key={o.id} offer={o} />
-
-      {nudgeAsset && (
-        <div className="mb-4 flex animate-pop flex-wrap items-center gap-3.5 rounded-xl border border-accent bg-soft px-4 py-4">
-          <span className="min-w-[240px] flex-1 text-body leading-[1.5] text-ink-2">
-            {nudgeAsset.name} is now linked to this offer. The same asset, not a copy. <span className="text-mute-1">Need a version written specifically for this offer?</span>
-          </span>
-          <Btn variant="primary" onClick={() => open({ kind: "clone", srcId: nudgeAsset.id, brandId: nudgeAsset.brandId ?? o.brandId, name: `${nudgeAsset.name} — ${o.name}`, offerIds: [o.id] })}>Clone and adapt</Btn>
-          <Btn variant="ghost" onClick={() => setNudge(null)}>No thanks</Btn>
-        </div>
-      )}
-
-      <OfferAssets o={o} />
-
-      <div id="discussion" className="mt-11 max-w-[720px] scroll-mt-24">
-        <div className="mb-1 flex items-baseline justify-between gap-4">
-          <h2 className="m-0 text-lead font-semibold">Discussion</h2>
-          <span className="font-mono text-body text-mute-3">{openNotes ? `${openNotes} open note${openNotes === 1 ? "" : "s"}` : "Nothing open"}</span>
-        </div>
-        <p className="mb-3.5 mt-0 text-body text-mute-3">
-          Decisions about this offer live here, not in a thread somebody has to go find. Type <span className="font-mono text-mute-1">#</span> to tag another offer, <span className="font-mono text-mute-1">@</span> to pull someone in.
-        </p>
-        {mentions.length > 0 && (
-          <div className="mb-3.5 rounded-xl border border-line bg-[#F7F9F8] px-4 py-3.5">
-            <div className="eyebrow mb-2.5 text-micro">{mentions.length} {mentions.length === 1 ? "mention" : "mentions"} elsewhere</div>
-            <div className="flex flex-col gap-2">
-              {mentions.map((m) => {
-                const where = m.kind === "asset" ? ws.asset(m.itemId)?.name : ws.offer(m.itemId)?.name;
-                const body = (
-                  <>
-                    <Avatar initials={ws.user(m.userId).initials} size={22} mono className="mt-px" />
-                    <span className="min-w-0 flex-1">
-                      <CommentText c={m} />
-                      <span className="mt-1 block text-meta text-mute-4">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
+          <div {...tabPanel("offer", tab)}>
+            {tab === "assets" && (
+              <>
+                {nudgeAsset && (
+                  <div role="status" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl bg-soft px-4 py-3">
+                    <span className="min-w-[240px] flex-1 text-body text-ink-2">
+                      {nudgeAsset.name} is now linked to this offer. The same asset, not a copy. <span className="text-mute-2">Need a version written for this offer?</span>
                     </span>
-                  </>
-                );
-                return m.kind === "asset" ? (
-                  <button key={m.id} type="button" onClick={() => openAsset(m.itemId, "discussion")} className="-m-1.5 flex w-[calc(100%+12px)] items-start gap-2.5 rounded-lg p-1.5 text-left hover:bg-chip">{body}</button>
-                ) : (
-                  <Link key={m.id} href={href.offer(m.itemId) + "#discussion"} className="-m-1.5 flex items-start gap-2.5 rounded-lg p-1.5 text-left hover:bg-chip">{body}</Link>
-                );
-              })}
-            </div>
+                    <Btn size="sm" onClick={() => open({ kind: "clone", srcId: nudgeAsset.id, brandId: nudgeAsset.brandId ?? o.brandId, name: `${nudgeAsset.name} (${o.name})`, offerIds: [o.id] })}>Clone and adapt</Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => setNudge(null)}>No thanks</Btn>
+                  </div>
+                )}
+                <OfferAssets o={o} />
+              </>
+            )}
+            {tab === "funnel" && <FunnelBoard offer={o} />}
+            {tab === "discussion" && <OfferDiscussion o={o} />}
           </div>
-        )}
-        <Thread kind="offer" id={o.id} />
+        </div>
       </div>
     </Page>
   );
 }
 
-/** The things an offer needs before anyone should put it in front of a reader. */
-function missingPieces(o: Offer) {
-  const out: string[] = [];
-  if (!o.positioning.trim()) out.push("write the positioning");
-  if (!o.proof.trim() || /^(not written|draft|tbc|todo)/i.test(o.proof.trim())) out.push("find a proof point");
-  if (!o.goals.length) out.push("pick a goal");
-  if (!o.primaryCtaId) out.push("choose a call to action");
-  return out;
+const MORE_BTN = cx("flex size-9 flex-none items-center justify-center rounded-lg border border-line bg-surface text-mute-2 transition-[background-color,border-color,color,transform] duration-150 ease-snap hover:border-line-strong hover:text-ink active:scale-[0.97]", FOCUS);
+
+/* ---------------------------------------------------------------- summary column */
+
+/** Pages people open from an offer, in the order they ask for them. */
+const KEY_TYPES = ["Landing page", "Lead magnet", "Thank you page", "Drive link"];
+
+/** The linked assets that are links: anything with a URL, and the page types even before they have one. */
+function keyLinksOf(assets: Asset[]) {
+  const rank = (a: Asset) => {
+    const i = KEY_TYPES.indexOf(a.type);
+    return i < 0 ? KEY_TYPES.length : i;
+  };
+  return assets.filter((a) => !a.archived && (!!assetLink(a) || KEY_TYPES.includes(a.type))).sort((x, y) => rank(x) - rank(y));
+}
+
+/** Waiting on someone: the review line then stays in view even when the details are folded away. */
+const waiting = (o: Offer) => o.review === "In review" || o.review === "Changes requested";
+
+function Summary({ o, assets, className }: { o: Offer; assets: Asset[]; className?: string }) {
+  const [more, setMore] = useState(false);
+  return (
+    <aside
+      aria-label="Offer summary"
+      data-scroll
+      className={cx(
+        "min-w-0 self-start rounded-xl border border-line bg-surface shadow-card",
+        "xl:sticky xl:top-19 xl:max-h-[calc(100dvh-92px)] xl:overflow-y-auto",
+        className,
+      )}
+    >
+      <KeyLinks assets={assets} />
+      {waiting(o) && (
+        <section aria-labelledby="review-h" className="border-t border-divider px-4 py-3">
+          <h2 id="review-h" className={HEAD}>Review</h2>
+          <ReviewLine kind="offer" item={o} className="mt-1.5" />
+          {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mt-3">{o.changeNote}</ChangeNote>}
+        </section>
+      )}
+      {/* Below 1280px only the links (and a review waiting on someone) show until someone asks for the rest. */}
+      <div id="offer-details" className={cx(more ? "md:grid md:grid-cols-2" : "hidden", "xl:block")}>
+        <Workflow o={o} />
+        <Positioning o={o} />
+      </div>
+      <button
+        type="button"
+        aria-expanded={more}
+        aria-controls="offer-details"
+        onClick={() => setMore((v) => !v)}
+        className="flex h-10 w-full items-center justify-center gap-1.5 rounded-b-xl border-t border-divider text-meta font-medium text-mute-2 transition-colors hover:bg-wash hover:text-ink xl:hidden"
+      >
+        {more ? "Hide details" : "Show details"}
+        <ChevronDown aria-hidden size={15} className={cx("transition-transform duration-200 ease-snap", more && "rotate-180")} />
+      </button>
+    </aside>
+  );
+}
+
+function KeyLinks({ assets }: { assets: Asset[] }) {
+  const list = keyLinksOf(assets);
+  return (
+    <section aria-labelledby="key-links-h" className="px-4 pb-1.5 pt-3">
+      <h2 id="key-links-h" className={HEAD}>Key links</h2>
+      {list.length ? (
+        <ul className="m-0 mt-1 grid list-none gap-x-6 p-0 sm:grid-cols-2 xl:grid-cols-1">
+          {list.map((a) => <KeyLink key={a.id} a={a} />)}
+        </ul>
+      ) : (
+        <p className="m-0 mb-1.5 mt-1.5 text-meta text-mute-2">No landing page or link yet. Linked pages and links show here.</p>
+      )}
+    </section>
+  );
+}
+
+/** One key link: the asset (opens it here), where it points, and Open, Copy link or Download. */
+function KeyLink({ a }: { a: Asset }) {
+  const { ws, openAsset } = useApp();
+  const copy = useCopyLink();
+  const link = assetLink(a);
+  const file = link ? null : assetDownload(a);
+  const stored = (a.files ?? []).filter((f) => f.key).length;
+  const where = link ? displayUrl(link.href) : file ? plural(stored, "file") : a.type === "Drive link" ? "No Drive link added yet" : "No link added yet";
+  return (
+    <li className="flex min-w-0 items-center gap-3 border-t border-divider py-1.5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0 xl:[&:nth-child(2)]:border-t">
+      <CodeBadge code={ws.codeOf(a)} color={ws.colorOf(a)} size={32} />
+      <div className="min-w-0 flex-1">
+        <button type="button" onClick={() => openAsset(a.id)} title={a.name} className="block max-w-full truncate rounded-sm text-left text-meta font-semibold text-ink hover:underline">{a.name}</button>
+        <div className="-mr-1.5 flex min-w-0 items-center gap-0.5">
+          <span title={link?.href} className="min-w-0 flex-1 truncate text-small text-mute-2">{where}</span>
+          {link && (
+            <>
+              <a href={link.href} target="_blank" rel="noreferrer" aria-label={`Open ${a.name}`} title={link.href} className={linkBtn("quiet")}><ExternalLink aria-hidden size={13} />Open</a>
+              <button type="button" onClick={() => void copy(link.href)} aria-label={`Copy link to ${a.name}`} className={linkBtn("quiet")}><Copy aria-hidden size={13} />Copy link</button>
+            </>
+          )}
+          {file && <a href={file.href} download aria-label={`Download ${a.name}`} title={file.title} className={linkBtn("quiet")}><Download aria-hidden size={13} />Download</a>}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function Positioning({ o }: { o: Offer }) {
+  const { ws } = useApp();
+  const ctas = [o.primaryCtaId, o.secondaryCtaId].map((id) => (id ? ws.cta(id) : null)).filter((c): c is Cta => !!c);
+  const missing = (s: string) => <span className="text-warn-text">{s}</span>;
+  const row = (label: string, value: ReactNode) => (
+    <>
+      <dt className="text-mute-2">{label}</dt>
+      <dd className="m-0 min-w-0 text-ink-3 text-pretty">{value}</dd>
+    </>
+  );
+  return (
+    <section aria-labelledby="positioning-h" className="border-t border-divider px-4 py-3.5 md:border-l xl:border-l-0">
+      <h2 id="positioning-h" className={HEAD}>Positioning</h2>
+      <p className="m-0 mt-1.5 text-body font-medium text-ink text-pretty">
+        {o.positioning || <span className="font-normal text-warn-text">No positioning written yet.</span>}
+      </p>
+      <dl className="m-0 mt-3 grid grid-cols-[80px_minmax(0,1fr)] gap-x-3 gap-y-2 text-meta">
+        {row("Goals", o.goals.length ? o.goals.join(", ") : missing("No goal set"))}
+        {row("Promise", o.promise || missing("Not written yet"))}
+        {row("Proof", o.proof || missing("Not written yet"))}
+        {row("Offer type", o.offerType || <span className="text-mute-2">Not set</span>)}
+        {row("CTAs", ctas.length ? <span className="flex flex-col items-start gap-1.5">{ctas.map((c) => <CtaTag key={c.id} c={c} />)}</span> : missing("None set"))}
+      </dl>
+    </section>
+  );
+}
+
+function Workflow({ o }: { o: Offer }) {
+  const { ws } = useApp();
+  const [run] = useAction();
+  const canEdit = ws.canChange(o);
+  const owner = ws.user(o.ownerId);
+  return (
+    <section aria-labelledby="workflow-h" className="border-t border-divider px-4 py-3.5">
+      <h2 id="workflow-h" className={HEAD}>Workflow</h2>
+      <dl className="m-0 mt-2 grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-3 gap-y-2 text-meta">
+        <dt className="text-mute-2">Status</dt>
+        <dd className="m-0 min-w-0">
+          <StatusSelect value={o.status} colors={OFFER_STATUS} readOnly={!canEdit} onChange={(s) => void run(setStatus, "offer", o.id, s)} />
+        </dd>
+        <dt className="text-mute-2">Launch</dt>
+        <dd className="m-0 min-w-0 text-ink-3">
+          {canEdit ? (
+            <input type="date" aria-label="Launch date" defaultValue={toDateInput(o.dueAt)} key={String(o.dueAt)}
+              onChange={(e) => void run(setDue, "offer", o.id, e.target.value || null)} className="field h-8 w-auto max-w-full px-2.5 py-0 text-meta" />
+          ) : o.dueAt ? fmtDate(o.dueAt) : <span className="text-mute-2">Not scheduled</span>}
+        </dd>
+        {!waiting(o) && (
+          <>
+            <dt className="text-mute-2">Review</dt>
+            <dd className="m-0 min-w-0"><ReviewLine kind="offer" item={o} /></dd>
+          </>
+        )}
+        <dt className="text-mute-2">Owner</dt>
+        <dd className="m-0 flex min-w-0 items-center gap-1.5 text-ink-3">
+          <Avatar initials={owner.initials} size={20} />
+          <span className="min-w-0 truncate">{owner.name}</span>
+        </dd>
+      </dl>
+    </section>
+  );
+}
+
+/* ---------------------------------------------------------------- discussion */
+
+function OfferDiscussion({ o }: { o: Offer }) {
+  const { ws, openAsset } = useApp();
+  const mentions = ws.mentionsOf("offer", o.id);
+  return (
+    <div className="max-w-[720px]">
+      {mentions.length > 0 && (
+        <section aria-labelledby="mentions-h" className="mb-4 rounded-xl border border-line bg-surface px-4 py-3">
+          <h2 id="mentions-h" className={cx(HEAD, "mb-1.5")}>{plural(mentions.length, "mention")} elsewhere</h2>
+          <div className="flex flex-col gap-1">
+            {mentions.map((m) => {
+              const where = m.kind === "asset" ? ws.asset(m.itemId)?.name : ws.offer(m.itemId)?.name;
+              const body = (
+                <>
+                  <Avatar initials={ws.user(m.userId).initials} size={22} mono className="mt-px" />
+                  <span className="min-w-0 flex-1">
+                    <CommentText c={m} />
+                    <span className="mt-0.5 block text-small text-mute-2">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
+                  </span>
+                </>
+              );
+              const cls = "-mx-2 flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-hover";
+              return m.kind === "asset" ? (
+                <button key={m.id} type="button" onClick={() => openAsset(m.itemId, "discussion")} className={cls}>{body}</button>
+              ) : (
+                <Link key={m.id} href={href.offer(m.itemId) + "?tab=discussion"} className={cls}>{body}</Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      <Thread kind="offer" id={o.id} />
+    </div>
+  );
 }

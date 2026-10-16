@@ -65,7 +65,7 @@ test("Replace swaps a file in place and logs it", async ({ page }) => {
   await expect(drawer.getByRole("link", { name: "Download swap-keep.png" })).toBeVisible();
 
   await drawer.getByRole("tab", { name: /^History/ }).click();
-  await expect(drawer.getByText(/replaced a file on — swap-me\.png → swapped-in\.png/)).toBeVisible();
+  await expect(drawer.getByText(/Replaced a file on: swap-me\.png → swapped-in\.png/)).toBeVisible();
 });
 
 test("the Global Library has an Ad creatives category you can add to, files included", async ({ page }) => {
