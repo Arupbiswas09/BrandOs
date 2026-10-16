@@ -26,12 +26,13 @@ test("an asset with several files downloads as one zip", async ({ page }) => {
   expect(body.includes(Buffer.from([0x50, 0x4b, 0x05, 0x06]))).toBe(true); // end of central directory
 });
 
-test("asset cards with uploaded files have a download button that does not open the asset", async ({ page }) => {
+test("asset rows with uploaded files have a download button that does not open the asset", async ({ page }) => {
   await signIn(page);
   expect((await upload(page, "dl-card.png")).status()).toBe(200);
   await page.goto("/brands/br1/assets");
   await settle(page);
-  const link = page.getByRole("link", { name: `Download ${ASSET}` });
+  // Always visible on the row, not only on hover. Several files come as one zip.
+  const link = page.getByRole("link", { name: new RegExp(`^Download (all of )?${ASSET}$`) });
   await expect(link).toBeVisible();
   await expect(link).toHaveAttribute("href", /\/api\/(assets\/as3\/download|files\/assets\/as3\/)/);
   const [download] = await Promise.all([page.waitForEvent("download"), link.click()]);
@@ -39,6 +40,11 @@ test("asset cards with uploaded files have a download button that does not open 
   await expect(page.getByRole("dialog", { name: ASSET })).toHaveCount(0);
   // Editors get a pencil beside it.
   await expect(page.getByRole("button", { name: `Edit ${ASSET}` })).toBeVisible();
+
+  // The grid view keeps the same button on each card.
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "Grid" }).click();
+  await expect(page.getByRole("link", { name: `Download ${ASSET}` })).toHaveAttribute("href", /\/api\/(assets\/as3\/download|files\/assets\/as3\/)/);
+  await page.getByRole("group", { name: "View" }).getByRole("button", { name: "List" }).click();
 });
 
 test("Replace swaps a file in place and logs it", async ({ page }) => {

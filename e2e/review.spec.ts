@@ -84,6 +84,10 @@ test("the client page shows the primary contact, and activity keeps the change v
   await settle(page);
   await expect(page.getByText("Primary contact")).toBeVisible();
   await expect(page.getByText(/^Updated · client since /)).toBeVisible();
+  // One brand is "1 Brand", and with one brand its card does not repeat the strip's counts.
+  await expect(page.getByText("Brand", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^\d+ offers$/)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
 });
 
 test("share with the client is gone; the kit exports as a PDF", async ({ page }) => {
