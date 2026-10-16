@@ -26,6 +26,8 @@ import { useInstall } from "./pwa";
 import { LiveSync } from "./live";
 import { useNavMode } from "./nav-mode";
 import { Notifier } from "./notifier";
+import { StarredNav } from "@/components/features/stars/starred-nav";
+import { useStarredItems } from "@/components/features/stars/starred-list";
 
 function useActiveBrand() {
   const { ws, assetId } = useApp();
@@ -106,6 +108,23 @@ const itemCls = (active: boolean) =>
   cx(
     "group/nav flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-meta font-medium transition-colors duration-150",
     active ? "bg-hl text-hl-ink" : "text-mute-1 hover:bg-hover hover:text-ink",
+  );
+
+/**
+ * The Starred list in the sidebar speaks the sidebar's own language: its label
+ * reads like "Clients" (not a mono eyebrow), its rows line up with the rows
+ * above them (10px in, 8px corners), and the starred thing you are on goes
+ * bold rather than taking a second highlight, as an open brand does (the
+ * section rows carry the highlight; a tinted tile on it would also lose its
+ * contrast).
+ */
+const STARRED_HERE = "[&_[aria-current]]:bg-transparent [&_[aria-current]]:font-semibold [&_[aria-current]]:text-ink [&_[aria-current]]:hover:bg-hover";
+const starredNavCls = (mini: boolean) => mini
+  ? cx("[&_li>*]:rounded-lg", STARRED_HERE)
+  : cx(
+    "mt-5 [&_.eyebrow]:mb-0 [&_.eyebrow]:px-2.5 [&_.eyebrow]:pb-1 [&_.eyebrow]:font-sans [&_.eyebrow]:normal-case [&_.eyebrow]:tracking-normal [&_.eyebrow]:text-mute-3",
+    "[&_li>*]:rounded-lg [&_li>*]:px-2.5 [&>a]:rounded-lg [&>a]:px-2.5",
+    STARRED_HERE,
   );
 
 /** A quiet label over a group of rows. */
@@ -198,6 +217,7 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
   const p = parsePath(pathname);
   const [, setNavMode] = useNavMode();
   const [tipNode, tip, hideTip] = useMiniTip(mini);
+  const hasStars = useStarredItems().length > 0;
 
   const activeBrandId = p.view === "brand" ? p.id : p.view === "offer" ? ws.offer(p.id)?.brandId : p.view === "service" ? ws.service(p.id)?.brandId : undefined;
   // Which section of the brand you are in; offers and services belong to their lists.
@@ -254,6 +274,10 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
           <NavItem mini={mini} tip={tip} href="/library" icon={<BookOpen />} label="Global Library" active={p.view === "library"} />
           {ws.can("access") && <NavItem mini={mini} tip={tip} href="/team" icon={<Users />} label="Team and access" active={p.view === "team"} />}
         </div>
+
+        {/* What I starred, one click away. Nothing at all until I star something. */}
+        {hasStars && mini && <div aria-hidden className="mx-2 my-3 border-t border-line" />}
+        <StarredNav mini={mini} className={starredNavCls(mini)} />
 
         {mini ? <div aria-hidden className="mx-2 my-3 border-t border-line" /> : <NavLabel>Clients</NavLabel>}
         <div className={cx("flex flex-col", mini ? "gap-2" : "gap-px")}>
@@ -487,6 +511,9 @@ function useCrumbs() {
       case "calendar": out.push(street, { label: "Launches" }); break;
       case "trash": out.push(street, { label: "Recycle bin" }); break;
       case "audit": out.push(street, { label: "Audit log" }); break;
+      // Onboarding: /brands/new/from-website starts a brand; /import brings in offers and assets.
+      case "new-brand": out.push(street, { label: pathname.startsWith("/brands/new/from-website") ? "New brand from a website" : "New brand" }); break;
+      case "import": out.push(street, { label: "Import" }); break;
       case "client": out.push(street, { label: ws.client(p.id)?.name ?? "Client" }); break;
       case "brand": {
         const b = ws.brand(p.id);
@@ -521,7 +548,7 @@ function useCrumbs() {
       default: return [];
     }
     return out;
-  }, [ws, p.view, p.id, p.tab]);
+  }, [ws, pathname, p.view, p.id, p.tab]);
 }
 
 function Crumbs() {

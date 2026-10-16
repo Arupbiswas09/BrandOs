@@ -3,9 +3,11 @@ import { settle, signIn } from "./helpers";
 import { callAction } from "./server-action";
 
 /*
- * Stars and results per offer, where people use them: the star in the offer
- * header and the asset drawer, the offer's Results tab, the conversion badge
- * on offer rows, and the starred lists in the sidebar and on the dashboard.
+ * Stars and results per offer, where people use them: the star in the offer,
+ * brand, service and client headers and in the asset drawer, the S key, the
+ * starred lists in the sidebar and on the dashboard, the offer's Results tab,
+ * the conversion badge on offer rows and cards, and What worked on a brand's
+ * Strategy.
  */
 
 test.use({ viewport: { width: 1440, height: 940 } });
@@ -19,8 +21,14 @@ async function results(page: Page, offer: string) {
   await settle(page);
 }
 
-/** The sidebar's starred list, and the dashboard card. */
-const sidebarList = (page: Page) => page.getByRole("group", { name: "Starred" }).first();
+async function visit(page: Page, path: string) {
+  await page.goto(path);
+  await settle(page);
+}
+
+/** The sidebar's Starred list. */
+const sidebarList = (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("group", { name: "Starred" });
+/** The dashboard's Starred card. */
 const card = (page: Page) => page.locator("#starred");
 
 test("a star on the offer page and in the drawer sticks after a reload", async ({ page }) => {
@@ -56,36 +64,119 @@ test("a star on the offer page and in the drawer sticks after a reload", async (
   await expect(drawer.getByRole("button", { name: "Star Audit Request Nurture Flow" })).toHaveAttribute("aria-pressed", "false");
 });
 
-// Needs StarredNav in the sidebar (shell.tsx) and StarredCard on the dashboard (street.tsx).
-test("starred items show in the sidebar and on the dashboard, and come off everywhere at once", async ({ page }) => {
+test("a star sticks after a reload, shows in the starred lists, and comes off again", async ({ page }) => {
   await signIn(page);
-  await callAction(page, "/offers/of1", STARS, "toggleStar", ["offer", "of1", false]);
-  await page.goto("/offers/of1");
-  await settle(page);
-  const NAME = "Ad Grant for Church Reach";
-  await page.getByRole("button", { name: `Star ${NAME}` }).click();
+  await callAction(page, "/", STARS, "toggleStar", ["service", "sv1", false]);
+  await visit(page, "/services/sv1");
+  const NAME = "Google Ad Grant";
+  const star = page.getByRole("button", { name: `Star ${NAME}`, exact: true });
+  const unstar = page.getByRole("button", { name: `Unstar ${NAME}` });
+
+  await expect(star).toHaveAttribute("aria-pressed", "false");
+  await expect(sidebarList(page).getByRole("link", { name: NAME })).toHaveCount(0);
+  await star.click();
+  await expect(unstar).toHaveAttribute("aria-pressed", "true");
   await expect(sidebarList(page).getByRole("link", { name: NAME })).toBeVisible();
-  await expect(sidebarList(page).getByRole("link", { name: NAME })).toHaveAttribute("href", "/offers/of1");
-  // Assets in the list open the drawer instead (Priya starred this one).
+  // On its own page the sidebar row says so.
+  await expect(sidebarList(page).getByRole("link", { name: NAME })).toHaveAttribute("aria-current", "page");
+
+  await page.reload();
+  await settle(page);
+  await expect(unstar).toHaveAttribute("aria-pressed", "true");
+  await expect(sidebarList(page).getByRole("link", { name: NAME })).toHaveAttribute("href", "/services/sv1");
+  // Assets in the list open the drawer instead of a page.
   await sidebarList(page).getByRole("button", { name: "Free Audit Landing Page" }).click();
   await expect(page).toHaveURL(/asset=as1/);
   await page.keyboard.press("Escape");
   await expect(page).not.toHaveURL(/asset=/);
 
-  await page.goto("/");
-  await settle(page);
-  await expect(card(page).getByRole("link", { name: new RegExp(NAME) })).toContainText("Offer · Quokka For Good");
+  // From 1024px the sidebar holds up to ten stars, so the dashboard card stays out of the way; narrower, it lists them with their context.
+  await visit(page, "/");
+  await expect(card(page)).toBeHidden();
+  await page.setViewportSize({ width: 900, height: 940 });
+  await expect(card(page).getByRole("link", { name: new RegExp(NAME) })).toContainText("Service · Quokka For Good");
+
   // Unstarring from the dashboard card takes it off every list.
   await card(page).getByRole("button", { name: `Unstar ${NAME}` }).click();
+  await expect(card(page).getByText(NAME)).toHaveCount(0);
+  await page.setViewportSize({ width: 1440, height: 940 });
   await expect(sidebarList(page).getByRole("link", { name: NAME })).toHaveCount(0);
-  await page.goto("/offers/of1");
-  await settle(page);
-  await expect(page.getByRole("button", { name: `Star ${NAME}` })).toHaveAttribute("aria-pressed", "false");
+  await visit(page, "/services/sv1");
+  await expect(star).toHaveAttribute("aria-pressed", "false");
 });
 
-// useStarShortcut is ready but not wired (features/stars/MOUNT.md leaves that to the lead). Wire it in OfferView and the drawer, then drop the fixme.
-test.fixme("S stars the item whose page it is, and not while typing", async ({ page }) => {
+test("brands, services and clients carry a star for everyone who can see them", async ({ page }) => {
+  // Marta is a Viewer and sees Northgate only: she changes nothing, but she can star.
+  await signIn(page, "Marta Vieira");
+  try {
+    for (const [path, name] of [["/clients/cl3", "Northgate Athletics Trust"], ["/brands/br4", "Northgate Athletics"], ["/services/sv7", "Season Membership"]]) {
+      await visit(page, path);
+      await page.getByRole("button", { name: `Star ${name}`, exact: true }).click();
+      await expect(page.getByRole("button", { name: `Unstar ${name}` })).toHaveAttribute("aria-pressed", "true");
+      await expect(sidebarList(page).getByRole("link", { name, exact: true })).toHaveAttribute("href", path);
+    }
+    // The sidebar lists all three, so the dashboard does not list them again.
+    await visit(page, "/");
+    await expect(sidebarList(page).getByRole("listitem")).toHaveCount(3);
+    await expect(card(page)).toBeHidden();
+  } finally {
+    for (const [kind, id] of [["client", "cl3"], ["brand", "br4"], ["service", "sv7"]]) await callAction(page, "/", STARS, "toggleStar", [kind, id, false]);
+  }
+  // With nothing starred, the dashboard says what stars are for.
+  await visit(page, "/");
+  await expect(sidebarList(page)).toHaveCount(0);
+  await expect(card(page).getByText("Star the offers and assets you use most to keep them here.")).toBeVisible();
+});
+
+test("S stars the page it is on, and not while typing", async ({ page }) => {
   await signIn(page);
+  // Start from the seed's stars, whatever an earlier run left.
+  await callAction(page, "/", STARS, "toggleStar", ["service", "sv2", false]);
+  await callAction(page, "/", STARS, "toggleStar", ["brand", "br1", true]);
+  await visit(page, "/services/sv2");
+  const NAME = "Website Design";
+  // The first press waits until the page is listening (a dev server may still be hydrating it).
+  await expect(async () => {
+    if (!(await page.getByText(`Starred ${NAME}`, { exact: true }).count())) await page.keyboard.press("s");
+    await expect(page.getByText(`Starred ${NAME}`, { exact: true })).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
+  await expect(sidebarList(page).getByRole("link", { name: NAME })).toBeVisible();
+  await expect(page.getByRole("button", { name: `Unstar ${NAME}` })).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("s");
+  await expect(page.getByText(`Unstarred ${NAME}`)).toBeVisible();
+  await expect(sidebarList(page).getByRole("link", { name: NAME })).toHaveCount(0);
+
+  // On a brand (starred in the seed data): an "s" typed into its search is just typing.
+  await visit(page, "/brands/br1");
+  await page.getByRole("searchbox", { name: "Find a service" }).pressSequentially("ss");
+  await expect(page.getByRole("button", { name: "Unstar Quokka For Good" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("searchbox", { name: "Find a service" }).fill("");
+  await page.getByRole("heading", { level: 1, name: "Quokka For Good" }).click();
+  await page.keyboard.press("s");
+  await expect(page.getByText("Unstarred Quokka For Good")).toBeVisible();
+  await page.keyboard.press("s");
+  await expect(page.getByText("Starred Quokka For Good", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Unstar Quokka For Good" })).toHaveAttribute("aria-pressed", "true");
+  // Saved, not only shown.
+  await expect(async () => {
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Unstar Quokka For Good" })).toHaveAttribute("aria-pressed", "true", { timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
+
+  // The keyboard shortcuts list says so.
+  const help = page.getByRole("dialog", { name: "Keyboard shortcuts" });
+  await expect(async () => {
+    if (!(await help.count())) await page.keyboard.press("?");
+    await expect(help).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
+  await expect(help.getByText("Star or unstar this page")).toBeVisible();
+});
+
+test("S on an offer page stars the offer; with the drawer open it stars the asset", async ({ page }) => {
+  await signIn(page);
+  // Unstarred to begin with, whatever an earlier run left.
+  await callAction(page, "/offers/of24", STARS, "toggleStar", ["offer", "of24", false]);
+  await callAction(page, "/offers/of24", STARS, "toggleStar", ["asset", "as41", false]);
   await results(page, "of24");
   const NAME = "Thirty-Minute Grant Consultation";
   await page.keyboard.press("s");
@@ -99,38 +190,54 @@ test.fixme("S stars the item whose page it is, and not while typing", async ({ p
   await page.keyboard.press("s");
   await expect(page.getByText(`Unstarred ${NAME}`)).toBeVisible();
   await expect(page.getByRole("button", { name: `Star ${NAME}` })).toHaveAttribute("aria-pressed", "false");
+
+  // With the asset drawer open, S stars the asset in front, not the offer behind it.
+  await page.goto("/offers/of1?asset=as41");
+  await settle(page);
+  const ASSET = "Audit Request Nurture Flow";
+  const drawer = page.getByRole("dialog", { name: ASSET });
+  await page.keyboard.press("s");
+  await expect(page.getByText(`Starred ${ASSET}`, { exact: true })).toBeVisible();
+  await expect(drawer.getByRole("button", { name: `Unstar ${ASSET}` })).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("s");
+  await expect(drawer.getByRole("button", { name: `Star ${ASSET}` })).toHaveAttribute("aria-pressed", "false");
 });
 
 test("stars are only for things I can see, and stop at 30", async ({ page }) => {
   // Marta sees Northgate only.
   await signIn(page, "Marta Vieira");
-  let body = await callAction(page, "/offers/of20", STARS, "toggleStar", ["offer", "of1", true]);
+  let body = await callAction(page, "/", STARS, "toggleStar", ["offer", "of1", true]);
   expect(body).toContain("That is not here any more.");
-  body = await callAction(page, "/offers/of20", STARS, "toggleStar", ["offer", "of20", true]);
+  body = await callAction(page, "/", STARS, "toggleStar", ["offer", "of20", true]);
   expect(body).toContain("\"ok\":true");
-  body = await callAction(page, "/offers/of20", STARS, "toggleStar", ["offer", "of20", false]);
+  body = await callAction(page, "/", STARS, "toggleStar", ["offer", "of20", false]);
   expect(body).toContain("\"ok\":true");
 
   // Joss starts with no stars; the 31st is refused with a plain reason.
   await signIn(page, "Joss Weekes");
   const ids = [...Array.from({ length: 30 }, (_, i) => `as${i + 1}`), "as32"];
-  const from = "/offers/of15";
   try {
     for (const id of ids.slice(0, 30)) {
-      body = await callAction(page, from, STARS, "toggleStar", ["asset", id, true]);
+      body = await callAction(page, "/", STARS, "toggleStar", ["asset", id, true]);
       expect(body, id).toContain("\"ok\":true");
     }
-    body = await callAction(page, from, STARS, "toggleStar", ["asset", ids[30], true]);
+    body = await callAction(page, "/", STARS, "toggleStar", ["asset", ids[30], true]);
     expect(body).toContain("You can star up to 30 things.");
+    await visit(page, "/");
+    // The sidebar shows the first ten and points at the rest, on the dashboard's card.
+    await expect(sidebarList(page).getByRole("listitem")).toHaveCount(10);
+    // Archived ones are left out of the lists, so only "more" is certain.
+    await page.getByRole("link", { name: /^\d+ more on the dashboard$/ }).click();
+    await expect(card(page)).toBeInViewport();
+    await expect(card(page).getByRole("button", { name: /^Show all \d+$/ })).toBeVisible();
     // A refused star goes back, and says why.
-    await page.goto(from);
-    await settle(page);
-    const star = page.getByRole("button", { name: "Star Free Marketing Audit" });
+    await visit(page, "/services/sv1");
+    const star = page.getByRole("button", { name: "Star Google Ad Grant", exact: true });
     await star.click();
     await expect(page.getByText("You can star up to 30 things.")).toBeVisible();
     await expect(star).toHaveAttribute("aria-pressed", "false");
   } finally {
-    for (const id of ids) await callAction(page, from, STARS, "toggleStar", ["asset", id, false]);
+    for (const id of ids) await callAction(page, "/", STARS, "toggleStar", ["asset", id, false]);
   }
 });
 
@@ -252,11 +359,14 @@ test("offer rows and cards show the conversion", async ({ page }) => {
   await expect(page.getByRole("link", { name: /Free Marketing Audit/ }).getByText("11.7% conv.")).toBeVisible();
 });
 
-// Needs WhatWorked on the brand's Strategy tab (brand.tsx).
-test("what worked compares offers with enough leads", async ({ page }) => {
+
+test("what worked compares offers with enough leads, on the brand's Strategy", async ({ page }) => {
   await signIn(page);
-  await page.goto("/brands/br1/strategy");
-  await settle(page);
-  await expect(page.getByText("Audits convert best overall (11.7% from 103 leads).").first()).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open Free Marketing Audit" }).first()).toHaveAttribute("href", "/offers/of15");
+  await visit(page, "/brands/br1/strategy");
+  const box = page.getByRole("heading", { name: "What worked" }).locator("..");
+  await expect(box.getByText("Audits convert best overall (11.7% from 103 leads).")).toBeVisible();
+  await expect(box.getByRole("link", { name: "Open Free Marketing Audit" })).toHaveAttribute("href", "/offers/of15");
+  // Below two comparable offers it says nothing at all (St Aidan has no recorded results).
+  await visit(page, "/brands/br2/strategy");
+  await expect(page.getByRole("heading", { name: "What worked" })).toHaveCount(0);
 });

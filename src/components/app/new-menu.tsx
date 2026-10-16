@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { usePathname } from "next/navigation";
 import { Building2, FileText, Layers, Megaphone, Palette, Plus, type LucideIcon } from "lucide-react";
 import type { ModalSpec } from "@/components/modals/types";
-import { Btn, cx } from "@/components/ui";
+import { useOnboardingMenuItems } from "@/components/features/onboarding/entry-points";
+import { Btn } from "@/components/ui";
 import { useApp } from "./provider";
 import { whereAmI } from "./here";
 
@@ -28,6 +30,8 @@ export function NewMenu() {
 
   const h = whereAmI(ws, pathname);
   const b = h.brand;
+  // Starting from something that already exists: these open their own pages rather than a form.
+  const starts = useOnboardingMenuItems({ brandId: b?.id, clientId: h.clientId });
   const items: Item[] = [
     ...(b && ws.can("edit") ? [
       { key: "offer", label: "New offer", hint: "Positioning, goals, promise and proof", icon: Megaphone, spec: { kind: "offer", draft: { brandId: b.id, serviceId: h.service?.id ?? null, segment: "All segments", status: "Ideation" } } } as Item,
@@ -73,7 +77,17 @@ export function NewMenu() {
     else if (e.key === "Tab") setShown(false);
   };
 
-  if (!items.length) return null;
+  if (!items.length && !starts.length) return null;
+  const itemCls = "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-colors duration-100 hover:bg-hover focus-visible:bg-soft focus:bg-soft";
+  const body = (it: { label: string; hint: string; icon: LucideIcon }) => (
+    <>
+      <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-line bg-surface text-mute-2"><it.icon aria-hidden className="h-4 w-4" /></span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-body font-medium leading-5 text-ink">{it.label}</span>
+        <span className="block truncate text-small leading-4 text-mute-2">{it.hint}</span>
+      </span>
+    </>
+  );
   return (
     <div ref={wrap} className="relative flex-none">
       <Btn ref={button} variant="primary" aria-haspopup="menu" aria-expanded={shown} aria-controls={shown ? "new-menu" : undefined}
@@ -89,13 +103,15 @@ export function NewMenu() {
           {items.map((it) => (
             <button key={it.key} type="button" role="menuitem" tabIndex={-1}
               onClick={() => { hide(false); open(it.spec); }}
-              className={cx("flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-colors duration-100 hover:bg-hover focus-visible:bg-soft focus:bg-soft")}>
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-line bg-surface text-mute-2"><it.icon aria-hidden className="h-4 w-4" /></span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-body font-medium leading-5 text-ink">{it.label}</span>
-                <span className="block truncate text-small leading-4 text-mute-2">{it.hint}</span>
-              </span>
+              className={itemCls}>
+              {body(it)}
             </button>
+          ))}
+          {starts.length > 0 && items.length > 0 && <div aria-hidden className="mx-1 my-1 h-px bg-divider" />}
+          {starts.map((it) => (
+            <Link key={it.key} href={it.href} role="menuitem" tabIndex={-1} onClick={() => hide(false)} className={itemCls}>
+              {body(it)}
+            </Link>
           ))}
         </div>
       )}

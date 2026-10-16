@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import type { Asset, Brand, Offer } from "@/db/schema";
-import { Archive, ArchiveRestore, ChevronRight, FolderOpen, Layers, Megaphone, Pencil, Plus } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, FolderOpen, Layers, Megaphone, Pencil, Plus, Upload } from "lucide-react";
 import { onColor } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, TONE, offerTypesOf } from "@/lib/constants";
 import { href, type BrandTab } from "@/lib/routes";
@@ -20,11 +20,20 @@ import { ViewToggle, useView } from "@/components/view-toggle";
 import { NotHere, useVisit } from "./common";
 import { BrandKit } from "./kit";
 import { RemoveOfferType } from "@/components/modals/offer-types";
+import { DropHint, useFileDrop } from "@/components/app/file-drop";
+import { StarButton } from "@/components/features/stars/star-button";
+import { useStarShortcut } from "@/components/features/stars/use-star-shortcut";
+import { BrokenLinksCard } from "@/components/features/links/broken-links-card";
+import { ImportLink } from "@/components/features/onboarding/entry-points";
+import { BulkUpload } from "@/components/features/files/bulk-upload";
+import { WhatWorked } from "@/components/features/results/what-worked";
 
 export function BrandPage({ id, tab, type }: { id: string; tab: BrandTab; type?: string }) {
   const { ws } = useApp();
   const b = ws.brand(id);
   useVisit("brand", id, !!b);
+  // "S" stars the brand from any of its sections.
+  useStarShortcut("brand", id, b?.name ?? "", { enabled: !!b });
   if (!b) return <NotHere what="brand" />;
   const body = (() => {
     switch (tab) {
@@ -107,22 +116,23 @@ function Home({ b }: { b: Brand }) {
               <h1 className="display m-0 text-display text-ink">{b.name}</h1>
               {b.tagline && <p className="m-0 mt-1 max-w-[60ch] text-body text-mute-2 text-pretty">{b.tagline}</p>}
             </div>
+            {/* On a phone the star sits beside the name, leaving the search its full width below. */}
+            <StarButton kind="brand" id={b.id} name={b.name} className="ml-auto self-start sm:hidden" />
           </div>
-          {tools && (
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a service" aria-label="Find a service" className="field min-w-0 flex-1 py-2 text-body sm:w-56 sm:flex-none" />
-              {needing > 0 && (
-                <div role="group" aria-label="Show services" className="flex h-10 flex-none items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5">
-                  {([["all", "All"], ["attention", `Needs attention · ${needing}`]] as const).map(([k, label]) => (
-                    <button key={k} type="button" aria-pressed={showOnly === k} onClick={() => setOnly(k)}
-                      className={cx("h-full rounded-lg px-3 text-meta font-medium transition-colors duration-150", showOnly === k ? "bg-soft text-accent" : "text-mute-2 hover:bg-hover hover:text-ink")}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div className={cx("flex flex-wrap items-center gap-2", tools ? "w-full sm:w-auto" : "max-sm:hidden")}>
+            <StarButton kind="brand" id={b.id} name={b.name} className="max-sm:hidden" />
+            {tools && <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find a service" aria-label="Find a service" className="field min-w-0 flex-1 py-2 text-body sm:w-56 sm:flex-none" />}
+            {tools && needing > 0 && (
+              <div role="group" aria-label="Show services" className="flex h-10 flex-none items-center gap-0.5 rounded-lg border border-line bg-surface p-0.5">
+                {([["all", "All"], ["attention", `Needs attention · ${needing}`]] as const).map(([k, label]) => (
+                  <button key={k} type="button" aria-pressed={showOnly === k} onClick={() => setOnly(k)}
+                    className={cx("h-full rounded-lg px-3 text-meta font-medium transition-colors duration-150", showOnly === k ? "bg-soft text-accent" : "text-mute-2 hover:bg-hover hover:text-ink")}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -159,6 +169,9 @@ function Home({ b }: { b: Brand }) {
           </div>
         )}
       </section>
+
+      {/* What is stuck: links in this brand (and its sub-brands) that stopped opening. Nothing while they all open. */}
+      <BrokenLinksCard brandId={b.id} className="mt-10" />
 
       {subs.length > 0 && (
         <section aria-labelledby="brand-subs" className="mt-10">
@@ -330,7 +343,7 @@ function Offers({ b }: { b: Brand }) {
 
   return (
     <>
-      <SectionHead as="h1" eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn>}
+      <SectionHead as="h1" eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <><ImportLink brandId={b.id} kind="offers" className="self-center" /><Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn></>}
         sub={<>Each offer holds one piece of positioning and everything that supports it.</>}
       />
       <div className="mb-5 flex flex-wrap items-center gap-2 [&>[role=search]]:mb-0">
@@ -402,18 +415,27 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
   // In select mode archived ones join the list, so they can be restored in bulk too.
   const list = sel.on ? [...shown, ...archivedOnly(filtered)] : shown;
   const items = view === "grid" ? picturesFirst(list, (a) => !!ws.previewOf(a)) : list;
+  // Many files at once, each its own draft asset in this brand.
+  const canUpload = ws.can("edit") && ws.can("upload");
+  const [adding, setAdding] = useState(false);
+  const [dropped, setDropped] = useState<{ n: number; files: File[] }>({ n: 0, files: [] });
+  const drop = useFileDrop(canUpload && !adding, (files) => { setDropped((d) => ({ n: d.n + 1, files })); setAdding(true); });
 
   return (
-    <>
+    <div {...drop.bind} className={cx("rounded-xl", drop.over && "outline-2 outline-offset-8 outline-accent outline-dashed")}>
+      <DropHint show={drop.over} where={b.name} />
       <SectionHead as="h1" eyebrow="Files and content" title="Assets"
         actions={(ws.can("edit") || canBulk(ws, false)) && (
           <>
             {canBulk(ws, false) && camp.length > 0 && <SelectToggle s={sel} />}
+            <ImportLink brandId={b.id} kind="assets" className="self-center" />
+            {canUpload && <Btn size="lg" aria-expanded={adding} onClick={() => { if (!adding) setDropped((d) => ({ n: d.n + 1, files: [] })); setAdding(!adding); }}><Upload aria-hidden size={16} />Upload files</Btn>}
             {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
           </>
         )}
         sub={<>{plural(liveCamp.length, "asset")} in this brand. Each one exists once, however many offers point at it.</>}
       />
+      {adding && <BulkUpload key={dropped.n} brandId={b.id} initialFiles={dropped.files} onClose={() => setAdding(false)} className="mb-6" />}
       <div className="mb-5 flex flex-wrap items-center gap-2 [&>[role=search]]:mb-0">
         <FilterBar
           q={q} onQ={liveCamp.length > 1 ? setQ : undefined} placeholder="Filter by name or tag"
@@ -450,7 +472,7 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>Add an asset</Btn>}
         </Empty>
       )}
-    </>
+    </div>
   );
 }
 
@@ -467,55 +489,62 @@ function Strategy({ b }: { b: Brand }) {
       <SectionHead as="h1" eyebrow="Who it is for and why" title="Strategy"
         sub={<>Goals, segments and offer types. Every offer is tagged with them.</>}
       />
+      <div className="xl:flex xl:items-start">
+        <div className="@container min-w-0 xl:flex-1">
+          <H2 className="mb-1" right={canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id })} className="rounded-sm text-body text-mute-2 hover:text-ink">+ New goal</button>}>Goals</H2>
+          <p className="mb-3 mt-0 max-w-[64ch] text-body text-mute-2">Broad business outcomes this brand is chasing, not channels or tactics. Five is usually enough; if two of them keep catching the same offers, merge them.</p>
+          <div className="mb-8 grid gap-3 @lg:grid-cols-2 @2xl:grid-cols-3">
+            {b.goals.map((g) => {
+              const n = offers.filter((o) => o.goals.includes(g.name)).length;
+              return (
+                <Card key={g.name} className="px-4 py-3.5">
+                  <div className="mb-1 text-body font-semibold">{g.name}</div>
+                  <div className="mb-2.5 text-body leading-[1.5] text-mute-2 text-pretty">{g.description}</div>
+                  <div className="flex items-center gap-3 border-t border-divider pt-2.5 text-meta">
+                    <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 rounded-sm text-left font-medium hover:underline">{count(n)}</button>
+                    {canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id, name: g.name, description: g.description, original: g.name })} className="rounded-sm text-mute-2 hover:text-ink">Edit<span className="sr-only"> {g.name}</span></button>}
+                    {canEdit && b.goals.length > 1 && <button type="button" onClick={() => open({ kind: "mergeGoal", brandId: b.id, from: g.name })} className="rounded-sm text-mute-2 hover:text-ink">Merge<span className="sr-only"> {g.name}</span></button>}
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
 
-      <H2 className="mb-1" right={canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id })} className="rounded-sm text-body text-mute-2 hover:text-ink">+ New goal</button>}>Goals</H2>
-      <p className="mb-3 mt-0 max-w-[64ch] text-body text-mute-2">Broad business outcomes this brand is chasing, not channels or tactics. Five is usually enough; if two of them keep catching the same offers, merge them.</p>
-      <div className="mb-8 grid gap-3 md:grid-cols-2">
-        {b.goals.map((g) => {
-          const n = offers.filter((o) => o.goals.includes(g.name)).length;
-          return (
-            <Card key={g.name} className="px-4 py-3.5">
-              <div className="mb-1 text-body font-semibold">{g.name}</div>
-              <div className="mb-2.5 text-body leading-[1.5] text-mute-2 text-pretty">{g.description}</div>
-              <div className="flex items-center gap-3 border-t border-divider pt-2.5 text-meta">
-                <button type="button" onClick={() => open({ kind: "goalOffers", brandId: b.id, name: g.name })} className="flex-1 rounded-sm text-left font-medium hover:underline">{count(n)}</button>
-                {canEdit && <button type="button" onClick={() => open({ kind: "goal", brandId: b.id, name: g.name, description: g.description, original: g.name })} className="rounded-sm text-mute-2 hover:text-ink">Edit<span className="sr-only"> {g.name}</span></button>}
-                {canEdit && b.goals.length > 1 && <button type="button" onClick={() => open({ kind: "mergeGoal", brandId: b.id, from: g.name })} className="rounded-sm text-mute-2 hover:text-ink">Merge<span className="sr-only"> {g.name}</span></button>}
-              </div>
-            </Card>
-          );
-        })}
-      </div>
+          <H2 className="mb-1" right={canEdit && <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, add: true })} className="rounded-sm text-body text-mute-2 hover:text-ink">+ New type</button>}>Offer types</H2>
+          <p className="mb-3 mt-0 max-w-[62ch] text-body text-mute-2">What the offer physically is. An audit and a paid engagement can both chase the same goal. Renaming a type moves its offers with it.</p>
+          <div className="mb-8 flex flex-wrap gap-2">
+            {offerTypesOf(b).map((t) => {
+              const n = offers.filter((o) => o.offerType === t).length;
+              return (
+                <div key={t} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-2.5">
+                  <span className="text-body font-semibold">{t}</span>
+                  <span className="text-meta font-medium">{count(n)}</span>
+                  {canEdit && (
+                    <span className="ml-0.5 flex items-center gap-2.5 border-l border-line pl-2.5">
+                      <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, edit: t })} className="rounded-sm text-meta text-mute-2 hover:text-ink">Edit<span className="sr-only"> {t}</span></button>
+                      <RemoveOfferType brandId={b.id} type={t} />
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-      <H2 className="mb-1" right={canEdit && <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, add: true })} className="rounded-sm text-body text-mute-2 hover:text-ink">+ New type</button>}>Offer types</H2>
-      <p className="mb-3 mt-0 max-w-[62ch] text-body text-mute-2">What the offer physically is. An audit and a paid engagement can both chase the same goal. Renaming a type moves its offers with it.</p>
-      <div className="mb-8 flex flex-wrap gap-2">
-        {offerTypesOf(b).map((t) => {
-          const n = offers.filter((o) => o.offerType === t).length;
-          return (
-            <div key={t} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-2.5">
-              <span className="text-body font-semibold">{t}</span>
-              <span className="text-meta font-medium">{count(n)}</span>
-              {canEdit && (
-                <span className="ml-0.5 flex items-center gap-2.5 border-l border-line pl-2.5">
-                  <button type="button" onClick={() => open({ kind: "offerTypes", brandId: b.id, edit: t })} className="rounded-sm text-meta text-mute-2 hover:text-ink">Edit<span className="sr-only"> {t}</span></button>
-                  <RemoveOfferType brandId={b.id} type={t} />
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <H2 right={canEdit && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="rounded-sm text-body text-mute-2 hover:text-ink">Edit segments</button>}>Segments</H2>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {b.segments.map((sg) => (
-          <Link key={sg.name} href={href.brand(b.id, "offers")} className={cx("flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-2.5 hover:border-line-strong", FOCUS)}>
-            <Dot color={sg.color} small />
-            <span className="text-body font-semibold">{sg.name}</span>
-            <span className="text-meta">{count(offers.filter((o) => o.segment === sg.name).length)}</span>
-          </Link>
-        ))}
+          <H2 right={canEdit && <button type="button" onClick={() => open({ kind: "kit", brandId: b.id })} className="rounded-sm text-body text-mute-2 hover:text-ink">Edit segments</button>}>Segments</H2>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {b.segments.map((sg) => (
+              <Link key={sg.name} href={href.brand(b.id, "offers")} className={cx("flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-2.5 hover:border-line-strong", FOCUS)}>
+                <Dot color={sg.color} small />
+                <span className="text-body font-semibold">{sg.name}</span>
+                <span className="text-meta">{count(offers.filter((o) => o.segment === sg.name).length)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+        {/* What converts best here, from recorded results. Renders nothing (and the column folds away) until two offers can be compared. */}
+        <div className="mt-8 empty:hidden xl:sticky xl:top-20 xl:ml-8 xl:mt-0 xl:w-80 xl:flex-none">
+          <WhatWorked brandId={b.id} />
+        </div>
       </div>
     </>
   );

@@ -55,6 +55,15 @@ const UNKNOWN_USER: PublicUser = {
 };
 
 /**
+ * Work BrandOS does by itself (the daily link check, a page's picture) is
+ * logged under these ids, and reads as "BrandOS" rather than as nobody.
+ * `link-checker` is LINK_CHECKER in src/server/link-fetcher.ts.
+ */
+const SYSTEM_USERS = new Map<string, PublicUser>([
+  ["link-checker", { ...UNKNOWN_USER, id: "link-checker", name: "BrandOS", initials: "B" }],
+]);
+
+/**
  * Read-only view over a Workspace snapshot with the lookups every screen
  * needs. Built once per snapshot; cheap maps, no mutation.
  */
@@ -89,7 +98,7 @@ export class WS {
   /** Whether I can change this particular item (contributors: only their own). */
   canChange(item?: { ownerId?: string | null } | null) { return canChange(this.me, item); }
   get isGuest() { return this.me.access === "Client"; }
-  user(id: string | null | undefined): PublicUser { return (id && this.byId.users.get(id)) || UNKNOWN_USER; }
+  user(id: string | null | undefined): PublicUser { return (id && (this.byId.users.get(id) ?? SYSTEM_USERS.get(id))) || UNKNOWN_USER; }
   first(id: string | null | undefined) { return this.user(id).name.split(" ")[0]; }
   ago(d: Date | string | number) { return timeAgo(d, this.d.now); }
 

@@ -35,22 +35,22 @@ export function tidyName(fileName: string): string {
 /**
  * The asset type a file starts as when nobody chooses one: pictures and
  * video are social posts in a brand and ad creatives in the Global Library;
- * PDFs and everything else are documents.
+ * PDFs and everything else are documents in a brand and templates in the
+ * library (whose five kinds have no "Document", and an item outside them
+ * would show under no kind at all).
  */
 export function typeForFile(file: { name: string; type?: string | null }, inLibrary: boolean): string {
   const mime = (file.type ?? "").toLowerCase();
   const kind = kindOf(file.name);
   if (mime.startsWith("image/") || mime.startsWith("video/") || kind === "image" || kind === "video") return inLibrary ? "Ad creative" : "Social post";
-  return "Document";
+  return inLibrary ? "Template" : "Document";
 }
 
-/** The types offered for a whole bulk upload: a brand's work, or what the Global Library holds. */
+/** The types offered for a whole bulk upload: a brand's work, or the Global Library's five kinds. */
 export function bulkTypeOptions(inLibrary: boolean): string[] {
-  const list = Object.entries(ASSET_TYPES)
+  return Object.entries(ASSET_TYPES)
     .filter(([k, t]) => k !== "Newsletter ad" && (inLibrary ? t.cat === "global" : t.cat !== "global"))
     .map(([k]) => k);
-  // A PDF in the library starts as a Document, so it is offered there too.
-  return inLibrary && !list.includes("Document") ? [...list, "Document"] : list;
 }
 
 export type PreviewKind = "image" | "pdf" | "video" | "audio" | "text" | "other";

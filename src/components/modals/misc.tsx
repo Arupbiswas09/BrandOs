@@ -50,6 +50,7 @@ const KEYS: [string, string][] = [
   ["⌘ C", "Copy the link of the search result you are on"],
   ["N", "Open the New menu"],
   ["I", "Open your queue"],
+  ["S", "Star or unstar this page"],
   ["[", "Fold or unfold the sidebar"],
   ["G then S", "Go to the Dashboard"],
   ["G then L", "Go to the Global Library"],

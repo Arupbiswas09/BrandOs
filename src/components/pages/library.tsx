@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Plus, Search } from "lucide-react";
+import { ChevronDown, Plus, Search, Upload } from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { ASSET_TYPES } from "@/lib/constants";
 import { archivedOnly, live, plural } from "@/lib/ws";
@@ -10,6 +10,8 @@ import { useApp } from "@/components/app/provider";
 import { AssetCard } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { ArchExpander, Btn, Card, CodeTile, Empty, Page, PageHead, Tick, cx } from "@/components/ui";
+import { DropHint, useFileDrop } from "@/components/app/file-drop";
+import { BulkUpload } from "@/components/features/files/bulk-upload";
 
 /** What the Global Library holds. Each is a filter pill, an entry in the "Add to library" menu and an empty state. */
 const KINDS = [
@@ -42,68 +44,78 @@ export function Library() {
     .map((k) => ({ k, items: list.filter((a) => a.type === k.type) }))
     .filter((g) => g.items.length > 0);
   const row = (a: Asset) => <LibraryRow key={a.id} a={a} selecting={sel.on} selected={sel.sel.has(a.id)} onToggle={() => sel.toggle(a.id)} onOpen={() => openAsset(a.id)} />;
+  // Many files at once, each its own library item: pictures and video as ad creatives, documents as templates.
+  const canUpload = ws.can("library") && ws.can("edit") && ws.can("upload");
+  const [adding, setAdding] = useState(false);
+  const [dropped, setDropped] = useState<{ n: number; files: File[] }>({ n: 0, files: [] });
+  const drop = useFileDrop(canUpload && !adding, (files) => { setDropped((d) => ({ n: d.n + 1, files })); setAdding(true); });
 
   return (
     <Page>
-      <PageHead eyebrow="Shared across every client" title="Global Library" actions={(ws.can("library") || canBulk(ws, true)) && (
-          <>
-            {canBulk(ws, true) && all.length > 0 && <SelectToggle s={sel} />}
-            {ws.can("library") && <AddMenu label="Add to library" onPick={add} first={kind?.type} />}
-          </>
-        )}
-        sub="Checklists, prompts, templates, SOPs and ad creatives for every client. Nothing here belongs to a brand: clone one into a brand when you run it."
-      />
-      {all.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-3">
-          <label className="relative block w-full max-w-[300px]">
-            <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-2" />
-            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field py-2 pl-9 text-body" />
-          </label>
-          {/* Every kind stays, as the library's categories; empty ones are quiet. The counts sit once, on the groups below. */}
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Type">
-            {[{ type: "All", plural: "All" }, ...KINDS].map((k) => {
-              const on = tab === k.type;
-              const empty = k.type !== "All" && !has(k.type);
-              return (
-                <button key={k.type} type="button" aria-pressed={on} onClick={() => setTab(k.type)}
-                  className={cx("min-h-8 rounded-full border px-3 py-1 text-body transition-colors duration-150",
-                    on ? "border-accent bg-soft font-semibold text-accent"
-                      : empty ? "border-dashed border-line-strong text-mute-2 hover:text-ink"
-                        : "border-line bg-surface font-medium text-mute-1 hover:border-line-strong hover:text-ink")}>
-                  {k.plural}
-                </button>
-              );
-            })}
+      <div {...drop.bind} className={cx("rounded-xl", drop.over && "outline-2 outline-offset-8 outline-accent outline-dashed")}>
+        <DropHint show={drop.over} where="the Global Library" />
+        <PageHead eyebrow="Shared across every client" title="Global Library" actions={(ws.can("library") || canBulk(ws, true)) && (
+            <>
+              {canBulk(ws, true) && all.length > 0 && <SelectToggle s={sel} />}
+              {canUpload && <Btn aria-expanded={adding} onClick={() => { if (!adding) setDropped((d) => ({ n: d.n + 1, files: [] })); setAdding(!adding); }}><Upload aria-hidden className="h-4 w-4" />Upload files</Btn>}
+              {ws.can("library") && <AddMenu label="Add to library" onPick={add} first={kind?.type} />}
+            </>
+          )}
+          sub="Checklists, prompts, templates, SOPs and ad creatives for every client. Nothing here belongs to a brand: clone one into a brand when you run it."
+        />
+        {adding && <BulkUpload key={dropped.n} brandId={null} initialFiles={dropped.files} onClose={() => setAdding(false)} className="mb-6" />}
+        {all.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <label className="relative block w-full max-w-[300px]">
+              <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mute-2" />
+              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" className="field py-2 pl-9 text-body" />
+            </label>
+            {/* Every kind stays, as the library's categories; empty ones are quiet. The counts sit once, on the groups below. */}
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Type">
+              {[{ type: "All", plural: "All" }, ...KINDS].map((k) => {
+                const on = tab === k.type;
+                const empty = k.type !== "All" && !has(k.type);
+                return (
+                  <button key={k.type} type="button" aria-pressed={on} onClick={() => setTab(k.type)}
+                    className={cx("min-h-8 rounded-full border px-3 py-1 text-body transition-colors duration-150",
+                      on ? "border-accent bg-soft font-semibold text-accent"
+                        : empty ? "border-dashed border-line-strong text-mute-2 hover:text-ink"
+                          : "border-line bg-surface font-medium text-mute-1 hover:border-line-strong hover:text-ink")}>
+                    {k.plural}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {tab === "All" ? groups.length > 0 && (
-        <div className="gap-x-5 lg:columns-2">
-          {groups.map(({ k, items }) => (
-            <section key={k.type} aria-labelledby={slug(k)} className="mb-6 break-inside-avoid">
-              <h2 id={slug(k)} className="m-0 mb-2 flex items-baseline gap-2 text-body font-semibold text-ink">
-                {k.plural}<span className="text-meta font-normal tabular-nums text-mute-2">{items.length}</span>
-              </h2>
-              <KindList k={k} items={items} row={row} />
-            </section>
-          ))}
-        </div>
-      ) : kind && groups[0] && <KindList k={kind} items={groups[0].items} row={row} />}
+        {tab === "All" ? groups.length > 0 && (
+          <div className="gap-x-5 lg:columns-2">
+            {groups.map(({ k, items }) => (
+              <section key={k.type} aria-labelledby={slug(k)} className="mb-6 break-inside-avoid">
+                <h2 id={slug(k)} className="m-0 mb-2 flex items-baseline gap-2 text-body font-semibold text-ink">
+                  {k.plural}<span className="text-meta font-normal tabular-nums text-mute-2">{items.length}</span>
+                </h2>
+                <KindList k={k} items={items} row={row} />
+              </section>
+            ))}
+          </div>
+        ) : kind && groups[0] && <KindList k={kind} items={groups[0].items} row={row} />}
 
-      {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="item" onOpen={(a) => openAsset(a.id)} />}
-      {sel.on && <BulkBar s={sel} shown={list} library />}
-      {!list.length && (t ? (
-        <Empty title="Nothing matches that search" body={`Try another word, or clear the search to see every ${kind ? kind.noun : "item"}.`}>
-          <Btn onClick={() => setQ("")}>Clear the search</Btn>
-        </Empty>
-      ) : kind ? (
-        <Empty title={`No ${kind.many} yet`} body={kind.holds}>
-          {ws.can("library") && <Btn onClick={() => add(kind.type)}><Plus aria-hidden className="h-4 w-4" />Add {kind.one}</Btn>}
-        </Empty>
-      ) : (
-        <Empty title="Nothing in the library yet" body="Checklists, prompts, templates, SOPs and ad creatives that every client can use live here, files included." />
-      ))}
+        {!sel.on && <ArchExpander items={archivedOnly(filtered)} noun="item" onOpen={(a) => openAsset(a.id)} />}
+        {sel.on && <BulkBar s={sel} shown={list} library />}
+        {!list.length && (t ? (
+          <Empty title="Nothing matches that search" body={`Try another word, or clear the search to see every ${kind ? kind.noun : "item"}.`}>
+            <Btn onClick={() => setQ("")}>Clear the search</Btn>
+          </Empty>
+        ) : kind ? (
+          <Empty title={`No ${kind.many} yet`} body={kind.holds}>
+            {ws.can("library") && <Btn onClick={() => add(kind.type)}><Plus aria-hidden className="h-4 w-4" />Add {kind.one}</Btn>}
+          </Empty>
+        ) : (
+          <Empty title="Nothing in the library yet" body="Checklists, prompts, templates, SOPs and ad creatives that every client can use live here, files included." />
+        ))}
+      </div>
     </Page>
   );
 }

@@ -13,6 +13,8 @@ import { ArchExpander, ArchivedNote, Avatar, Btn, Card, CodeTile, Empty, H2, Mar
 import { EntityHeader, FOCUS, LIFT, MetaItem } from "@/components/polish";
 import { MoreMenu } from "@/components/more-menu";
 import { ActivityRow } from "@/components/activity-row";
+import { StarButton } from "@/components/features/stars/star-button";
+import { useStarShortcut } from "@/components/features/stars/use-star-shortcut";
 import { NotHere, useVisit } from "./common";
 
 export function ClientPage({ id }: { id: string }) {
@@ -21,6 +23,7 @@ export function ClientPage({ id }: { id: string }) {
   const [run] = useAction();
   const c = ws.client(id);
   useVisit("client", id, !!c);
+  useStarShortcut("client", id, c?.name ?? "", { enabled: !!c });
   if (!c) return <NotHere what="client" />;
 
   const bs = ws.d.brands.filter((b) => b.clientId === c.id);
@@ -45,8 +48,6 @@ export function ClientPage({ id }: { id: string }) {
     count(live(os).length, "Offer", "Offers"),
     count(live(as).length, "Asset", "Assets"),
   ];
-  // With one brand its counts are the strip's counts, so its card would only repeat them.
-  const perBrand = tops.length > 1;
   const contact = c.contactId ? ws.user(c.contactId) : null;
   // Clients are never deleted. Archiving one is for admins only, and sits out of the way.
   const more = ws.can("del") ? [
@@ -59,8 +60,10 @@ export function ClientPage({ id }: { id: string }) {
         eyebrow="Client"
         title={c.name}
         sub={c.kind}
-        actions={(ws.can("structure") || more.length > 0) && (
+        actions={(
           <>
+            {/* For everyone who can see the client, whatever they may change. */}
+            <StarButton kind="client" id={c.id} name={c.name} />
             {ws.can("structure") && <Btn onClick={() => open({ kind: "client", draft: c })}><Pencil aria-hidden size={16} />Edit</Btn>}
             <MoreMenu items={more} label="More client actions" />
           </>
@@ -102,6 +105,10 @@ export function ClientPage({ id }: { id: string }) {
         <div className="grid gap-4 md:grid-cols-2">
           {tops.map((b) => {
             const subs = live(ws.subBrands(b.id));
+            // What the card holds: the brand and its sub-brands, whose rows sit underneath it.
+            const family = new Set([b.id, ...subs.map((x) => x.id)]);
+            const offerCount = live(os).filter((o) => family.has(o.brandId)).length;
+            const assetCount = live(as).filter((a) => a.brandId && family.has(a.brandId)).length;
             return (
               <Card key={b.id} className="overflow-hidden transition duration-200 hover:shadow-card">
                 <span aria-hidden className="block h-[3px]" style={{ background: b.primary }} />
@@ -113,13 +120,11 @@ export function ClientPage({ id }: { id: string }) {
                   </span>
                   <ChevronRight aria-hidden size={18} className="flex-none text-mute-3 transition group-hover:translate-x-0.5 group-hover:text-ink" />
                 </Link>
-                {(perBrand || subs.length > 0) && (
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3 text-meta text-mute-2">
-                    {perBrand && <MetaItem icon={Megaphone}>{plural(live(ws.offersOf(b.id)).length, "offer")}</MetaItem>}
-                    {perBrand && <MetaItem icon={FolderOpen}>{plural(live(ws.assetsOf(b.id)).length, "asset")}</MetaItem>}
-                    {subs.length > 0 && <MetaItem icon={GitBranch}>{plural(subs.length, "sub-brand")}</MetaItem>}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-line px-5 py-3 text-meta tabular-nums text-mute-2">
+                  <MetaItem icon={Megaphone}>{plural(offerCount, "offer")}</MetaItem>
+                  <MetaItem icon={FolderOpen}>{plural(assetCount, "asset")}</MetaItem>
+                  {subs.length > 0 && <MetaItem icon={GitBranch}>{plural(subs.length, "sub-brand")}</MetaItem>}
+                </div>
                 {subs.map((sb) => (
                   <Link key={sb.id} href={href.brand(sb.id)} className="flex w-full items-center gap-2.5 border-t border-divider px-5 py-3 text-left hover:bg-wash focus-visible:outline-offset-[-2px]">
                     <Mark mark={sb.mark} color={sb.primary} size={22} radius={6} />

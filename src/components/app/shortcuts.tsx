@@ -9,7 +9,10 @@ import { NEW_MENU_EVENT } from "./new-menu";
 const typing = (el: EventTarget | null) =>
   el instanceof HTMLElement && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
 
-/** Global keys: ⌘K or / to search, N for new, ? for help, Esc closes the top layer. */
+/**
+ * Global keys: ⌘K or / to search, N for new, ? for help, Esc closes the top layer.
+ * S (star this page) belongs to the page it stars: see useStarShortcut.
+ */
 export function Shortcuts() {
   const [navMode, setNavMode] = useNavMode();
   const { modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav } = useApp();

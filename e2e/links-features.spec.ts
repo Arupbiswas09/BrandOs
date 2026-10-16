@@ -216,7 +216,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   drawer = await drawerFor(page, id, name);
   await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
   await drawer.getByRole("tab", { name: /^History/ }).click();
-  await expect(drawer.getByText("Found a broken link on: Page not found (404)")).toHaveCount(1);
+  await expect(drawer.getByText("Found a broken link on: Page not found (404)", { exact: true })).toHaveCount(1);
   movedBreaks = false;
 });
 
@@ -305,18 +305,31 @@ test("the daily run checks links and gives a new landing page its picture, once"
   expect(again.fresh).toBeGreaterThanOrEqual(r.checked);
 });
 
-// Needs BrokenLinksCard on the dashboard (street.tsx) and the brand home (brand.tsx), with its "Check all links".
+/** The "Links not responding" card on the dashboard or a brand's home. */
+const brokenCard = (page: Page) => page.getByRole("heading", { name: /^Links not responding/ }).locator("xpath=ancestor::div[2]");
+
 test("links that stopped opening are listed on the dashboard and the brand home", async ({ page }) => {
   await signIn(page);
   const name = `Listed broken page ${tag}`;
   const id = await saveAsset(page, { name, url: `${base}/missing` });
   await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
+  // Listed on the dashboard (with its brand) and on the brand's home, each opening the asset.
   await page.goto("/");
   await settle(page);
-  await expect(page.getByRole("button", { name: new RegExp(`^${name}`) })).toBeVisible();
+  await expect(brokenCard(page).getByRole("button", { name: new RegExp(`^${name}.*Page not found \\(404\\) · Quokka For Good`) })).toBeVisible();
   await page.goto("/brands/br1");
   await settle(page);
-  await expect(page.locator("li").filter({ hasText: name }).getByText("Page not found (404)")).toBeVisible();
+  await expect(brokenCard(page).locator("li").filter({ hasText: name }).getByText("Page not found (404)")).toBeVisible();
+  await expect(brokenCard(page).getByRole("button", { name: "Check all links" })).toBeVisible();
+  await brokenCard(page).getByRole("button", { name: new RegExp(`^${name}`) }).click();
+  await expect(page.getByRole("dialog", { name })).toBeVisible();
+  await page.keyboard.press("Escape");
+  // A new address takes it off the lists at once, before it is checked.
+  await saveAsset(page, { id, name, url: `${base}/ok` });
+  await page.goto("/");
+  await settle(page);
+  await expect(page.getByRole("button", { name: `Check again: ${name}` })).toHaveCount(0);
+  await expect(brokenCard(page).getByText(name)).toHaveCount(0);
   // An editor cannot check a whole brand; that is for admins and managers.
   await signIn(page, "Ines Batz");
   expect(await callAction(page, "/brands/br1", "app/link-actions.ts", "checkBrandLinks", ["br1"])).toContain("Only admins and managers can check a whole brand");

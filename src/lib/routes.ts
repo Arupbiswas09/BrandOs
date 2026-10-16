@@ -25,10 +25,14 @@ export const href = {
   offer: (id: string) => `/offers/${id}`,
 };
 
-/** Which brand (if any) the current path belongs to, before looking up offers or services. */
+/**
+ * Which brand (if any) the current path belongs to, before looking up offers or services.
+ * `/brands/new/…` starts a new brand (it is not a brand called "new"); `/import` is its own view.
+ */
 export function parsePath(pathname: string): { view: string; id?: string; tab?: BrandTab } {
   const [, a, b, c] = pathname.split("/");
   if (!a) return { view: "street" };
+  if (a === "brands" && b === "new") return { view: "new-brand" };
   if (a === "brands" && b) return { view: "brand", id: b, tab: (c as BrandTab) || "home" };
   if (a === "clients" && b) return { view: "client", id: b };
   if (a === "offers" && b) return { view: "offer", id: b };
