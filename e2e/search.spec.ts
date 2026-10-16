@@ -156,10 +156,11 @@ test("inside a brand, results start in that brand, and Tab searches everywhere",
   await expect(s.results.getByRole("option", { name: /Thursday Night Poster/ })).toBeVisible();
   await s.box.fill("audit");
   await expect(s.area.getByText(/more outside St Aidan Youth/)).toBeVisible();
-  await expect(s.area.getByRole("option", { name: /Free Audit Landing Page/ })).toHaveCount(0);
+  // Other tests add "audit" assets, so check with the offer, which has no look-alikes.
+  await expect(s.area.getByRole("option", { name: /Free Marketing Audit/ })).toHaveCount(0);
   await s.box.press("Tab");
   await expect(s.area.getByRole("button", { name: /not only St Aidan Youth/ })).toHaveCount(0);
-  await expect(s.results.getByRole("option", { name: /Free Audit Landing Page/ })).toBeVisible();
+  await expect(s.results.getByRole("option", { name: /^OF Free Marketing Audit/ })).toBeVisible();
   await expect(s.box).toBeFocused();
 });
 

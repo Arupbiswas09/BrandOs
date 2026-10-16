@@ -89,7 +89,7 @@ test("the client page shows the primary contact, and activity keeps the change v
   const card = page.getByRole("link", { name: /^QG Quokka For Good/ }).locator("..");
   await expect(card.getByText(/^\d+ offers?$/)).toBeVisible();
   await expect(card.getByText(/^\d+ assets?$/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
   // With a sub-brand the card counts the family, as its rows sit underneath it.
   await page.goto("/clients/cl2");
   await settle(page);
