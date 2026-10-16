@@ -31,7 +31,6 @@ export type ModalSpec =
    * @deprecated Client links are gone (BrandOS is internal only) and this opens nothing.
    * Kept only because asset-drawer.tsx still asks for it; delete it once that button goes.
    */
-  | { kind: "share"; brandId: string }
   /** Bulk changes from select mode. `onDone` gets the ids that were skipped, so they stay ticked. */
   | { kind: "bulkReview"; ids: string[]; onDone?: (keep: string[]) => void }
   | { kind: "bulkDelete"; ids: string[]; onDone?: (keep: string[]) => void }

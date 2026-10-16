@@ -34,7 +34,6 @@ export function ModalHost() {
     case "reqChanges": return <ReqChangesModal item={m.item} id={m.id} />;
     case "confirm": return <ConfirmModal item={m.item} id={m.id} label={m.label} back={m.back} />;
     // Client links are gone; see types.ts.
-    case "share": return null;
     case "bulkReview": return <BulkReviewModal ids={m.ids} onDone={m.onDone} />;
     case "bulkDelete": return <BulkDeleteModal ids={m.ids} onDone={m.onDone} />;
     case "install": return <InstallModal />;
