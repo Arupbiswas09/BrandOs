@@ -15,8 +15,8 @@ import { StepTitle, plural } from "./parts";
 /*
  * "Bring in existing offers and assets": from a spreadsheet (a .csv file or
  * pasted rows), or a list of Google Drive links. Pick the brand, check every
- * row, import. A true Google Drive folder import needs Google credentials
- * (see MOUNT.md); pasted links work today.
+ * row, import. A true Google Drive folder import needs Google API
+ * credentials on the server; pasted links work today.
  */
 
 export type ImportMode = "sheet" | "drive";

@@ -7,8 +7,8 @@ import { useApp } from "@/components/app/provider";
 import { cx } from "@/components/ui";
 
 /*
- * Where people find onboarding from the rest of the app. Each piece is
- * ready to mount; MOUNT.md says where.
+ * Where people find onboarding from the rest of the app: the New menu,
+ * the empty dashboard, and a quiet Import on a brand's Offers and Assets.
  */
 
 export const fromWebsiteHref = (clientId?: string) => `/brands/new/from-website${clientId ? `?client=${encodeURIComponent(clientId)}` : ""}`;
