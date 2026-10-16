@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Link2, Megaphone, Pencil, Split, Undo2, X } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Megaphone, Pencil, Split, Undo2 } from "lucide-react";
 import type { Asset, Cta, Offer } from "@/db/schema";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -17,7 +17,7 @@ import { useAction, useApp } from "@/components/app/provider";
 import { assetDownload, assetLink } from "@/components/cards";
 import { OfferAssets } from "@/components/folders/offer-assets";
 import { CommentText, Thread } from "@/components/discussion";
-import { ArchivedNote, Avatar, Btn, ChangeNote, IconBtn, Page, cx } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, ChangeNote, Page, cx } from "@/components/ui";
 import { EntityHeader, FOCUS, IconTile, PanelTabs, tabPanel } from "@/components/polish";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
@@ -28,7 +28,7 @@ import { displayUrl, linkBtn, useCopyLink } from "@/components/link-button";
 import { StarButton } from "@/components/features/stars/star-button";
 import { OfferResults } from "@/components/features/results/offer-results";
 import { LinkStatus } from "@/components/features/links/link-status";
-import { UtmBuilder } from "@/components/features/links/utm-builder";
+import { TrackedLinksButton } from "@/components/features/links/utm-builder";
 import { NotHere, useVisit } from "./common";
 
 /*
@@ -308,7 +308,7 @@ function KeyLink({ o, a }: { o: Offer; a: Asset }) {
               <>
                 <a href={link.href} target="_blank" rel="noreferrer" aria-label={`Open ${a.name}`} title={link.href} className={linkBtn("quiet")}><ExternalLink aria-hidden size={13} />Open</a>
                 <button type="button" onClick={() => void copy(link.href)} aria-label={`Copy link to ${a.name}`} className={linkBtn("quiet")}><Copy aria-hidden size={13} />Copy link</button>
-                {a.type !== "Drive link" && trackable(link.href) && <TrackedLinks url={link.href} offer={o} asset={a} what={a.name} />}
+                {a.type !== "Drive link" && trackable(link.href) && <TrackedLinksButton look="quiet" url={link.href} offer={o} asset={a} />}
               </>
             )}
             {file && <a href={file.href} download aria-label={`Download ${a.name}`} title={file.title} className={linkBtn("quiet")}><Download aria-hidden size={13} />Download</a>}
@@ -317,53 +317,6 @@ function KeyLink({ o, a }: { o: Offer; a: Asset }) {
         )}
       </div>
     </li>
-  );
-}
-
-/**
- * "Tracked links" as a small text action in a row, opening the tracked-links
- * builder (UtmBuilder) in a dialog: the same dialog as TrackedLinksButton in
- * features/links, with a quieter trigger so Open and Copy link stay the
- * everyday actions. `compact` is the icon alone, beside a CTA tag, where the
- * words would need a line of their own. Campaign starts as the offer's name
- * as a slug. Escape closes it and focus goes back to the trigger.
- */
-function TrackedLinks({ url, offer, asset, cta, what, compact }: { url: string; offer: Offer; asset?: Asset; cta?: Cta; what: string; compact?: boolean }) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [open, setOpen] = useState(false);
-  const titleId = useId();
-  useEffect(() => {
-    const d = dialog.current;
-    if (open && d && !d.open) d.showModal();
-  }, [open]);
-  if (!parseWebUrl(url)) return null;
-  const close = () => dialog.current?.close();
-  return (
-    <>
-      <button type="button" aria-haspopup="dialog" aria-label={`Tracked links for ${what}`} title={compact ? `Tracked links for ${what}` : undefined} onClick={() => setOpen(true)}
-        className={cx(linkBtn("quiet"), compact && "w-6 px-0")}>
-        <Link2 aria-hidden size={13} />{!compact && "Tracked links"}
-      </button>
-      {open && (
-        <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)}
-          // Keys stay in the dialog, so Escape closes it and not the page behind.
-          onKeyDown={(e) => e.stopPropagation()}
-          onClick={(e) => { if (e.target === e.currentTarget) close(); }}
-          className="m-auto w-[min(680px,calc(100vw-32px))] max-w-none animate-pop overflow-visible rounded-xl border border-line bg-surface p-0 text-ink shadow-pop backdrop:bg-ink/30">
-          <div className="max-h-[calc(100dvh-48px)] overflow-y-auto p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h2 id={titleId} className="m-0 text-title font-semibold">Tracked links</h2>
-                <p className="m-0 mt-1 text-meta text-mute-2 text-pretty">For {what}. Each link opens the same page and tells analytics which channel the visit came from.</p>
-                <p className="m-0 mt-1.5 truncate font-mono text-small text-mute-2" title={url}>{url.trim()}</p>
-              </div>
-              <IconBtn label="Close" onClick={close}><X aria-hidden /></IconBtn>
-            </div>
-            <UtmBuilder url={url} offer={offer} asset={asset} cta={cta} />
-          </div>
-        </dialog>
-      )}
-    </>
   );
 }
 
@@ -393,7 +346,7 @@ function Positioning({ o }: { o: Offer }) {
             {ctas.map((c) => (
               <span key={c.id} className="flex max-w-full items-center gap-1">
                 <CtaTag c={c} className="min-w-0" />
-                {trackable(c.url) && <TrackedLinks url={c.url} offer={o} cta={c} what={c.text} compact />}
+                {trackable(c.url) && <TrackedLinksButton look="icon" url={c.url} offer={o} cta={c} />}
               </span>
             ))}
           </span>

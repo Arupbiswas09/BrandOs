@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Check, Copy, Link2, X } from "lucide-react";
 import { useApp } from "@/components/app/provider";
 import { Btn, IconBtn, Select, cx } from "@/components/ui";
+import { linkBtn } from "@/components/link-button";
 import { UTM_CHANNELS, buildUtm, parseWebUrl, slug, utmValue, type UtmChannel } from "@/lib/utm";
 
 /*
@@ -132,12 +133,15 @@ export function UtmBuilder({ url, offer, asset, cta, className }: {
 }
 
 /**
- * A "Tracked links" button that opens the builder in a dialog, for rows that
- * show a link (an offer's key links, a CTA). Escape or the close button
- * closes it and focus goes back to the button.
+ * A "Tracked links" trigger that opens the builder in a dialog, for rows that
+ * show a link (an offer's key links, a CTA). `look` picks the trigger: a
+ * secondary button, a quiet text action beside Open and Copy link, or the
+ * icon alone where the words would need a line of their own. Escape or the
+ * close button closes it and focus goes back to the trigger.
  */
-export function TrackedLinksButton({ url, offer, asset, cta, label = "Tracked links", size = "sm", className }: {
-  url: string; offer?: Named; asset?: Named; cta?: { text: string } | null; label?: string; size?: "sm" | "md"; className?: string;
+export function TrackedLinksButton({ url, offer, asset, cta, what: whatName, label = "Tracked links", look = "button", size = "sm", className }: {
+  url: string; offer?: Named; asset?: Named; cta?: { text: string } | null; what?: string; label?: string;
+  look?: "button" | "quiet" | "icon"; size?: "sm" | "md"; className?: string;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
@@ -148,21 +152,29 @@ export function TrackedLinksButton({ url, offer, asset, cta, label = "Tracked li
   }, [open]);
   if (!parseWebUrl(url)) return null;
   const close = () => { dialog.current?.close(); };
-  const what = asset?.name ?? cta?.text ?? offer?.name;
+  const what = whatName ?? asset?.name ?? cta?.text ?? offer?.name;
+  const named = what ? `${label} for ${what}` : label;
   return (
     <>
-      <Btn size={size} variant="secondary" className={className} onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <Link2 aria-hidden size={15} />
-        {label}
-      </Btn>
+      {look === "button" ? (
+        <Btn size={size} variant="secondary" className={className} onClick={() => setOpen(true)} aria-haspopup="dialog">
+          <Link2 aria-hidden size={15} />
+          {label}
+        </Btn>
+      ) : (
+        <button type="button" aria-haspopup="dialog" aria-label={named} title={look === "icon" ? named : undefined} onClick={() => setOpen(true)}
+          className={cx(linkBtn("quiet"), look === "icon" && "w-6 px-0", className)}>
+          <Link2 aria-hidden size={13} />{look === "quiet" && label}
+        </button>
+      )}
       {open && (
         <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)}
           // Keys stay in the dialog, so Escape closes it and not the drawer or page behind.
           onKeyDown={(e) => e.stopPropagation()}
           onClick={(e) => { if (e.target === e.currentTarget) close(); }}
-          className="m-auto w-[min(680px,calc(100vw-32px))] max-w-none animate-pop overflow-visible rounded-xl border border-line bg-surface p-0 text-ink shadow-pop backdrop:bg-ink/30">
-          <div className="max-h-[calc(100dvh-48px)] overflow-y-auto p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
+          className="m-auto w-[min(680px,calc(100vw-32px))] max-w-none animate-pop overflow-hidden rounded-xl border border-line bg-surface p-0 text-ink shadow-pop backdrop:bg-[rgba(16,22,20,.38)]">
+          <div className="flex max-h-[min(86vh,calc(100dvh-48px))] flex-col">
+            <div className="flex flex-none items-start justify-between gap-3 border-b border-line py-5 pl-6 pr-3 sm:pl-7">
               <div className="min-w-0">
                 <h2 id={titleId} className="m-0 text-title font-semibold">Tracked links</h2>
                 <p className="m-0 mt-1 text-meta text-mute-2 text-pretty">
@@ -172,7 +184,9 @@ export function TrackedLinksButton({ url, offer, asset, cta, label = "Tracked li
               </div>
               <IconBtn label="Close" onClick={close}><X aria-hidden /></IconBtn>
             </div>
-            <UtmBuilder url={url} offer={offer} asset={asset} cta={cta} />
+            <div data-scroll className="min-h-0 flex-1 overflow-y-auto px-6 pb-6 pt-5 sm:px-7">
+              <UtmBuilder url={url} offer={offer} asset={asset} cta={cta} />
+            </div>
           </div>
         </dialog>
       )}

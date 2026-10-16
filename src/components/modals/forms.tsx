@@ -1,15 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Brand, Client, Cta, Service } from "@/db/schema";
-import { hexA, isHex, onColor } from "@/lib/color";
+import { isHex, onColor } from "@/lib/color";
 import { BRAND_PALETTES, OFFER_STATUS, freshBrandPair } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { deleteGoal, mergeGoal, saveBrand, saveClient, saveCta, saveGoal, saveService } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Btn, Chip, Field, Mark, Select, cx } from "@/components/ui";
-import { Footer, Modal } from "./frame";
+import { Footer, Modal, MoreDetail } from "./frame";
 
 /* ---------------------------------------------------------------- client */
 
@@ -59,37 +59,33 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
       primary, secondary, description: draft.description ?? "", voice: draft.voice ?? "",
     };
   });
+  const coloursId = useId();
   const parent = ws.brand(draft.parentId);
   const mark = (d.mark || d.name.slice(0, 2) || "?").toUpperCase();
+  const filled = [d.tagline, d.mark, d.description, d.voice].filter((x) => x.trim()).length;
+  const [more, setMore] = useState(() => filled > 0);
   const save = async () => {
     const r = await run(saveBrand, { id: draft.id, parentId: draft.parentId ?? null, ...d });
     if (r.ok) { close(); if (!draft.id && r.id) router.push(href.brand(r.id)); }
   };
+  const sub = [parent ? `A wing of ${parent.name}.` : "", draft.id ? "" : "Starts with five default goals you can edit or merge later."].filter(Boolean).join(" ");
   return (
-    <Modal title={draft.id ? "Edit brand" : "New brand"} sub={parent ? `A wing of ${parent.name}` : undefined} width={540} onSubmit={save} footer={<Footer saveLabel="Save brand" pending={pending} disabled={!d.name.trim()} />}>
-      <div className="flex items-center gap-3.5 rounded-xl p-4" style={{ background: hexA(d.primary, 0.06) }}>
-        <Mark mark={mark} color={d.primary} fg={onColor(d.primary)} size={44} radius={11} />
-        <span className="flex-1">
-          <span className="block text-lead font-semibold">{d.name || "New brand"}</span>
-          <span className="mt-0.5 block text-meta text-mute-1">{draft.id ? d.tagline || "No tagline yet" : "Starts with five default goals you can edit or merge later"}</span>
-        </span>
-        <span className="h-6 w-6 rounded-md" style={{ background: d.secondary }} title="Secondary colour" />
-      </div>
-      <Field label="Brand name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
-      <div className="grid grid-cols-[2fr_1fr] gap-3">
-        <Field label="Tagline"><input className="field" value={d.tagline} onChange={(e) => setD({ ...d, tagline: e.target.value })} placeholder="Small animal. Big mandate." /></Field>
-        <Field label="Monogram"><input className="field uppercase" maxLength={3} value={d.mark} onChange={(e) => setD({ ...d, mark: e.target.value })} placeholder={mark} /></Field>
+    <Modal title={draft.id ? "Edit brand" : "New brand"} sub={sub || undefined} width={540} onSubmit={save} footer={<Footer saveLabel="Save brand" pending={pending} disabled={!d.name.trim()} />}>
+      {/* The monogram beside the name shows the brand as it will look, colours included. */}
+      <div className="flex items-end gap-3">
+        <Mark mark={mark} color={d.primary} fg={onColor(d.primary)} size={44} radius={11} className="mb-px flex-none" />
+        <Field label="Brand name" required className="min-w-0 flex-1"><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Acme SaaS" /></Field>
       </div>
       {!draft.parentId && (
         <Field label="Client" required>
           <Select value={d.clientId} onChange={(v) => setD({ ...d, clientId: v })} options={ws.d.clients.filter((c) => !c.archived || c.id === d.clientId).map((c) => ({ value: c.id, label: c.name }))} />
         </Field>
       )}
-      <div>
-        <div className="label">Colour pair</div>
+      <div role="group" aria-labelledby={coloursId}>
+        <div id={coloursId} className="label">Colour pair</div>
         <div className="mb-2.5 flex flex-wrap gap-2">
           {BRAND_PALETTES.map(([a, b]) => (
-            <button key={a} type="button" aria-label={`Use ${a} and ${b}`} onClick={() => setD({ ...d, primary: a, secondary: b })} className={cx("flex h-8 w-[52px] overflow-hidden rounded-lg border p-0", d.primary === a && d.secondary === b ? "border-ink ring-1 ring-ink" : "border-line")}>
+            <button key={a} type="button" aria-label={`Use ${a} and ${b}`} aria-pressed={d.primary === a && d.secondary === b} onClick={() => setD({ ...d, primary: a, secondary: b })} className={cx("flex h-8 w-[52px] overflow-hidden rounded-lg border p-0", d.primary === a && d.secondary === b ? "border-ink ring-1 ring-ink" : "border-line")}>
               <span className="flex-[2]" style={{ background: a }} /><span className="flex-1" style={{ background: b }} />
             </button>
           ))}
@@ -99,8 +95,14 @@ export function BrandModal({ draft }: { draft: Partial<Brand> & { clientId: stri
           <ColourInput label="Secondary colour" value={d.secondary} onChange={(v) => setD((x) => ({ ...x, secondary: v }))} />
         </div>
       </div>
-      <Field label="Description"><textarea rows={2} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} /></Field>
-      <Field label="Voice and tone"><textarea rows={2} className="field leading-[1.55]" value={d.voice} onChange={(e) => setD({ ...d, voice: e.target.value })} placeholder="Warm and specific. Name the number." /></Field>
+      <MoreDetail open={more} onToggle={() => setMore((m) => !m)} filled={filled} hint="tagline, monogram, description, voice">
+        <div className="grid grid-cols-[2fr_1fr] gap-3">
+          <Field label="Tagline"><input className="field" value={d.tagline} onChange={(e) => setD({ ...d, tagline: e.target.value })} placeholder="Small animal. Big mandate." /></Field>
+          <Field label="Monogram"><input className="field uppercase" maxLength={3} value={d.mark} onChange={(e) => setD({ ...d, mark: e.target.value })} placeholder={mark} /></Field>
+        </div>
+        <Field label="Description"><textarea rows={2} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} /></Field>
+        <Field label="Voice and tone"><textarea rows={2} className="field leading-[1.55]" value={d.voice} onChange={(e) => setD({ ...d, voice: e.target.value })} placeholder="Warm and specific. Name the number." /></Field>
+      </MoreDetail>
     </Modal>
   );
 }

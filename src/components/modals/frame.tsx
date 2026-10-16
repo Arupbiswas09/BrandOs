@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
-import { X } from "lucide-react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
+import { ChevronRight, X } from "lucide-react";
 import { useApp } from "@/components/app/provider";
 import { Btn, IconBtn, cx } from "@/components/ui";
 
@@ -77,6 +77,36 @@ export function Modal({
             </div>
           )}
         </Inner>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The optional half of a form, closed until asked for. Closed, it says what
+ * is behind it (`hint`) or how much of it is already filled in, so nothing
+ * typed earlier is ever out of sight without a word. Forms open it straight
+ * away when editing something that has any of it filled.
+ */
+export function MoreDetail({ open, onToggle, filled, hint, children }: {
+  open: boolean; onToggle: () => void; filled: number; hint: string; children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <div className="border-t border-line">
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={onToggle} className="group flex w-full items-center gap-2.5 rounded-lg py-3 text-left">
+        <ChevronRight aria-hidden size={16} className={cx("flex-none text-mute-3 transition-transform duration-200 ease-snap", open && "rotate-90")} />
+        <span className="min-w-0 flex-1 text-body">
+          <span className="font-semibold text-ink group-hover:underline">More detail</span>
+          {!open && <span className="text-mute-2"> · {filled ? `${filled} filled` : hint}</span>}
+        </span>
+        <span className="flex-none text-small text-mute-3">Optional</span>
+      </button>
+      <div id={id} inert={!open} className={cx("grid transition-[grid-template-rows,opacity] duration-200 ease-snap", open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+        {/* The side padding keeps focus rings clear of the clipping edge. */}
+        <div className="-mx-1 min-h-0 overflow-hidden px-1">
+          <div className="flex flex-col gap-4 pb-1 pt-1.5">{children}</div>
+        </div>
       </div>
     </div>
   );

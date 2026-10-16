@@ -12,7 +12,7 @@ import { checkBatch, sizeLabel } from "@/lib/upload-policy";
 import { useAction, useApp } from "@/components/app/provider";
 import { TagInput } from "@/components/tag-input";
 import { Btn, CheckRow, Chip, Field, Mark, Pills, Select, Tick, cx } from "@/components/ui";
-import { Footer, Modal } from "./frame";
+import { Footer, Modal, MoreDetail } from "./frame";
 import type { AssetDraft } from "./types";
 
 type Step = 0 | 1 | 2 | 3;
@@ -312,16 +312,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
 
           {/* Everything else is optional and waits behind More detail, as on the offer form. */}
-          <div className="border-t border-line">
-            <button type="button" aria-expanded={more} aria-controls={`${uid}-more`} onClick={() => setMore((m) => !m)} className="group flex w-full items-center gap-3 rounded-lg py-3 text-left">
-              <span aria-hidden className="w-3 flex-none text-center text-lead leading-none text-mute-3">{more ? "−" : "+"}</span>
-              <span className="min-w-0 flex-1 text-body text-ink-3">
-                <span className="font-semibold text-ink group-hover:underline">{more ? "Less detail" : "More detail"}</span>
-                {!more && <span className="font-medium">{filled ? ` · ${filled} filled` : ` · ${moreHint}`}</span>}
-              </span>
-              <span className="flex-none text-small text-mute-3">optional</span>
-            </button>
-            <div id={`${uid}-more`} hidden={!more} className="flex flex-col gap-4 pb-1 pt-1">
+          <MoreDetail open={more} onToggle={() => setMore((m) => !m)} filled={filled} hint={moreHint}>
               <div className={cx("grid gap-3", editing && "sm:grid-cols-2")}>
                 <Field label="One line about it" hint={<span className="font-normal text-mute-4">shown on the card</span>}><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
                 {editing && <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>}
@@ -372,8 +363,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                   </div>
                 </div>
               )}
-            </div>
-          </div>
+          </MoreDetail>
         </>
       )}
     </Modal>

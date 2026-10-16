@@ -12,7 +12,7 @@ import { toDateInput } from "@/lib/time";
 import { useAction, useApp } from "@/components/app/provider";
 import { TagInput } from "@/components/tag-input";
 import { Btn, Field, Select, cx } from "@/components/ui";
-import { Footer, Modal } from "./frame";
+import { Footer, Modal, MoreDetail } from "./frame";
 
 /** The CTA selects' last option: opens the inline "New CTA" form instead of selecting anything. */
 const NEW_CTA = "__new_cta__";
@@ -63,7 +63,7 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
   const here = parsePath(pathname).view;
   const pickBrand = !draft.id && !draft.serviceId && !["brand", "offer", "service"].includes(here) && brands.length > 1;
 
-  const services = [{ value: "", label: "Standalone — sits above every service" }, ...ws.servicesOf(d.brandId).filter((v) => !v.archived || v.id === d.serviceId).map((v) => ({ value: v.id, label: v.name }))];
+  const services = [{ value: "", label: "Standalone, no service" }, ...ws.servicesOf(d.brandId).filter((v) => !v.archived || v.id === d.serviceId).map((v) => ({ value: v.id, label: v.name }))];
   const segments = (b?.segments ?? []).map((x) => x.name);
   if (!segments.includes(d.segment)) segments.push(d.segment);
   const showService = services.length > 1;
@@ -98,7 +98,6 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
   };
 
   const shortLen = d.short.length;
-  const moreId = `${uid}-more`;
   // How much is already filled in behind "More detail", said on the closed toggle.
   const filled = [d.promise, d.proof, d.primaryCtaId, d.secondaryCtaId, d.offerType, d.short, d.dueAt].filter((x) => x.trim()).length
     + (d.tags.length || tagText.trim() ? 1 : 0);
@@ -168,62 +167,37 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
         </div>
       </div>
 
-      <div className="border-t border-line">
-        <button
-          type="button"
-          aria-expanded={more}
-          aria-controls={moreId}
-          onClick={() => setMore((m) => !m)}
-          className="group flex w-full items-center gap-3 rounded-lg py-3 text-left"
-        >
-          <span aria-hidden className="w-3 flex-none text-center text-lead leading-none text-mute-3">{more ? "−" : "+"}</span>
-          <span className="min-w-0 flex-1 text-body text-ink-3">
-            <span className="font-semibold text-ink group-hover:underline">{more ? "Less detail" : "More detail"}</span>
-            {!more && <span className="font-medium"> — {filled ? `${filled} filled` : "promise, proof, CTAs, type"}</span>}
-          </span>
-          <span className="flex-none font-code text-small text-mute-3">optional</span>
-        </button>
-        <div
-          id={moreId}
-          inert={!more}
-          className={cx("grid transition-[grid-template-rows,opacity] duration-200 ease-out", more ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}
-        >
-          {/* The side padding keeps focus rings clear of the clipping edge. */}
-          <div className="-mx-1 min-h-0 overflow-hidden px-1">
-            <div className="flex flex-col gap-4 pb-1 pt-1.5">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={<>Promise <Aside>What they get</Aside></>}>
-                  <textarea rows={3} className="field text-body leading-[1.5]" value={d.promise} onChange={(e) => set("promise", e.target.value)} placeholder="What the reader gets, with a number." />
-                </Field>
-                <Field label={<>Proof <Aside>Why believe it</Aside></>}>
-                  <textarea rows={3} className="field text-body leading-[1.5]" value={d.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Why they should believe it." />
-                </Field>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {(["primaryCtaId", "secondaryCtaId"] as const).map((slot) => (
-                  <Field key={slot} label={SLOT_LABEL[slot]}>
-                    <Select id={ctaSelectId(slot)} value={d[slot]} onChange={(v) => pickCta(slot, v)} options={ctaOptions} />
-                  </Field>
-                ))}
-              </div>
-              {ctaFor && b && <NewCta key={ctaFor} brand={b} slot={ctaFor} onDone={(cta) => doneCta(ctaFor, cta)} />}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Offer type"><Select value={d.offerType} onChange={(v) => set("offerType", v)} options={typeOptions} /></Field>
-                <Field label="Launch date"><input type="date" className="field" value={d.dueAt} onChange={(e) => set("dueAt", e.target.value)} /></Field>
-              </div>
-              {/* Full width, so the label the card would use in its place has room to show. */}
-              <Field
-                label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
-                hint={<span aria-hidden className="font-code text-small font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#5A6862" }}>{shortLen}/30</span>}
-              >
-                <input className="field text-body" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card, under the name" />
-              </Field>
-              {/* The last field, inside a clipped panel: suggestions open upwards. */}
-              <TagInput above value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="grant, church, search" />
-            </div>
+      <MoreDetail open={more} onToggle={() => setMore((m) => !m)} filled={filled} hint="promise, proof, CTAs, type">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label={<>Promise <Aside>What they get</Aside></>}>
+              <textarea rows={3} className="field text-body leading-[1.5]" value={d.promise} onChange={(e) => set("promise", e.target.value)} placeholder="What the reader gets, with a number." />
+            </Field>
+            <Field label={<>Proof <Aside>Why believe it</Aside></>}>
+              <textarea rows={3} className="field text-body leading-[1.5]" value={d.proof} onChange={(e) => set("proof", e.target.value)} placeholder="Why they should believe it." />
+            </Field>
           </div>
-        </div>
-      </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(["primaryCtaId", "secondaryCtaId"] as const).map((slot) => (
+              <Field key={slot} label={SLOT_LABEL[slot]}>
+                <Select id={ctaSelectId(slot)} value={d[slot]} onChange={(v) => pickCta(slot, v)} options={ctaOptions} />
+              </Field>
+            ))}
+          </div>
+          {ctaFor && b && <NewCta key={ctaFor} brand={b} slot={ctaFor} onDone={(cta) => doneCta(ctaFor, cta)} />}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Offer type"><Select value={d.offerType} onChange={(v) => set("offerType", v)} options={typeOptions} /></Field>
+            <Field label="Launch date"><input type="date" className="field" value={d.dueAt} onChange={(e) => set("dueAt", e.target.value)} /></Field>
+          </div>
+          {/* Full width, so the label the card would use in its place has room to show. */}
+          <Field
+            label={<>Card label<span className="sr-only"> (30 characters or fewer)</span></>}
+            hint={<span aria-hidden className="font-code text-small font-medium" style={{ color: shortLen > 30 ? "#C2410C" : "#5A6862" }}>{shortLen}/30</span>}
+          >
+            <input className="field text-body" value={d.short} onChange={(e) => set("short", e.target.value)} placeholder="Shown on the offer card, under the name" />
+          </Field>
+          {/* The last field, inside a clipped panel: suggestions open upwards. */}
+          <TagInput above value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="grant, church, search" />
+      </MoreDetail>
     </Modal>
   );
 }
