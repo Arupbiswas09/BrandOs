@@ -75,6 +75,8 @@ export type FileRef = {
   /** Who uploaded it, so each person's allowance can be counted. */
   uploadedBy?: string;
 };
+/** The result of opening an asset's link: whether it answered, with what, and when. */
+export type LinkCheck = { ok: boolean; status: number | null; error?: string; checkedAt: string; finalUrl?: string; /** The address as it was when checked, so a result never sticks to an edited link. */ url?: string };
 /** Per-person exceptions to their role: true grants, false blocks. Missing means "as the role says". */
 export type PermOverrides = Partial<Record<string, boolean>>;
 export type AssetCopy = { headline: string; body: string; cta: string };
@@ -237,9 +239,52 @@ export const assets = pgTable("assets", {
   dueAt: timestamp("due_at", { withTimezone: true }),
   /** A picture chosen for the card (uploaded or pasted). Without one the card shows the first image file. */
   thumbnail: jsonb("thumbnail").$type<FileRef | null>(),
+  /** The last check of `url`: does the page still open? Null until checked. */
+  linkCheck: jsonb("link_check").$type<LinkCheck | null>(),
   archived: boolean("archived").notNull().default(false),
   ...stamps,
 }, (t) => [index("assets_brand_idx").on(t.brandId)]);
+
+/**
+ * A file that was replaced on an asset. The stored file is kept, so the old
+ * version can be downloaded or put back with one click.
+ */
+export const fileVersions = pgTable("file_versions", {
+  id: text("id").primaryKey(),
+  assetId: text("asset_id").notNull(),
+  /** The key of the file that replaced this one (the current file in the chain). */
+  replacedByKey: text("replaced_by_key"),
+  file: jsonb("file").$type<FileRef>().notNull(),
+  replacedBy: text("replaced_by"),
+  replacedAt: timestamp("replaced_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("file_versions_asset_idx").on(t.assetId)]);
+
+/** Things a person has starred to keep at hand (sidebar and dashboard). */
+export const stars = pgTable("stars", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  kind: text("kind").$type<"client" | "brand" | "service" | "offer" | "asset">().notNull(),
+  itemId: text("item_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("stars_user_item_idx").on(t.userId, t.kind, t.itemId)]);
+
+/** What an offer achieved over one period, and what the team learned. */
+export const offerResults = pgTable("offer_results", {
+  id: text("id").primaryKey(),
+  offerId: text("offer_id").notNull(),
+  /** "October 2026", "Launch week", "Q4": whatever period the numbers cover. */
+  period: text("period").notNull().default(""),
+  /** The day the period ended (for ordering and charts). */
+  endedOn: timestamp("ended_on", { withTimezone: true }),
+  leads: integer("leads"),
+  calls: integer("calls"),
+  conversions: integer("conversions"),
+  /** Optional spend in the client's currency, for cost per lead. */
+  spend: real("spend"),
+  lesson: text("lesson").notNull().default(""),
+  createdBy: text("created_by"),
+  ...stamps,
+}, (t) => [index("offer_results_offer_idx").on(t.offerId)]);
 
 /** Snapshot of an asset taken before each edit, so any version can be restored. */
 export const assetVersions = pgTable("asset_versions", {
@@ -453,6 +498,9 @@ export type Service = typeof services.$inferSelect;
 export type Offer = typeof offers.$inferSelect;
 export type Asset = typeof assets.$inferSelect;
 export type AssetVersion = typeof assetVersions.$inferSelect;
+export type FileVersion = typeof fileVersions.$inferSelect;
+export type Star = typeof stars.$inferSelect;
+export type OfferResult = typeof offerResults.$inferSelect;
 export type Cta = typeof ctas.$inferSelect;
 export type Link = typeof links.$inferSelect;
 export type AssetFolder = typeof assetFolders.$inferSelect;

@@ -1,5 +1,5 @@
 import type {
-  Activity, Asset, AssetFolder, Brand, Client, Comment, Cta, Group, Link, NotifyPrefs, Offer, Service, ShareLink, User,
+  Activity, Asset, AssetFolder, Brand, Client, Comment, Cta, FileVersion, Group, Link, OfferResult, Star, NotifyPrefs, Offer, Service, ShareLink, User,
 } from "@/db/schema";
 import type { MyUploadLimits, UploadPolicy } from "@/lib/upload-policy";
 
@@ -39,6 +39,12 @@ export type Workspace = {
   links: Link[];
   /** Folders on the offers I can see. */
   folders: AssetFolder[];
+  /** Earlier versions of files on the assets I can see, newest first. */
+  fileVersions: FileVersion[];
+  /** What I have starred. */
+  stars: Star[];
+  /** Recorded results of the offers I can see, newest period first. */
+  offerResults: OfferResult[];
   comments: Comment[];
   activity: Activity[];
   recents: Recent[];

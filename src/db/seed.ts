@@ -300,7 +300,7 @@ export async function seed(db: DB) {
       short: "", tags: [], url: "", notes: "", copy: null, files: [], specs: "", audienceNotes: "", aiPrompt: "",
       ctaId: null, clientVisible: false, isTemplate: false, clonedFromId: null, gated: false,
       delivery: type === "Landing page" ? "Designed page" : "None",
-      items: type === "Checklist" ? [] : null, promptFor: "", prompt: "", dueAt: null, thumbnail: null, archived: false,
+      items: type === "Checklist" ? [] : null, promptFor: "", prompt: "", dueAt: null, thumbnail: null, linkCheck: null, archived: false,
       createdAt: at("3 months ago"), updatedAt: at(when), ...extra,
     };
   };
@@ -568,5 +568,17 @@ export async function seed(db: DB) {
     await tx.insert(s.comments).values(comments);
     await tx.insert(s.activity).values(activity);
     await tx.insert(s.recents).values(recents);
+    // A few recorded results, so "what worked" has something to show.
+    const month = (n: number) => new Date(now.getFullYear(), now.getMonth() - n + 1, 0);
+    await tx.insert(s.offerResults).values([
+      { id: "rs1", offerId: "of15", period: "Launch month", endedOn: month(2), leads: 42, calls: 14, conversions: 5, spend: 0, lesson: "The checklist download brought more leads than the ads; lead with it.", createdBy: "pr", createdAt: month(2), updatedAt: month(2) },
+      { id: "rs2", offerId: "of15", period: "Second month", endedOn: month(1), leads: 61, calls: 19, conversions: 7, spend: 0, lesson: "Booking page changes cut drop-off: calls booked rose by a third.", createdBy: "pr", createdAt: month(1), updatedAt: month(1) },
+      { id: "rs3", offerId: "of1", period: "First quarter", endedOn: month(1), leads: 28, calls: 9, conversions: 3, spend: 0, lesson: "Parish newsletters outperform search for church audiences.", createdBy: "do", createdAt: month(1), updatedAt: month(1) },
+    ]);
+    await tx.insert(s.stars).values([
+      { id: "st1", userId: "pr", kind: "offer", itemId: "of15", createdAt: at("1 week ago") },
+      { id: "st2", userId: "pr", kind: "asset", itemId: "as1", createdAt: at("1 week ago") },
+      { id: "st3", userId: "pr", kind: "brand", itemId: "br1", createdAt: at("2 weeks ago") },
+    ]);
   });
 }
