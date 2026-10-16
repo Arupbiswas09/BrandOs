@@ -358,7 +358,7 @@ function NotificationsCard() {
     <Card className="overflow-hidden">
       <Row title="In the app"
         control={perm === "default" ? <Btn onClick={ask}>Turn on desktop notifications</Btn> : perm === "granted" ? <State on>On</State> : null}>
-        <p className="m-0">The bell, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you.</p>
+        <p className="m-0">Your queue in the sidebar, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you.</p>
         <p className="m-0 mt-1.5">
           {perm === "granted" ? "Desktop notifications are on for this browser, so you hear about new work when BrandOS is in the background."
             : perm === "denied" ? "Desktop notifications are blocked. Allow them for this site in your browser settings."

@@ -236,7 +236,7 @@ function build(ws: WS): Entry[] {
   page("settings", "Settings", "Profile, display, notifications, security", { type: "href", href: "/settings" }, "profile password two-step verification notifications email display theme calendar feed sessions security");
   if (seeTeam) {
     page("team", "Team and access", `${d.users.length} people`, { type: "href", href: "/team" }, "people invite roles groups permissions upload limits access map");
-    page("audit", "Audit log", "Sign-ins, access changes, shares and deletions", { type: "href", href: "/audit" }, "security log history sign-ins");
+    page("audit", "Audit log", "Sign-ins, access changes and deletions", { type: "href", href: "/audit" }, "security log history sign-ins");
   }
   if (ws.can("del")) page("trash", "Recycle bin", "Deleted assets and files", { type: "href", href: "/trash" }, "trash bin deleted restore");
   page("shortcuts", "Keyboard shortcuts", "Every key BrandOS listens for", { type: "action", action: "shortcuts" }, "keys help hotkeys");

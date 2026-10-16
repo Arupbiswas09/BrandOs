@@ -20,7 +20,6 @@ import { itemUrl, notifyPeople } from "@/server/notify";
 import { postSlack, slackEnabled, slackEsc, slackLater, slackLink } from "@/server/slack";
 import { issueFeed, revokeFeed } from "@/server/calendar";
 import { NOTIFY_EVENTS } from "@/lib/notify";
-import { href } from "@/lib/routes";
 import { recordSecurity } from "@/server/audit";
 import { EV } from "@/lib/audit";
 import { draftNewOfferFunnel } from "@/server/funnel";
@@ -1199,34 +1198,6 @@ export async function removeFile(assetId: string, fileName: string) {
   });
 }
 
-/* ================================================================ client share links */
-
-export async function createShareLink(brandId: string, label: string) {
-  return run(async () => {
-    const { me, vis, db, all } = await context("share");
-    need(process.env.BRANDOS_CLIENT_LINKS === "on", "Client links are switched off: BrandOS is internal only. Use Export brand kit instead.");
-    need(vis.brand(brandId));
-    const { randomBytes } = await import("node:crypto");
-    const token = randomBytes(18).toString("base64url");
-    const b = all.brands.find((x) => x.id === brandId)!;
-    await db.insert(s.shareLinks).values({ token, brandId, label: label.trim().slice(0, 80), createdBy: me.id });
-    await log(db, me.id, "created a client link for", "brand", brandId, b.name, label.trim());
-    // The link itself is a secret, so the channel gets the brand page, not the share URL.
-    slackLater(`:link: *${slackEsc(me.name)}* created a client share link${label.trim() ? ` "${slackEsc(label.trim().slice(0, 80))}"` : ""} for ${slackLink(appUrl() + href.brand(brandId), b.name)}`);
-    return ok(token);
-  });
-}
-
-export async function revokeShareLink(token: string) {
-  return run(async () => {
-    const { me, vis, db, all } = await context("share");
-    const [l] = await db.select().from(s.shareLinks).where(eq(s.shareLinks.token, token));
-    need(l && vis.brand(l.brandId), "That link no longer exists.");
-    await db.update(s.shareLinks).set({ revokedAt: new Date() }).where(eq(s.shareLinks.token, token));
-    await log(db, me.id, "revoked a client link for", "brand", l.brandId, all.brands.find((b) => b.id === l.brandId)?.name ?? "", l.label);
-  });
-}
-
 /* ================================================================ my profile */
 
 export async function updateProfile(input: { name: string; role: string }) {
@@ -1263,7 +1234,7 @@ export async function sendSlackTest() {
   return run(async () => {
     const { me } = await context("access");
     if (!slackEnabled()) throw new Denied("Slack is not set up. Add SLACK_WEBHOOK_URL to the server's environment and restart.");
-    const r = await postSlack(`:wave: Test from BrandOS, sent by *${slackEsc(me.name)}*. Review requests, approvals, change requests and new client links will appear here. ${slackLink(appUrl(), "Open BrandOS")}`);
+    const r = await postSlack(`:wave: Test from BrandOS, sent by *${slackEsc(me.name)}*. Review requests, approvals and change requests will appear here. ${slackLink(appUrl(), "Open BrandOS")}`);
     if (!r.ok) throw new Denied(r.error);
   });
 }

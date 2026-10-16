@@ -333,7 +333,7 @@ export function Field({ label, children, hint, className, required, error }: { l
   return (
     <label className={cx("block", className)} data-invalid={error ? "" : undefined}>
       <span className="label flex justify-between gap-2">
-        <span>{label}{required && <><span aria-hidden className="ml-0.5 text-[#DC2626]">*</span><span className="sr-only"> (required)</span></>}</span>
+        <span>{label}{required && <><span aria-hidden className="ml-0.5 text-mute-3">*</span><span className="sr-only"> (required)</span></>}</span>
         {hint}
       </span>
       {children}
@@ -344,7 +344,7 @@ export function Field({ label, children, hint, className, required, error }: { l
 
 /** The "* Required" legend that sits at the top of forms with required fields. */
 export function RequiredNote({ className }: { className?: string }) {
-  return <p className={cx("m-0 text-small text-mute-3", className)}><span aria-hidden className="text-[#DC2626]">*</span> Required</p>;
+  return <p className={cx("m-0 text-small text-mute-3", className)}><span aria-hidden>*</span> Required</p>;
 }
 
 export function Select({ value, onChange, options, className, ...rest }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; className?: string } & Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "onChange" | "value">) {

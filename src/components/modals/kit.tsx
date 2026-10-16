@@ -89,7 +89,7 @@ export function KitModal({ brandId }: { brandId: string }) {
   const fontOptions = [...new Set([...fonts.map((f) => f.name).filter(Boolean), ...scale.map((s) => s.font)])];
 
   return (
-    <Modal title="Edit the Brand Kit" sub={`${b.name}. Changes show up everywhere this brand's kit is used, including client share pages.`} width={780} onSubmit={save}
+    <Modal title="Edit the Brand Kit" sub={`${b.name}. Changes show up everywhere this brand's kit is used.`} width={780} onSubmit={save}
       footer={<Footer saveLabel="Save kit" pending={pending} left={error ? <span role="alert" className="text-meta font-medium text-[#B42318]">{error}</span> : undefined} />} bodyClass="max-h-[64vh] overflow-y-auto pt-0">
       <Tabs className="sticky top-0 z-10 -mx-6 mb-1 mt-0 pt-3 border-b border-line bg-surface px-5 sm:-mx-7" items={TABS.map(([key, label]) => ({ key, label, active: tab === key, onClick: () => setTab(key) }))} />
 

@@ -27,7 +27,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
     return (
       <Page className="max-w-[860px]">
         <PageHead eyebrow="Security" title="Audit log" />
-        <Empty title="This page is not for your role" body="The audit log shows who signed in and who changed access, shares and deletions. Only admins can see it. Ask an admin if you need to check something." />
+        <Empty title="This page is not for your role" body="The audit log shows who signed in and who changed access, and deletions. Only admins can see it. Ask an admin if you need to check something." />
       </Page>
     );
   }
@@ -72,7 +72,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
       </Form>
 
       {!rows.length ? (
-        <Empty title={filtered ? "Nothing matches those filters" : "Nothing logged yet"} body={filtered ? "Try a wider date range, another person or a different search." : "Sign-ins, access changes, shares and deletions will show up here as they happen."} />
+        <Empty title={filtered ? "Nothing matches those filters" : "Nothing logged yet"} body={filtered ? "Try a wider date range, another person or a different search." : "Sign-ins, access changes and deletions will show up here as they happen."} />
       ) : (
         <>
           <p className="mb-2 mt-0 text-meta text-mute-3">Showing {first}–{last} of {fmtNumber(total)} · times are your local time</p>
