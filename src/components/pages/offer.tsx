@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { Archive, ArchiveRestore, CalendarDays, Clock, Layers, Link2, Megaphone, Pencil, Plus, Split, Trash2, Workflow } from "lucide-react";
+import { Archive, ArchiveRestore, CalendarDays, Clock, Layers, Megaphone, Pencil, Split, Undo2, Workflow } from "lucide-react";
 import { hexA, readable } from "@/lib/color";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -10,10 +10,11 @@ import type { Offer } from "@/db/schema";
 import { setArchived, setDue, setStatus } from "@/app/actions";
 import { toDateInput } from "@/lib/time";
 import { useAction, useApp } from "@/components/app/provider";
-import { AssetCard, GoalChips } from "@/components/cards";
+import { GoalChips } from "@/components/cards";
+import { OfferAssets } from "@/components/folders/offer-assets";
 import { CommentText, Thread } from "@/components/discussion";
 import { CtaButton, ReviewBar } from "@/components/drawer/asset-drawer";
-import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, Empty, Eyebrow, Page } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, Card, ChangeNote, Chip, Eyebrow, Page } from "@/components/ui";
 import { EntityHeader, IconTile, MetaItem } from "@/components/polish";
 import { MoreMenu } from "@/components/more-menu";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
@@ -21,7 +22,7 @@ import { NotHere, useVisit } from "./common";
 import { fmtDate } from "@/lib/format";
 
 export function OfferPage({ id }: { id: string }) {
-  const { ws, open, openAsset, nudge, setNudge } = useApp();
+  const { ws, open, openAsset, nudge, setNudge, toast } = useApp();
   const [run] = useAction();
   const o = ws.offer(id);
   useVisit("offer", id, !!o);
@@ -35,7 +36,6 @@ export function OfferPage({ id }: { id: string }) {
 
   const b = ws.brand(o.brandId);
   const sv = ws.service(o.serviceId);
-  const assets = ws.linkedAssets(o.id);
   const canEdit = ws.canChange(o);
   const mentions = ws.mentionsOf("offer", o.id);
   const openNotes = ws.openCount("offer", o.id);
@@ -65,7 +65,7 @@ export function OfferPage({ id }: { id: string }) {
             <MetaItem><Avatar initials={ws.user(o.ownerId).initials} size={20} />{ws.user(o.ownerId).name}</MetaItem>
           </>
         }
-        actions={(canEdit || ws.can("archive") || ws.can("del")) && (
+        actions={(canEdit || ws.can("archive")) && (
           <>
             {canEdit && <Btn onClick={() => {
               const taken = new Set(ws.offersOf(o.brandId).filter((x) => x.serviceId === o.serviceId && !x.archived).map((x) => x.segment));
@@ -74,8 +74,8 @@ export function OfferPage({ id }: { id: string }) {
             }}><Split aria-hidden size={16} />Adapt for another segment</Btn>}
             {ws.can("archive") && <Btn onClick={() => run(setArchived, "offer", o.id, !o.archived)}>{o.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />}{o.archived ? "Restore" : "Archive"}</Btn>}
             {canEdit && <Btn variant="primary" onClick={() => open({ kind: "offer", draft: o })}><Pencil aria-hidden size={16} />Edit</Btn>}
-            {/* Deleting is admin-only and kept out of the way of the everyday buttons. */}
-            <MoreMenu label="More offer actions" items={ws.can("del") ? [{ label: "Delete offer", icon: <Trash2 aria-hidden size={16} />, danger: true, onSelect: () => open({ kind: "confirm", item: "offer", id: o.id, label: o.name, back: href.brand(o.brandId, "offers") }) }] : []} />
+            {/* Offers are never deleted. One that was cancelled, or added by mistake, goes back to draft. */}
+            <MoreMenu label="More offer actions" items={canEdit && o.status !== "Ideation" ? [{ label: "Move back to draft", icon: <Undo2 aria-hidden size={16} />, onSelect: async () => { if ((await run(setStatus, "offer", o.id, "Ideation")).ok) toast("Moved back to draft"); } }] : []} />
           </>
         )}
       />
@@ -171,25 +171,7 @@ export function OfferPage({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <h2 className="m-0 mb-1 text-[17px] font-semibold">What supports this offer</h2>
-          <p className="m-0 text-[14.5px] text-mute-2">{assets.length} {assets.length === 1 ? "asset supports" : "assets support"} this offer. Linking never duplicates — the asset stays where it lives.</p>
-        </div>
-        {canEdit && (
-          <div className="flex gap-2">
-            <Btn size="lg" onClick={() => open({ kind: "link", offerId: o.id })}><Link2 aria-hidden size={16} />Link existing asset</Btn>
-            <Btn variant="primary" size="lg" onClick={() => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 })}><Plus aria-hidden size={16} />New asset</Btn>
-          </div>
-        )}
-      </div>
-      {assets.length > 0 ? (
-        <div className="grid grid-cols-2 gap-3.5 md:grid-cols-3 lg:grid-cols-4">{assets.map((a) => <AssetCard key={a.id} a={a} />)}</div>
-      ) : (
-        <Empty title="No assets in this offer yet" body="Something in the library probably already fits, so look there before you build.">
-          {canEdit && <Btn variant="primary" size="lg" onClick={() => open({ kind: "link", offerId: o.id })}>Link an existing asset</Btn>}
-        </Empty>
-      )}
+      <OfferAssets o={o} />
 
       <div id="discussion" className="mt-11 max-w-[720px] scroll-mt-24">
         <div className="mb-1 flex items-baseline justify-between gap-4">

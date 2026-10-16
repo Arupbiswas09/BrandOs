@@ -30,7 +30,6 @@ test("pin a note on an image, find it in the discussion, and jump back to it", a
   await page.goto("/brands/br1/assets?asset=as1");
   await settle(page);
   const drawer = page.getByRole("dialog", { name: "Free Audit Landing Page" });
-  await drawer.getByRole("tab", { name: /^Files/ }).click();
   await drawer.locator('input[type="file"]').setInputFiles({ name: "proof-hero.png", mimeType: "image/png", buffer: png() });
   await expect(page.getByText("1 file added")).toBeVisible();
 

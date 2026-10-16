@@ -96,6 +96,10 @@ export const TRAFFIC_TYPES = typesWith("traffic");
 export const CAPTURE_TYPES = new Set([...typesWith("entry"), "Document"]);
 /** Asset types that make the ask believable. */
 export const PROOF_TYPES = typesWith("proof");
+/** Asset types people see once they have said yes: thank-you pages. */
+export const AFTER_TYPES = typesWith("after");
+/** Asset types that run after someone converts: automations and email sequences. */
+export const AUTOMATION_TYPES = typesWith("automation");
 
 export type DraftSource = {
   /** The offer's linked assets, in the order they should appear. */
@@ -123,10 +127,11 @@ const X0 = 40, Y0 = 40, COL = 260, ROW = 100;
 /**
  * Lays a first funnel out from what an offer already has, left to right:
  * ads and posts, then landing pages and lead magnets, then the primary CTA,
- * then the goal as a stage. Case studies sit under the CTA as proof; the
- * service the offer feeds sits under the goal. Anything else that is linked
- * goes in a row underneath, so the board still indexes it. Empty when the
- * offer has nothing to draw.
+ * then the thank-you pages people land on once they say yes, then the goal
+ * as a stage, then the automations that follow it. Case studies sit under
+ * the CTA as proof; the service the offer feeds sits under the goal. Anything
+ * else that is linked goes in a row underneath, so the board still indexes
+ * it. Empty when the offer has nothing to draw.
  */
 export function buildDraft(src: DraftSource): Funnel {
   const boxes: FunnelBox[] = [];
@@ -141,15 +146,18 @@ export function buildDraft(src: DraftSource): Funnel {
   const traffic = assets.filter((a) => TRAFFIC_TYPES.has(a.type)).map(asAsset);
   const capture = assets.filter((a) => CAPTURE_TYPES.has(a.type)).map(asAsset);
   const proof = assets.filter((a) => PROOF_TYPES.has(a.type)).map(asAsset);
-  const other = assets.filter((a) => !TRAFFIC_TYPES.has(a.type) && !CAPTURE_TYPES.has(a.type) && !PROOF_TYPES.has(a.type)).map(asAsset);
+  const after = assets.filter((a) => AFTER_TYPES.has(a.type)).map(asAsset);
+  const automation = assets.filter((a) => AUTOMATION_TYPES.has(a.type)).map(asAsset);
+  const placedTypes = [TRAFFIC_TYPES, CAPTURE_TYPES, PROOF_TYPES, AFTER_TYPES, AUTOMATION_TYPES];
+  const other = assets.filter((a) => !placedTypes.some((t) => t.has(a.type))).map(asAsset);
   const cta = src.ctaId ? box("step", "", { type: "cta", id: src.ctaId }) : null;
   const service = src.serviceId ? box("step", "", { type: "service", id: src.serviceId }) : null;
 
-  if (!traffic.length && !capture.length && !proof.length && !other.length && !cta && !src.goal && !service) return { boxes: [], arrows: [] };
+  if (!assets.length && !cta && !src.goal && !service) return { boxes: [], arrows: [] };
   const goal = box("stage", src.goal?.trim() || "Goal");
 
   // Main columns, skipping the empty ones; shorter columns are centred on the tallest.
-  const columns = [traffic, capture, cta ? [cta] : [], [goal]].filter((c) => c.length);
+  const columns = [traffic, capture, cta ? [cta] : [], after, [goal], automation].filter((c) => c.length);
   const tallest = Math.max(...columns.map((c) => c.length));
   // A stage pill is shorter than a linked card, so it drops half a grid step to line up with the cards' middles.
   const place = (b: FunnelBox, x: number, top: number) => { b.x = x; b.y = top + (b.kind === "stage" ? GRID / 2 : 0); };
@@ -165,15 +173,19 @@ export function buildDraft(src: DraftSource): Funnel {
     placed.push(...list);
   };
 
-  // Where each step leads: ads to every landing page (or straight to the ask), pages to the ask, the ask to the goal.
-  const ask = cta ?? goal;
-  const first = capture.length ? capture : [ask];
-  for (const t of traffic) {
-    const targets = first.length * traffic.length > 12 ? first.slice(0, 1) : first;
-    for (const to of targets) arrow(t, to);
-  }
-  for (const c of capture) arrow(c, ask);
-  if (cta) arrow(cta, goal);
+  // Where each step leads: ads to every landing page (or straight to the ask), pages to the ask, the ask to
+  // the thank-you pages (or the goal), and the goal on to what runs after it. Wide fans keep to one arrow each.
+  const thanks = after.length ? after : [goal];
+  const ask = cta ? [cta] : thanks;
+  const first = capture.length ? capture : ask;
+  const fan = (from: FunnelBox[], to: FunnelBox[]) => {
+    for (const f of from) for (const t of from.length * to.length > 12 ? to.slice(0, 1) : to) arrow(f, t);
+  };
+  fan(traffic, first);
+  fan(capture, ask);
+  if (cta) fan([cta], thanks);
+  fan(after, [goal]);
+  fan([goal], automation);
 
   const proofAnchor = cta ?? capture[0] ?? goal;
   below(proofAnchor, proof);

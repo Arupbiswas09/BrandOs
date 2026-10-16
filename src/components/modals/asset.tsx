@@ -61,6 +61,9 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     offerIds: draft.offerIds ?? [],
   });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((x) => ({ ...x, [k]: v }));
+  // A Drive link is delivered as a link, so it starts as one.
+  const setType = (type: string) => setD((x) => ({ ...x, type, delivery: type === "Drive link" && x.delivery === "None" ? "Doc link" : x.delivery }));
+  const drive = d.type === "Drive link";
   // A tag half typed in the box; saving adds it too.
   const [tagText, setTagText] = useState("");
   const tagsInUse = useMemo(() => tagPool(ws.d.assets), [ws.d.assets]);
@@ -93,10 +96,10 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       list.forEach((f) => fd.append("file", f));
       const res = await fetch(`/api/assets/${id}/files`, { method: "POST", body: fd });
       const body = await res.json().catch(() => ({}));
-      if (!res.ok) toast(`The asset is saved, but its files did not upload. ${body.error ?? "Try again from its Files tab."}`, "error");
+      if (!res.ok) toast(`The asset is saved, but its files did not upload. ${body.error ?? "Try again from the asset."}`, "error");
       else toast(`${plural(list.length)} added`);
     } catch {
-      toast("The asset is saved, but its files did not upload. Check your connection and try again from its Files tab.", "error");
+      toast("The asset is saved, but its files did not upload. Check your connection and try again from the asset.", "error");
     } finally {
       router.refresh();
     }
@@ -121,11 +124,11 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     if (!r.ok) return;
     const id = r.id ?? draft.id;
     close();
-    if (!editing && id) openAsset(id, files.length ? "files" : undefined);
+    if (!editing && id) openAsset(id);
     if (files.length && id) void uploadQueued(id, files);
   };
 
-  const valid = !!(d.name.trim() && d.type);
+  const valid = !!(d.name.trim() && d.type && (!drive || d.url.trim()));
   const title = editing ? "Edit asset" : "What are you making?";
   const stepLabel = editing ? undefined : known ? "One step — the rest is already known" : `Step ${step + 1} of 4`;
 
@@ -158,7 +161,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               <div className="grid grid-cols-2 gap-[9px] sm:grid-cols-3">
                 {Object.entries(ASSET_TYPES).filter(([k, t]) => t.cat === cat && k !== "Newsletter ad").map(([k, t]) => (
                   <button key={k} type="button" aria-pressed={d.type === k}
-                    onClick={() => { set("type", k); setStep(d.offerIds.length && d.brandId ? 3 : d.brandId === null && draft.brandId === null ? 3 : 1); }}
+                    onClick={() => { setType(k); setStep(d.offerIds.length && d.brandId ? 3 : d.brandId === null && draft.brandId === null ? 3 : 1); }}
                     className={cx("rounded-[10px] border p-3 text-left transition hover:border-mute-2", d.type === k ? "border-accent bg-soft" : "border-line bg-white")}>
                     <span className="mb-1.5 block font-mono text-[12px] font-bold tracking-[0.06em] text-mute-4">{t.code}</span>
                     <span className="block text-[15px] font-semibold leading-[1.3]">{k}</span>
@@ -225,12 +228,18 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               </div>
             </div>
           )}
+          {/* A Drive link is the link itself, so it is asked for first and files are left out of the way. */}
+          {drive && (
+            <Field label="Drive link" required>
+              <input required type="text" inputMode="url" className="field text-[16px]" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
+            </Field>
+          )}
           {/* New assets start as the caller says (Draft, or Live in the Global Library); status then changes on the asset itself. */}
           <div className={cx("grid gap-3", editing && "sm:grid-cols-2")}>
             <Field label="Short description"><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
             {editing && <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>}
           </div>
-          {canUpload && (
+          {canUpload && !drive && (
             <div>
               <div className="label">Files</div>
               <div
@@ -261,12 +270,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               )}
               <p className="m-0 mt-1.5 text-[13px] leading-[1.5] text-mute-3">
                 {queued.length ? `${plural(queued.length)} will upload when you save.` : editing ? "New files are added when you save." : "They upload as soon as the asset is saved."}
-                {editing && (draft.files?.length ?? 0) > 0 && " Replace or remove the files already here from the asset's Files tab."}
+                {editing && (draft.files?.length ?? 0) > 0 && " Replace or remove the files already here from the asset itself."}
               </p>
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Type" required><Select value={d.type} onChange={(v) => set("type", v)} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
+            <Field label="Type" required><Select value={d.type} onChange={setType} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
             <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
           </div>
           {d.brandId && (
@@ -281,7 +290,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               <Tick on={d.gated} />Gated — people request it
             </button>
           </div>
-          <Field label="Live URL or doc link"><input className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="quokkaforgood.org/grant-audit" /></Field>
+          {!drive && <Field label="Live URL or doc link"><input className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="quokkaforgood.org/grant-audit" /></Field>}
 
           {d.type === "Prompt" && (
             <div className="border-t border-divider pt-1.5">
@@ -296,7 +305,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               <textarea rows={6} className="field leading-[1.55]" value={d.checks} onChange={(e) => set("checks", e.target.value)} placeholder={"Tracking fires on submit\nCTA matches the library entry"} />
             </Field>
           )}
-          {(ASSET_TYPES[d.type]?.cat !== "global" || d.type === "Ad creative") && (
+          {(ASSET_TYPES[d.type]?.cat !== "global" || d.type === "Ad creative") && !drive && (
             <div className="border-t border-divider pt-1.5">
               <div className="label mt-2">Copy</div>
               <input className="field mb-2" value={d.copy.headline} onChange={(e) => set("copy", { ...d.copy, headline: e.target.value })} placeholder="Headline" aria-label="Headline" />

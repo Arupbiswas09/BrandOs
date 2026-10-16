@@ -1,13 +1,14 @@
 "use client";
 
-import { FILE_KINDS, checkBatch, sizeLabel, type MyUploadLimits } from "@/lib/upload-policy";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { FILE_KINDS, checkBatch, kindOf, sizeLabel, type FileKind, type MyUploadLimits } from "@/lib/upload-policy";
+import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Copy, Download, Eye, History as HistoryIcon, LayoutGrid, Library as LibraryIcon, Link2, ListChecks, MessageSquare, Paperclip, Pencil, RefreshCw, ScanEye, Terminal, Type, type LucideIcon,
+  Archive, ArchiveRestore, ArrowLeft, Copy, Download, ExternalLink, Eye, File as FileIcon, FileArchive, FileAudio, FileImage, FileText, FileType, FileVideo, FolderOpen, History as HistoryIcon, ImagePlus,
+  LayoutGrid, Library as LibraryIcon, Link2, ListChecks, MessageSquare, Pencil, Plus, RefreshCw, ScanEye, Terminal, Trash2, Type, Upload, type LucideIcon,
 } from "lucide-react";
-import type { Asset } from "@/db/schema";
+import type { Asset, FileRef } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, CHANNEL_COLOR, REVIEW_COLOR } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -19,13 +20,17 @@ import {
 import { useAction, useApp } from "@/components/app/provider";
 import { Thread } from "@/components/discussion";
 import { ArchivedNote, Avatar, Btn, ChangeNote, Chip, Eyebrow, Hint, cx } from "@/components/ui";
+import { FOCUS } from "@/components/polish";
+import { assetLink, assetPrimary } from "@/components/cards";
+import { CardMenu, type CardMenuItem } from "@/components/card-menu";
+import { ThumbnailPicker, imageFrom, intoText, useThumbnail } from "@/components/thumbnail-picker";
 import { AiDraftButton } from "@/components/ai";
 import { ProofView } from "@/components/proof";
 import { PinLink, isPinned, proofFiles, type PinnedComment } from "@/components/proof-link";
 
 const IMAGE = /^image\/(png|jpe?g|gif|webp|avif)$/;
 
-type Tab = "overview" | "list" | "prompt" | "copy" | "files" | "proof" | "discussion" | "history" | "sharing";
+type Tab = "overview" | "list" | "prompt" | "copy" | "proof" | "discussion" | "history" | "sharing";
 
 export function AssetDrawer() {
   const { assetId, ws } = useApp();
@@ -50,12 +55,12 @@ function Missing() {
 }
 
 function Drawer({ a }: { a: Asset }) {
-  const { ws, closeAsset, open } = useApp();
+  const { ws, closeAsset, open, modal } = useApp();
   const [run] = useAction();
   const params = useSearchParams();
-  const router = useRouter();
-  const initial = (params.get("tab") as Tab) || "overview";
-  const [tab, setTab] = useState<Tab>(initial);
+  // Files sit above the tabs now; old links to the Files tab land on the overview.
+  const asked = params.get("tab");
+  const [tab, setTab] = useState<Tab>(!asked || asked === "files" ? "overview" : (asked as Tab));
   useEffect(() => { void trackVisit("asset", a.id); }, [a.id]);
   // Which pin the proof view opens on. A new `n` remounts it, so a pinned note in the discussion can jump straight there.
   const [proofAt, setProofAt] = useState<{ fileKey?: string; pinId?: string; n: number }>(() => ({ pinId: params.get("pin") ?? undefined, n: 0 }));
@@ -68,17 +73,33 @@ function Drawer({ a }: { a: Asset }) {
   const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
   const items = a.items ?? [];
   const done = items.filter((i) => i.done).length;
-  const files = a.files ?? [];
   const proof = proofFiles(a);
   const canProof = proof.images.length > 0 || proof.pdfs.length > 0;
   const openPins = ws.commentsOf("asset", a.id).filter((c) => isPinned(c) && !c.resolved).length;
+  const preview = ws.previewOf(a);
+  const canThumb = canEdit && ws.can("upload");
+  const [picking, setPicking] = useState(false);
+  const thumb = useThumbnail(`/api/assets/${a.id}/thumbnail`);
+
+  // A screenshot pasted anywhere in the drawer (outside a text box) becomes the card's thumbnail.
+  const onPaste = useEffectEvent((e: ClipboardEvent) => {
+    if (!canThumb || picking || modal || thumb.busy || intoText(e.target)) return;
+    const f = imageFrom(e.clipboardData, true);
+    if (!f) return;
+    e.preventDefault();
+    void thumb.send(f);
+  });
+  useEffect(() => {
+    const paste = (e: ClipboardEvent) => onPaste(e);
+    window.addEventListener("paste", paste);
+    return () => window.removeEventListener("paste", paste);
+  }, []);
 
   const tabs: { key: Tab; label: string; icon: LucideIcon; count?: string | number }[] = [
     { key: "overview", label: "Overview", icon: LayoutGrid },
     ...(a.type === "Checklist" ? [{ key: "list" as Tab, label: "Checklist", icon: ListChecks, count: `${done}/${items.length}` }] : []),
     ...(a.type === "Prompt" ? [{ key: "prompt" as Tab, label: "Prompt", icon: Terminal }] : []),
     { key: "copy", label: "Copy", icon: Type },
-    { key: "files", label: "Files", icon: Paperclip, count: files.length },
     ...(canProof ? [{ key: "proof" as Tab, label: "Proof", icon: ScanEye, count: openPins }] : []),
     { key: "discussion", label: "Discussion", icon: MessageSquare, count: ws.openCount("asset", a.id) },
     { key: "history", label: "History", icon: HistoryIcon },
@@ -86,6 +107,12 @@ function Drawer({ a }: { a: Asset }) {
   ];
 
   const editDraft = () => open({ kind: "asset", draft: { ...a, offerIds: offers.map((o) => o.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 });
+  const more: CardMenuItem[] = [
+    ...(canThumb ? [{ kind: "item" as const, label: "Change thumbnail", icon: <ImagePlus aria-hidden size={16} className="text-mute-4" />, onSelect: () => setPicking(true) }] : []),
+    ...(canEdit ? [{ kind: "item" as const, label: "Clone", icon: <Copy aria-hidden size={15} className="text-mute-4" />, onSelect: () => open({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] }) }] : []),
+    ...(ws.can("archive") ? [{ kind: "item" as const, label: a.archived ? "Restore" : "Archive", icon: a.archived ? <ArchiveRestore aria-hidden size={16} className="text-mute-4" /> : <Archive aria-hidden size={16} className="text-mute-4" />, onSelect: () => void run(setArchived, "asset", a.id, !a.archived) }] : []),
+    ...(ws.can("del") ? [{ kind: "item" as const, label: "Delete", icon: <Trash2 aria-hidden size={16} />, danger: true, onSelect: () => open({ kind: "confirm", item: "asset", id: a.id, label: a.name }) }] : []),
+  ];
 
   return (
     <PinLink.Provider value={goPin}>
@@ -96,40 +123,28 @@ function Drawer({ a }: { a: Asset }) {
           <button type="button" aria-label="Close" onClick={closeAsset} className="flex h-8 w-8 items-center justify-center rounded-[8px] text-mute-2 transition hover:bg-wash hover:text-ink"><ArrowLeft aria-hidden size={18} /></button>
           <span className="flex-1" />
           {canEdit && a.brandId && <Btn size="sm" onClick={() => open({ kind: "linkAsset", assetId: a.id })}><Link2 aria-hidden size={14} />Link to offers</Btn>}
-          {canEdit && <Btn size="sm" onClick={() => open({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] })}><Copy aria-hidden size={14} />Clone</Btn>}
           {canEdit && <Btn size="sm" variant="primary" onClick={editDraft}><Pencil aria-hidden size={14} />Edit</Btn>}
-          {ws.can("archive") && (
-            <button type="button" onClick={() => run(setArchived, "asset", a.id, !a.archived)} className="px-1 py-[5px] text-[14px] text-mute-1 hover:text-ink">{a.archived ? "Restore" : "Archive"}</button>
-          )}
-          {ws.can("del") && (
-            <button type="button" onClick={() => open({ kind: "confirm", item: "asset", id: a.id, label: a.name })} className="px-1 py-[5px] text-[14px] text-danger hover:underline">Delete</button>
-          )}
+          {/* Clone, archive and the admin-only delete sit together out of the way of the everyday buttons. */}
+          <CardMenu label="More asset actions" items={more} triggerClassName={TOP_MORE} />
         </div>
 
-        <div className="px-5 pb-10 pt-[26px] sm:px-7">
-          <div className="mb-5 flex items-start gap-4">
-            {ws.previewOf(a) ? (
-              // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file
-              <img src={ws.previewOf(a)!} alt="" className="h-16 w-16 flex-none rounded-[14px] border border-line object-cover" />
-            ) : (
-              <span className="flex h-16 w-16 flex-none items-center justify-center rounded-[14px] font-mono text-[15px] font-bold tracking-[0.05em]" style={{ background: hexA(color, 0.12), color: readable(color, 0.12), boxShadow: `inset 0 0 0 1px ${hexA(color, 0.18)}` }}>{ws.codeOf(a)}</span>
-            )}
-            <span className="min-w-0 flex-1">
-              <Eyebrow className="mb-1">{cat === "campaign" ? "Campaign asset" : cat === "master" ? "Master file" : "Global asset"} · {a.type}</Eyebrow>
-              <span className="block text-[22px] font-semibold leading-[1.25] tracking-[-0.018em] text-ink">{a.name}</span>
-              {a.short && <span className="mt-1 block text-[15px] text-mute-2">{a.short}</span>}
-              <span className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
-                {!canEdit && <Chip color={ASSET_STATUS[a.status] ?? "#93A09A"}>{a.status}</Chip>}
-                {a.review !== "None" && <Chip color={REVIEW_COLOR[a.review]}>{a.review}</Chip>}
-                {b ? (
-                  <Link href={href.brand(b.id)} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line bg-white py-[2px] px-2 text-[13px] font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
-                    <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: b.primary }} />{b.name}
-                  </Link>
-                ) : (
-                  <span className="inline-flex items-center gap-1 rounded-[6px] border border-line bg-white px-2 py-[2px] text-[13px] font-semibold text-mute-1"><LibraryIcon aria-hidden size={13} />Global Library</span>
-                )}
-                <span className="font-mono text-[12.5px] text-mute-4">v{a.version}</span>
-              </span>
+        <div className="px-5 pb-10 pt-5 sm:px-7">
+          <Hero a={a} preview={preview} color={color} busy={thumb.busy} onChange={canThumb ? () => setPicking(true) : undefined} />
+
+          <div className="mb-5">
+            <Eyebrow className="mb-1">{cat === "campaign" ? "Campaign asset" : cat === "master" ? "Master file" : "Global asset"} · {a.type}</Eyebrow>
+            <span className="block text-[22px] font-semibold leading-[1.25] tracking-[-0.018em] text-ink">{a.name}</span>
+            {a.short && <span className="mt-1 block text-[15px] text-mute-2">{a.short}</span>}
+            <span className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              {!canEdit && <Chip color={ASSET_STATUS[a.status] ?? "#93A09A"}>{a.status}</Chip>}
+              {b ? (
+                <Link href={href.brand(b.id)} className="inline-flex items-center gap-1.5 rounded-[6px] border border-line bg-white py-[2px] px-2 text-[13px] font-semibold text-mute-1 transition hover:border-accent hover:text-ink">
+                  <span aria-hidden className="h-2.5 w-2.5 rounded-[3px]" style={{ background: b.primary }} />{b.name}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-[6px] border border-line bg-white px-2 py-[2px] text-[13px] font-semibold text-mute-1"><LibraryIcon aria-hidden size={13} />Global Library</span>
+              )}
+              <span className="font-mono text-[12.5px] text-mute-4">v{a.version}</span>
             </span>
           </div>
 
@@ -153,18 +168,7 @@ function Drawer({ a }: { a: Asset }) {
           <ReviewBar kind="asset" item={a} />
           {a.changeNote && a.review === "Changes requested" && <ChangeNote className="mb-[18px]">{a.changeNote}</ChangeNote>}
 
-          <div className="mb-[22px] overflow-hidden rounded-xl border border-line">
-            <div className="grid grid-cols-2">
-              <Meta label="Brand" border="br">{b ? <button type="button" className="text-left hover:text-accent" onClick={() => router.push(href.brand(b.id))}>{b.name}</button> : "Global Library"}</Meta>
-              <Meta label="Type" border="b">{a.type}</Meta>
-              <Meta label="Channel" border="br"><Chip color={CHANNEL_COLOR[a.channel] ?? "#46534D"} size="md">{a.channel}</Chip></Meta>
-              <Meta label="Visibility" border="b">{a.clientVisible ? "Visible to client" : "Internal only"}</Meta>
-              <Meta label="Delivery" border="br">{a.delivery || "None"}</Meta>
-              <Meta label="Access" border="b">{a.gated ? "Gated — requested, then sent" : "Open"}</Meta>
-              <Meta label="Owner" border="r">{ws.user(a.ownerId).name}</Meta>
-              <Meta label="Version">v{a.version} · updated {ws.ago(a.updatedAt)}</Meta>
-            </div>
-          </div>
+          <AttachedFiles a={a} onProof={proof.images.length ? () => setTab("proof") : undefined} onEdit={canEdit ? editDraft : undefined} />
 
           <div className="mb-[22px] flex gap-0.5 overflow-x-auto border-b border-line" role="tablist" aria-label="Asset sections">
             {tabs.map(({ key: k, label, icon: Icon, count }) => (
@@ -182,23 +186,69 @@ function Drawer({ a }: { a: Asset }) {
           {tab === "list" && <Checklist a={a} />}
           {tab === "prompt" && <PromptTab a={a} />}
           {tab === "copy" && <CopyTab a={a} onEdit={editDraft} />}
-          {tab === "files" && <Files a={a} onProof={proof.images.length ? () => setTab("proof") : undefined} />}
-          {tab === "proof" && (canProof ? <ProofView key={proofAt.n} a={a} fileKey={proofAt.fileKey} pinId={proofAt.pinId} /> : <Files a={a} />)}
+          {tab === "proof" && (canProof ? <ProofView key={proofAt.n} a={a} fileKey={proofAt.fileKey} pinId={proofAt.pinId} /> : <Overview a={a} />)}
           {tab === "discussion" && <Thread kind="asset" id={a.id} />}
           {tab === "history" && <History a={a} />}
           {tab === "sharing" && <Sharing a={a} />}
         </div>
       </div>
+      {picking && (
+        <ThumbnailPicker endpoint={`/api/assets/${a.id}/thumbnail`} subject={a.name} preview={preview} custom={!!a.thumbnail} resetLabel="Use first image"
+          fallback={<span className="flex h-full w-full items-center justify-center font-mono text-[15px] font-bold tracking-[0.1em]" style={{ background: hexA(color, 0.1), color: readable(color, 0.1) }}>{ws.codeOf(a)}</span>}
+          onClose={() => setPicking(false)} />
+      )}
     </div>
     </PinLink.Provider>
   );
 }
 
-function Meta({ label, children, border }: { label: string; children: React.ReactNode; border?: "b" | "r" | "br" }) {
+const TOP_MORE = cx("flex h-[31px] w-[31px] items-center justify-center rounded-[7px] border border-line bg-white text-mute-2 transition-colors hover:border-line-strong hover:text-ink", FOCUS);
+const OVER = cx("flex h-8 w-8 items-center justify-center rounded-full border border-black/[.06] bg-white text-ink-3 shadow-[0_1px_4px_rgba(16,22,20,.16)] transition-colors hover:text-accent", FOCUS);
+
+/**
+ * The picture at the top of the drawer: the thumbnail at 16:10, or a shorter
+ * band with the type code when there is none. Download or Open sit over its
+ * top-right corner; Change thumbnail over its bottom-right for people who can.
+ */
+function Hero({ a, preview, color, busy, onChange }: { a: Asset; preview: string | null; color: string; busy: boolean; onChange?: () => void }) {
+  const { ws } = useApp();
+  const primary = assetPrimary(a);
+  const whole = ws.catOf(a) === "master";
   return (
-    <div className={cx("px-4 py-[13px]", border?.includes("r") && "border-r border-line", border?.includes("b") && "border-b border-line")}>
-      <div className="mb-[3px] text-[13px] text-mute-4">{label}</div>
-      <div className="text-[15px] font-medium">{children}</div>
+    <div className={cx("group/hero relative mb-5 overflow-hidden rounded-[14px] border border-line bg-wash", preview ? "aspect-[16/10]" : "aspect-[16/6]")}>
+      {preview ? (
+        // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; the asset's name is the dialog's name
+        <img src={preview} alt="" className={cx("h-full w-full transition-opacity", whole ? "object-contain p-6" : "object-cover", busy && "opacity-50")} />
+      ) : (
+        <span aria-hidden className={cx("flex h-full w-full items-center justify-center font-mono text-[22px] font-bold tracking-[0.12em] transition-opacity", busy && "opacity-50")}
+          style={{ background: hexA(color, 0.1), color: readable(color, 0.1) }}>{ws.codeOf(a)}</span>
+      )}
+      {primary && (
+        <span className="absolute right-3 top-3 flex gap-1.5">
+          {primary.kind === "download" ? (
+            <a href={primary.href} download aria-label={`Download ${a.name}`} title={primary.title} className={OVER}><Download aria-hidden size={15} /></a>
+          ) : (
+            <a href={primary.href} target="_blank" rel="noreferrer" aria-label={`Open ${a.name}`} title={primary.title} className={OVER}><ExternalLink aria-hidden size={15} /></a>
+          )}
+        </span>
+      )}
+      {onChange && (
+        <button type="button" onClick={onChange} title="Pasting a screenshot while this is open works too."
+          className={cx("absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-black/[.06] bg-white px-3 py-1.5 text-[13.5px] font-semibold text-ink-3 shadow-[0_1px_4px_rgba(16,22,20,.16)] transition hover:text-accent",
+            "opacity-0 group-hover/hero:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100", FOCUS)}>
+          <ImagePlus aria-hidden size={14} />Change thumbnail
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** One quiet line of the details list: a small mono label over its value, no boxes. */
+function Meta({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="font-mono text-[12px] text-mute-4">{label}</dt>
+      <dd className="m-0 mt-0.5 break-words text-[14px] font-medium text-ink-2">{children}</dd>
     </div>
   );
 }
@@ -209,28 +259,32 @@ export function ReviewBar({ kind, item }: { kind: "asset" | "offer"; item: Pick<
   const w = waitOn(item);
   const tone = w ? (w.act === "review" ? "#8A6A12" : "#C2410C") : null;
   const label = item.review === "None" ? "Not reviewed" : item.review;
+  // One row: where it stands on the left, said once, and what you can do about it on the right.
   return (
     <div
-      className={cx("flex flex-wrap items-center gap-2 border px-3.5 py-3", kind === "asset" ? "mb-[18px] rounded-[11px]" : "mb-3 rounded-xl bg-white px-[18px] py-[13px]")}
+      className={cx("flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border px-3.5 py-2.5", kind === "asset" ? "mb-[18px] rounded-[11px]" : "mb-3 rounded-xl bg-white px-[18px] py-[13px]")}
       style={{ background: tone ? hexA(tone, 0.08) : kind === "asset" ? "transparent" : "#FFFFFF", borderColor: tone ? hexA(tone, 0.35) : "var(--bos-border)" }}
     >
-      <Chip color={REVIEW_COLOR[item.review]}>{label}</Chip>
-      {w && (
-        <span className="min-w-[110px] flex-1 text-[15px] font-semibold text-ink-3">
-          {w.verb} — {ws.user(w.who).name}{w.who === ws.me.id ? " (you)" : ""}
-        </span>
-      )}
-      {!w && <span className="min-w-5 flex-1" />}
-      {ws.canChange(item) && (!ws.can("review") || item.review !== "In review") && (
-        <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>{item.review === "In review" ? "Reassign" : "Send for review"}</Btn>
-      )}
-      {ws.can("review") && (
-        <>
-          {ws.canChange(item) && item.review === "In review" && <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>Reassign</Btn>}
-          <Btn size="sm" variant="change" disabled={pending} onClick={() => open({ kind: "reqChanges", item: kind, id: item.id })}>Request changes</Btn>
-          <Btn size="sm" variant="approve" disabled={pending || item.review === "Approved"} onClick={() => run(approveItem, kind, item.id)}>{item.review === "Approved" ? "Approved" : "Approve"}</Btn>
-        </>
-      )}
+      <span className="flex min-w-0 items-center gap-2">
+        <Chip color={REVIEW_COLOR[item.review]}>{label}</Chip>
+        {w && (
+          <span className="min-w-0 text-[14.5px] font-semibold text-ink-3">
+            {w.verb} — {ws.user(w.who).name}{w.who === ws.me.id ? " (you)" : ""}
+          </span>
+        )}
+      </span>
+      <span className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        {ws.canChange(item) && (!ws.can("review") || item.review !== "In review") && (
+          <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>{item.review === "In review" ? "Reassign" : "Send for review"}</Btn>
+        )}
+        {ws.can("review") && (
+          <>
+            {ws.canChange(item) && item.review === "In review" && <Btn size="sm" disabled={pending} onClick={() => open({ kind: "sendReview", item: kind, id: item.id })}>Reassign</Btn>}
+            <Btn size="sm" variant="change" disabled={pending} onClick={() => open({ kind: "reqChanges", item: kind, id: item.id })}>Request changes</Btn>
+            {item.review !== "Approved" && <Btn size="sm" variant="approve" disabled={pending} onClick={() => run(approveItem, kind, item.id)}>Approve</Btn>}
+          </>
+        )}
+      </span>
     </div>
   );
 }
@@ -238,11 +292,13 @@ export function ReviewBar({ kind, item }: { kind: "asset" | "offer"; item: Pick<
 /* ---------------------------------------------------------------- tabs */
 
 function Overview({ a }: { a: Asset }) {
-  const { ws } = useApp();
+  const { ws, open } = useApp();
   const router = useRouter();
   const [run] = useAction();
   const offers = ws.linkedOffers(a.id);
   const src = a.clonedFromId ? ws.asset(a.clonedFromId) : null;
+  const b = ws.brand(a.brandId);
+  const canLink = ws.canChange(a) && !!a.brandId;
   const section = (label: string, body: React.ReactNode) => (
     <div className="mb-[18px]"><Eyebrow className="mb-1.5">{label}</Eyebrow>{body}</div>
   );
@@ -262,6 +318,13 @@ function Overview({ a }: { a: Asset }) {
             This asset is not linked to anything, so nobody will find it by walking through the rooms.
           </div>
         )}
+        {/* The same asset can serve any number of offers; linking it to one more never copies it. */}
+        {canLink && (
+          <button type="button" onClick={() => open({ kind: "linkAsset", assetId: a.id })}
+            className="flex items-center gap-2 rounded-[10px] border border-dashed border-line-strong px-[13px] py-2.5 text-left text-[14.5px] font-medium text-mute-2 transition-colors hover:border-accent hover:text-ink">
+            <Plus aria-hidden size={15} />{offers.length ? "Link to another offer" : "Link to an offer"}
+          </button>
+        )}
         {!offers.length && !a.brandId && <div className="text-[15px] text-mute-2">Global Library items are not linked to offers. Clone one into a brand when you run it.</div>}
       </div>
       {src && (
@@ -269,16 +332,32 @@ function Overview({ a }: { a: Asset }) {
           Cloned from <button type="button" className="font-semibold text-ink hover:underline" onClick={() => ws.asset(src.id) && router.push(`?asset=${src.id}`, { scroll: false })}>{src.name}</button>
         </div>
       )}
-      {a.url && section("Live URL", <a href={a.url.startsWith("http") ? a.url : `https://${a.url}`} target="_blank" rel="noreferrer" className="break-all text-[15px] text-accent hover:underline">{a.url}</a>)}
+      {/* A link that already sits with the files at the top is not repeated here. */}
+      {a.url && !linkOnTop(a) && section("Live URL", <a href={assetLink(a)!.href} target="_blank" rel="noreferrer" className="break-all text-[15px] text-accent hover:underline">{a.url}</a>)}
       {a.tags.length > 0 && section("Tags", <div className="flex flex-wrap gap-[5px]">{a.tags.map((t) => <span key={t} className="rounded-[5px] bg-chip px-[9px] py-[3px] text-[13.5px] text-mute-1">{t}</span>)}</div>)}
       {a.ctaId && ws.cta(a.ctaId) && section("Call to action", <CtaButton id={a.ctaId} />)}
       {a.specs && section("Creative specs", <div className="text-[15px] leading-[1.55] text-ink-3">{a.specs}</div>)}
       {a.audienceNotes && section("Audience notes", <div className="text-[15px] leading-[1.55] text-ink-3">{a.audienceNotes}</div>)}
       {a.aiPrompt && section("AI prompt used", <div className="text-[15px] italic leading-[1.55] text-mute-1">{a.aiPrompt}</div>)}
       {a.notes && section("Notes", <div className="whitespace-pre-wrap text-[15px] leading-[1.6] text-ink-3 text-pretty">{a.notes}</div>)}
+
+      <Eyebrow className="mb-3 mt-8 border-t border-divider pt-5">Details</Eyebrow>
+      <dl className="m-0 grid grid-cols-2 gap-x-6 gap-y-3.5">
+        <Meta label="Brand">{b ? <button type="button" className="text-left hover:text-accent" onClick={() => router.push(href.brand(b.id))}>{b.name}</button> : "Global Library"}</Meta>
+        <Meta label="Type">{a.type}</Meta>
+        <Meta label="Channel"><Chip color={CHANNEL_COLOR[a.channel] ?? "#46534D"}>{a.channel}</Chip></Meta>
+        <Meta label="Visibility">{a.clientVisible ? "Visible to client" : "Internal only"}</Meta>
+        <Meta label="Delivery">{a.delivery || "None"}</Meta>
+        <Meta label="Access">{a.gated ? "Gated — requested, then sent" : "Open"}</Meta>
+        <Meta label="Owner">{ws.user(a.ownerId).name}</Meta>
+        <Meta label="Version">v{a.version} · updated {ws.ago(a.updatedAt)}</Meta>
+      </dl>
     </div>
   );
 }
+
+/** Whether the asset's link shows with its files at the top: always for a Drive link, and for any asset that is only a link. */
+const linkOnTop = (a: Asset) => !!assetLink(a) && (a.type === "Drive link" || !(a.files ?? []).some((f) => f.key));
 
 export function CtaButton({ id, size = "md" }: { id: string; size?: "md" | "lg" }) {
   const { ws } = useApp();
@@ -439,7 +518,30 @@ function CopyLink({ on, onClick }: { on: boolean; onClick: () => void }) {
 
 const ROW_BTN = "inline-flex flex-none items-center gap-1.5 rounded-[7px] border border-line bg-white px-[9px] py-[5px] text-[14px] font-semibold transition-colors hover:border-accent disabled:opacity-60 sm:px-[11px]";
 
-function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
+const GLYPH: Record<FileKind, LucideIcon> = {
+  image: FileImage, video: FileVideo, audio: FileAudio, document: FileText, design: FileImage, font: FileType, archive: FileArchive,
+};
+/** "PDF", "PNG": the extension, as people say it. */
+const extOf = (name: string) => (name.includes(".") ? name.split(".").pop()!.toUpperCase().slice(0, 5) : "");
+/** Rows shown before "Show all", so a long list never pushes the tabs out of sight. */
+const SHOWN = 4;
+
+/** A small picture of the file: the image itself, or an icon for its kind. */
+function FileGlyph({ f }: { f: FileRef }) {
+  if (f.url && IMAGE.test(f.type ?? "")) {
+    // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; the name is right beside it
+    return <img src={`${f.url}?inline=1`} alt="" loading="lazy" decoding="async" className="h-9 w-9 flex-none rounded-[8px] border border-line bg-wash object-cover" />;
+  }
+  const Icon = GLYPH[kindOf(f.name) as FileKind] ?? FileIcon;
+  return <span aria-hidden className="flex h-9 w-9 flex-none items-center justify-center rounded-[8px] bg-chip text-mute-3"><Icon size={17} strokeWidth={1.8} /></span>;
+}
+
+/**
+ * The asset's files (and, for a Drive link or a link-only asset, its link),
+ * right under the review bar so nobody has to open a tab to find them.
+ * Download, Download all, Replace and upload all happen here.
+ */
+function AttachedFiles({ a, onProof, onEdit }: { a: Asset; onProof?: () => void; onEdit?: () => void }) {
   const { ws, toast } = useApp();
   const [run] = useAction();
   const router = useRouter();
@@ -449,11 +551,17 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
   const [busy, setBusy] = useState(false);
   const [swapping, setSwapping] = useState<string | null>(null);
   const [drag, setDrag] = useState(false);
+  const [all, setAll] = useState(false);
+  const headId = useId();
   const files = a.files ?? [];
   const stored = files.filter((f) => f.key);
   const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
   const canUpload = canEdit && ws.can("upload");
   const limits = ws.d.uploads.mine;
+  const link = assetLink(a);
+  const showLink = linkOnTop(a);
+  const drive = a.type === "Drive link";
+  const rows = all || files.length <= SHOWN + 1 ? files : files.slice(0, SHOWN);
 
   const upload = async (list: File[]) => {
     if (!list.length) return;
@@ -517,43 +625,51 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
   };
 
   return (
-    <div
-      onDragOver={(e) => { if (canUpload) { e.preventDefault(); setDrag(true); } }}
-      onDragLeave={() => setDrag(false)}
+    <section
+      aria-labelledby={headId}
+      onDragOver={(e) => { if (canUpload && e.dataTransfer.types.includes("Files")) { e.preventDefault(); setDrag(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDrag(false); }}
       onDrop={(e) => { if (!canUpload) return; e.preventDefault(); setDrag(false); void upload(Array.from(e.dataTransfer.files)); }}
-      className={cx("rounded-xl transition", drag && "outline-2 outline-dashed outline-accent outline-offset-4")}
+      className={cx("mb-[26px] rounded-xl transition", drag && "outline-2 outline-offset-4 outline-accent outline-dashed")}
     >
-      {onProof && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-[11px] bg-wash px-[15px] py-[11px]">
-          <span className="flex-1 text-[15px] text-ink-3">Feedback on a visual? Pin notes right where they apply.</span>
-          <Btn size="sm" onClick={onProof}>Open proof view</Btn>
-        </div>
-      )}
-      {stored.length > 1 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <span className="min-w-0 flex-1 text-[15px] text-mute-2">{stored.length} uploaded files</span>
+      <div className="mb-2 flex min-h-[30px] flex-wrap items-center gap-x-3 gap-y-1.5">
+        <h3 id={headId} className="eyebrow m-0">
+          {files.length ? <>Files <span className="text-mute-4">· {files.length}</span></> : showLink ? (drive ? "Drive link" : "Link") : "Files"}
+        </h3>
+        <span className="flex-1" />
+        {onProof && <button type="button" onClick={onProof} className="text-[14px] font-semibold text-accent hover:underline">Open proof view</button>}
+        {stored.length > 1 && (
           <a href={`/api/assets/${a.id}/download`} download aria-label={`Download all ${stored.length} files as a zip`} className={cx(ROW_BTN, "text-accent")}>
             <Download aria-hidden size={14} />Download all
           </a>
+        )}
+      </div>
+
+      {showLink && link && (
+        <a href={link.href} target="_blank" rel="noreferrer" className={cx("mb-2 flex items-center gap-3 rounded-xl border border-line bg-white px-3 py-2.5 transition-colors hover:border-accent sm:px-3.5", FOCUS)}>
+          <span aria-hidden className="flex h-9 w-9 flex-none items-center justify-center rounded-[8px] bg-soft text-accent">{drive ? <FolderOpen size={17} strokeWidth={1.8} /> : <Link2 size={17} strokeWidth={1.8} />}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-ink">{link.label}</span>
+            <span className="block truncate font-mono text-[12.5px] text-mute-4">{a.url}</span>
+          </span>
+          <ExternalLink aria-hidden size={16} className="flex-none text-mute-4" />
+        </a>
+      )}
+      {drive && !link && (
+        <div className="mb-2 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-line-strong px-3.5 py-3 text-[15px] text-mute-2">
+          <span className="flex-1">No Drive link added yet.</span>
+          {onEdit && <Btn size="sm" onClick={onEdit}>Add the link</Btn>}
         </div>
       )}
-      {files.some((f) => f.url && IMAGE.test(f.type ?? "")) && (
-        <div className="mb-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {files.filter((f) => f.url && IMAGE.test(f.type ?? "")).map((f) => (
-            <a key={f.name} href={`${f.url}?inline=1`} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-[10px] border border-line bg-wash" title={`Open ${f.name}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file */}
-              <img src={`${f.url}?inline=1`} alt={f.name} loading="lazy" className="aspect-[4/3] w-full object-cover transition group-hover:scale-[1.02]" />
-            </a>
-          ))}
-        </div>
-      )}
+
       {files.length > 0 && (
-        <div className="rounded-xl border border-line px-[18px] py-1">
-          {files.map((f) => (
-            <div key={f.name} className="group flex items-center gap-2 border-t border-divider py-2.5 first:border-t-0 sm:gap-2.5">
+        <ul aria-label="Attached files" className="m-0 list-none overflow-hidden rounded-xl border border-line p-0">
+          {rows.map((f) => (
+            <li key={f.name} className="group flex items-center gap-2.5 border-t border-divider px-3 py-2 first:border-t-0 sm:gap-3 sm:px-3.5">
+              <FileGlyph f={f} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[16px] font-medium">{f.name}</span>
-                <span className="block font-mono text-[13px] text-mute-4">{f.size}</span>
+                <span className="block truncate text-[15px] font-medium text-ink">{f.name}</span>
+                <span className="block font-mono text-[12.5px] text-mute-4">{[f.size, extOf(f.name)].filter(Boolean).join(" · ")}</span>
               </span>
               {f.url ? (
                 <a href={f.url} download={f.name} aria-label={`Download ${f.name}`} title={`Download ${f.name}`} className={cx(ROW_BTN, "text-accent")}>
@@ -567,22 +683,33 @@ function Files({ a, onProof }: { a: Asset; onProof?: () => void }) {
                   <RefreshCw aria-hidden size={14} className={cx(swapping === f.key && "animate-spin motion-reduce:animate-none")} /><span className="hidden sm:inline">Replace</span>
                 </button>
               )}
-              {canEdit && <button type="button" aria-label={`Remove ${f.name}`} onClick={() => run(removeFile, a.id, f.name)} className="flex-none px-1 text-[14.5px] text-line-strong opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100">✕</button>}
-            </div>
+              {canEdit && <button type="button" aria-label={`Remove ${f.name}`} onClick={() => run(removeFile, a.id, f.name)} className="flex-none px-1 text-[14.5px] text-line-strong opacity-0 transition hover:text-danger group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100">✕</button>}
+            </li>
           ))}
-        </div>
+          {rows.length < files.length && (
+            <li className="border-t border-divider">
+              <button type="button" onClick={() => setAll(true)} className="w-full px-3.5 py-2.5 text-left text-[14.5px] font-semibold text-accent hover:bg-wash">Show all {files.length} files</button>
+            </li>
+          )}
+        </ul>
       )}
-      {!files.length && <div className="rounded-xl border border-dashed border-line-strong p-9 text-center text-[15px] text-mute-2">No files attached yet.</div>}
+      {!files.length && !showLink && !drive && !canUpload && <p className="m-0 text-[15px] text-mute-3">No files attached yet.</p>}
+
       {canUpload && (
         <>
           <input ref={input} type="file" multiple hidden onChange={(e) => picked(e.currentTarget)} />
-          <button type="button" disabled={busy || !!swapping} onClick={() => pick(null)} className="mt-2.5 w-full rounded-[10px] border border-line bg-white p-2.5 text-[15px] font-semibold text-ink-3 hover:border-mute-2 disabled:opacity-60">
-            {busy ? "Uploading…" : swapping ? "Replacing…" : "Upload files — or drop them here"}
+          <button type="button" disabled={busy || !!swapping} onClick={() => pick(null)}
+            className={cx("flex w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-line-strong bg-white px-3 py-2.5 text-[14.5px] font-semibold text-ink-3 transition-colors hover:border-mute-2 disabled:opacity-60", (files.length > 0 || showLink) && "mt-2")}>
+            <Upload aria-hidden size={15} className="text-mute-4" />
+            {busy ? "Uploading…" : swapping ? "Replacing…" : drive && !files.length ? "Upload files as well — or drop them here" : "Upload files — or drop them here"}
           </button>
-          <UploadLimitsHint limits={limits} />
+          <details className="mt-1.5">
+            <summary className="w-fit cursor-pointer list-none text-[13px] text-mute-3 hover:text-ink [&::-webkit-details-marker]:hidden">Upload limits</summary>
+            <UploadLimitsHint limits={limits} />
+          </details>
         </>
       )}
-    </div>
+    </section>
   );
 }
 
