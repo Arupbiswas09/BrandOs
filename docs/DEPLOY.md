@@ -78,7 +78,7 @@ All three are optional; without them the app works and Settings says what is off
    - Name: `digest`
    - Command: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/digest`
    - Frequency: `0 7 * * *` (07:00 every day, server time)
-   - Container: `brandos`
+   - Container: the app's own (the default)
 
 The task runs inside the app container, so `$CRON_SECRET` is already set there.
 Each person gets at most one digest per day (the server's time zone; set `TZ`,
@@ -97,7 +97,7 @@ responding". Uses the same `CRON_SECRET`. Add a second scheduled task:
 - Name: `links`
 - Command: `curl -fsS -m 600 -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/links`
 - Frequency: `30 6 * * *` (06:30 every day, before the digest)
-- Container: `brandos`
+- Container: the app's own (the default)
 
 Links checked in the last 20 hours are skipped, so a second run is harmless.
 A run checks four links at a time, at most 300, and starts no new check after
