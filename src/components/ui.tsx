@@ -155,10 +155,14 @@ export const IconBtn = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBu
 
 /* ---------------------------------------------------------------- chips and marks */
 
-export function Chip({ color, children, round, size = "sm", className, title }: { color: string; children: ReactNode; round?: boolean; size?: "xs" | "sm" | "md"; className?: string; title?: string }) {
-  const s = { xs: "px-1.5 py-0.5 text-small", sm: "px-2 py-1 text-small", md: "px-2.5 py-1 text-meta" }[size];
+/**
+ * The one tag shape: a pill, 22px (xs/sm) or 26px (md) tall, 13–14px text, medium weight.
+ * `round` is kept for older call sites; every chip is a pill now.
+ */
+export function Chip({ color, children, size = "sm", className, title }: { color: string; children: ReactNode; round?: boolean; size?: "xs" | "sm" | "md"; className?: string; title?: string }) {
+  const s = { xs: "h-[22px] px-2 text-small", sm: "h-[22px] px-2.5 text-small", md: "h-[26px] px-3 text-meta" }[size];
   return (
-    <span title={title} className={cx("inline-block flex-none font-semibold leading-[1.35]", round ? "rounded-full" : size === "xs" ? "rounded-sm" : "rounded-sm", s, className)} style={{ background: hexA(color, 0.14), color: readable(color) }}>
+    <span title={title} className={cx("inline-flex flex-none items-center whitespace-nowrap rounded-full font-medium leading-none", s, className)} style={{ background: hexA(color, 0.12), color: readable(color, 0.12) }}>
       {children}
     </span>
   );
@@ -168,8 +172,8 @@ export function Avatar({ initials, size = 22, mono, className, title }: { initia
   return (
     <span
       title={title}
-      className={cx("flex flex-none items-center justify-center rounded-full bg-avatar font-semibold text-mute-1", mono && "font-mono font-bold", className)}
-      style={{ width: size, height: size, fontSize: Math.max(11, Math.round(size * 0.42 * 10) / 10) }}
+      className={cx("flex flex-none items-center justify-center rounded-full bg-avatar font-semibold text-mute-1", mono && "font-mono font-semibold", className)}
+      style={{ width: size, height: size, fontSize: Math.max(12, Math.round(size * 0.42 * 10) / 10) }}
     >
       {initials}
     </span>
@@ -179,8 +183,8 @@ export function Avatar({ initials, size = 22, mono, className, title }: { initia
 export function Mark({ mark, color, size = 28, radius, fg, className }: { mark: string; color: string; size?: number; radius?: number; fg?: string; className?: string }) {
   return (
     <span
-      className={cx("flex flex-none items-center justify-center font-bold theme-fade", className)}
-      style={{ width: size, height: size, borderRadius: radius ?? Math.round(size / 4), background: color, color: fg ?? (color.startsWith("var(") ? "#FFFFFF" : onColor(color)), fontSize: Math.max(11, size * 0.34), letterSpacing: "-0.01em" }}
+      className={cx("flex flex-none items-center justify-center font-semibold theme-fade", className)}
+      style={{ width: size, height: size, borderRadius: radius ?? Math.round(size / 4), background: color, color: fg ?? (color.startsWith("var(") ? "#FFFFFF" : onColor(color)), fontSize: Math.max(12, Math.round(size * 0.36)), letterSpacing: "-0.01em" }}
     >
       {mark}
     </span>
@@ -190,11 +194,11 @@ export function Mark({ mark, color, size = 28, radius, fg, className }: { mark: 
 export function CodeTile({ code, color, size = 28, height, className, style }: { code: string; color: string; size?: number; height?: number; className?: string; style?: CSSProperties }) {
   return (
     <span
-      className={cx("flex flex-none items-center justify-center font-mono font-bold", className)}
+      className={cx("flex flex-none items-center justify-center font-mono font-semibold", className)}
       style={{
         width: height ? undefined : size, height: height ?? size, borderRadius: height ? 0 : Math.round(size / 4.2),
         background: hexA(color, height ? 0.1 : 0.12), color: readable(color), letterSpacing: height ? "0.1em" : "0.06em",
-        fontSize: height ? 15 : Math.max(11, size * 0.34), ...style,
+        fontSize: height ? 15 : Math.max(12, Math.round(size * 0.36)), ...style,
       }}
     >
       {code}
@@ -301,7 +305,7 @@ export function Tick({ on, size = 17 }: { on: boolean; size?: number }) {
   return (
     <span
       aria-hidden
-      className="flex flex-none items-center justify-center font-bold text-white transition"
+      className="flex flex-none items-center justify-center font-semibold text-white transition"
       style={{ width: size, height: size, borderRadius: 5, border: `1.5px solid ${on ? "var(--bos-accent)" : "#C9D3CE"}`, background: on ? "var(--bos-accent)" : "#FFFFFF", fontSize: size * 0.6 }}
     >
       {on ? "✓" : ""}
