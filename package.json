@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:reset": "rm -rf .data",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:links": "playwright test -c playwright.links.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",

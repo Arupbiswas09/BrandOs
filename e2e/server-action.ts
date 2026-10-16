@@ -7,7 +7,9 @@ import type { Page } from "@playwright/test";
  * The action's id comes from the build's manifest (production or dev server).
  */
 
-const MANIFESTS = [".next/server/server-reference-manifest.json", ".next/dev/server/server-reference-manifest.json"];
+/** The build folder of the server under test (playwright.links.config.ts runs one in its own). */
+const DIST = process.env.NEXT_DIST_DIR || ".next";
+const MANIFESTS = [`${DIST}/server/server-reference-manifest.json`, `${DIST}/dev/server/server-reference-manifest.json`];
 
 type Manifest = { node: Record<string, { filename?: string; exportedName?: string }> };
 

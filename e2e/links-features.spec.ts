@@ -20,6 +20,10 @@ import { callAction } from "./server-action";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
+/** Tests that fetch the local test pages run only under playwright.links.config.ts (npm run test:links). */
+const LOCAL_FETCH = process.env.PW_LOCAL_FETCH === "1";
+const LOCAL_ONLY = "Opens pages on this machine: run npm run test:links";
+
 /** Partner Co-Marketing: an offer no other spec counts, so the test pages can be linked to it. */
 const OFFER = "of16";
 /** Where server actions are posted from. */
@@ -170,6 +174,7 @@ test("tracked links: the rules, then the builder from the offer's key links and 
 });
 
 test("a link that answers 404 is flagged, and one that opens is not", async ({ page }) => {
+  test.skip(!LOCAL_FETCH, LOCAL_ONLY);
   await signIn(page);
   const name = `Link check test page ${tag}`;
   const id = await saveAsset(page, { name, url: `${base}/missing`, linked: true });
@@ -221,6 +226,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
 });
 
 test("a link that never answers, or whose domain does not exist, says so plainly", async ({ page }) => {
+  test.skip(!LOCAL_FETCH, LOCAL_ONLY);
   await signIn(page);
   const slow = await saveAsset(page, { name: `Slow page ${tag}`, url: `${base}/slow` });
   const started = Date.now();
@@ -235,6 +241,7 @@ test("a link that never answers, or whose domain does not exist, says so plainly
 });
 
 test("the page's picture becomes the card picture; SVG and missing pictures are refused", async ({ page }) => {
+  test.skip(!LOCAL_FETCH, LOCAL_ONLY);
   await signIn(page);
   const name = `Picture test page ${tag}`;
   const id = await saveAsset(page, { name, url: `${base}/ok` });
@@ -284,6 +291,7 @@ test("the server refuses people whose role does not allow it, and the cron needs
 
 // The daily run opens every link it has, seed sites included, so it only runs when the dev server's CRON_SECRET is given to the tests.
 test("the daily run checks links and gives a new landing page its picture, once", async ({ page }) => {
+  test.skip(!LOCAL_FETCH, LOCAL_ONLY);
   test.skip(!process.env.CRON_SECRET, "Set CRON_SECRET (the dev server's) to run the daily check");
   test.setTimeout(300_000);
   const auth = { Authorization: `Bearer ${process.env.CRON_SECRET}` };
@@ -309,6 +317,7 @@ test("the daily run checks links and gives a new landing page its picture, once"
 const brokenCard = (page: Page) => page.getByRole("heading", { name: /^Links not responding/ }).locator("xpath=ancestor::div[2]");
 
 test("links that stopped opening are listed on the dashboard and the brand home", async ({ page }) => {
+  test.skip(!LOCAL_FETCH, LOCAL_ONLY);
   await signIn(page);
   const name = `Listed broken page ${tag}`;
   const id = await saveAsset(page, { name, url: `${base}/missing` });
@@ -336,6 +345,7 @@ test("links that stopped opening are listed on the dashboard and the brand home"
 });
 
 test("the warnings and the tracked links dialog meet WCAG 2.2 AA, at 1440 and 390", async ({ page }) => {
+  test.skip(!LOCAL_FETCH, LOCAL_ONLY);
   await signIn(page);
   // At least one broken link on the offer, so its badge and warning show.
   const name = `A11y test page ${tag}`;

@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   // PGlite ships WASM and data files that must be loaded from node_modules at runtime.
   serverExternalPackages: ["@electric-sql/pglite", "nodemailer"],
   poweredByHeader: false,
+  // A second dev server (the link-check tests) builds into its own folder so it can run beside yours.
+  ...(process.env.NEXT_DIST_DIR && { distDir: process.env.NEXT_DIST_DIR }),
   // The Docker image runs the self-contained server (see Dockerfile).
   ...(process.env.BUILD_STANDALONE === "1" && { output: "standalone" as const }),
   // This folder is the project root even though a lockfile exists further up.
