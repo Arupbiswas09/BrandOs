@@ -76,7 +76,7 @@ export type FileRef = {
   uploadedBy?: string;
 };
 /** The result of opening an asset's link: whether it answered, with what, and when. */
-export type LinkCheck = { ok: boolean; status: number | null; error?: string; checkedAt: string; finalUrl?: string };
+export type LinkCheck = { ok: boolean; status: number | null; error?: string; checkedAt: string; finalUrl?: string; /** The address as it was when checked, so a result never sticks to an edited link. */ url?: string };
 /** Per-person exceptions to their role: true grants, false blocks. Missing means "as the role says". */
 export type PermOverrides = Partial<Record<string, boolean>>;
 export type AssetCopy = { headline: string; body: string; cta: string };
