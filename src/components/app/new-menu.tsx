@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { usePathname } from "next/navigation";
 import { Building2, FileText, Layers, Megaphone, Palette, Plus, type LucideIcon } from "lucide-react";
 import type { ModalSpec } from "@/components/modals/types";
-import { cx } from "@/components/ui";
+import { Btn, cx } from "@/components/ui";
 import { useApp } from "./provider";
 import { whereAmI } from "./here";
 
@@ -76,16 +76,16 @@ export function NewMenu() {
   if (!items.length) return null;
   return (
     <div ref={wrap} className="relative flex-none">
-      <button ref={button} type="button" aria-haspopup="menu" aria-expanded={shown} aria-controls={shown ? "new-menu" : undefined}
+      <Btn ref={button} variant="primary" aria-haspopup="menu" aria-expanded={shown} aria-controls={shown ? "new-menu" : undefined}
         onClick={() => setShown((v) => !v)}
         onKeyDown={(e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); setShown(true); } }}
-        className="flex h-10 items-center gap-2 rounded-md bg-accent px-4 text-body font-semibold text-on-accent transition hover:brightness-110 theme-fade">
-        <Plus aria-hidden className="h-4 w-4" /><span className="sr-only sm:not-sr-only">New</span>
-      </button>
+        className="max-sm:w-9 max-sm:px-0">
+        <Plus aria-hidden className="size-4" /><span className="sr-only sm:not-sr-only">New</span>
+      </Btn>
       {shown && (
         <div ref={list} id="new-menu" role="menu" aria-label="New" onKeyDown={onKey}
-          className="absolute right-0 top-full z-10 mt-1.5 w-[320px] max-w-[calc(100vw-24px)] animate-pop overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-card">
-          {b && ws.can("edit") && <div aria-hidden className="eyebrow truncate px-2.5 pb-1 pt-1.5">New work goes into {b.name}</div>}
+          className="absolute right-0 top-full z-10 mt-1.5 w-80 max-w-[calc(100vw-24px)] origin-top-right animate-pop overflow-hidden rounded-xl border border-line bg-surface p-1.5 shadow-pop">
+          {b && ws.can("edit") && <div aria-hidden className="truncate px-2.5 pb-1 pt-1.5 text-micro font-medium text-mute-3">New work goes into {b.name}</div>}
           {items.map((it) => (
             <button key={it.key} type="button" role="menuitem" tabIndex={-1}
               onClick={() => { hide(false); open(it.spec); }}

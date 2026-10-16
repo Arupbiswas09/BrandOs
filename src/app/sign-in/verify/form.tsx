@@ -2,7 +2,9 @@
 
 import { useActionState, useState } from "react";
 import { verifySecondStep } from "@/app/auth-actions";
-import { Req } from "@/components/auth-shell";
+import { FormError, Req } from "@/components/auth-shell";
+import { LinkBtn } from "@/components/link-btn";
+import { Btn } from "@/components/ui";
 
 export function CodeForm() {
   const [state, action, pending] = useActionState(verifySecondStep, undefined);
@@ -20,18 +22,14 @@ export function CodeForm() {
             className="field font-mono text-title tracking-[0.3em]" />
         )}
       </label>
-      {state?.error && <div role="alert" className="rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-body text-[#A63A12]">{state.error}</div>}
+      {state?.error && <FormError>{state.error}</FormError>}
       {expired ? (
-        <a href="/sign-in" className="rounded-lg bg-[#2D4A5C] px-4 py-3 text-center text-body font-semibold text-white hover:brightness-110">Back to sign in</a>
+        <LinkBtn href="/sign-in" variant="primary" size="lg" className="w-full">Back to sign in</LinkBtn>
       ) : (
-        <button type="submit" disabled={pending} className="rounded-lg bg-[#2D4A5C] px-4 py-3 text-body font-semibold text-white hover:brightness-110 disabled:opacity-60">
-          {pending ? "Checking…" : "Verify and sign in"}
-        </button>
+        <Btn type="submit" variant="primary" size="lg" disabled={pending} className="w-full">{pending ? "Checking…" : "Verify and sign in"}</Btn>
       )}
       <div className="flex items-center justify-between text-meta">
-        <button type="button" onClick={() => setRecovery((v) => !v)} className="font-medium text-accent hover:underline">
-          {recovery ? "Use a code from the app" : "Lost your phone? Use a recovery code"}
-        </button>
+        <Btn variant="link" onClick={() => setRecovery((v) => !v)}>{recovery ? "Use a code from the app" : "Lost your phone? Use a recovery code"}</Btn>
         <a href="/sign-in" className="text-mute-2 hover:underline">Cancel</a>
       </div>
       <p className="m-0 text-center text-meta text-mute-2">No phone and no recovery codes? An admin can reset two-step verification for you from the Team page.</p>

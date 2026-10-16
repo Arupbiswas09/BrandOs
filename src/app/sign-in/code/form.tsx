@@ -2,10 +2,8 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { codeSignIn, type CodeState } from "@/app/auth-actions";
-import { Req } from "@/components/auth-shell";
-
-const alert = "rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-body text-[#A63A12]";
-const primary = "rounded-lg bg-[#2D4A5C] px-4 py-3 text-body font-semibold text-white hover:brightness-110 disabled:opacity-60";
+import { FormError, Req } from "@/components/auth-shell";
+import { Btn } from "@/components/ui";
 
 /** Step one asks for the email; once a code is on its way, step two asks for the code. */
 export function CodeForm() {
@@ -22,8 +20,8 @@ export function CodeForm() {
           <Req>Email</Req>
           <input name="email" type="email" autoComplete="email" required defaultValue={email} className="field text-lead" autoFocus placeholder="you@agency.com" />
         </label>
-        {state?.error && <div role="alert" className={alert}>{state.error}</div>}
-        <button type="submit" disabled={pending} className={primary}>{pending ? "Sending…" : "Email me a code"}</button>
+        {state?.error && <FormError>{state.error}</FormError>}
+        <Btn type="submit" variant="primary" size="lg" disabled={pending} className="w-full">{pending ? "Sending…" : "Email me a code"}</Btn>
       </form>
     );
   }
@@ -41,13 +39,13 @@ export function CodeForm() {
           <input ref={codeRef} name="code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9 ]{6,7}" maxLength={7} required
             className="field text-center font-mono text-title tracking-[0.3em]" placeholder="000000" />
         </label>
-        {state.error && <div role="alert" className={alert}>{state.error}</div>}
-        <button type="submit" disabled={pending} className={primary}>{pending ? "Checking…" : "Sign in"}</button>
+        {state.error && <FormError>{state.error}</FormError>}
+        <Btn type="submit" variant="primary" size="lg" disabled={pending} className="w-full">{pending ? "Checking…" : "Sign in"}</Btn>
       </form>
       <form action={action} className="flex flex-wrap items-center justify-between gap-2 text-meta">
         <input type="hidden" name="intent" value="send" />
         <input type="hidden" name="email" value={email} />
-        <button type="submit" disabled={pending} className="font-medium text-accent hover:underline disabled:opacity-60">Send a new code</button>
+        <Btn type="submit" variant="link" disabled={pending}>Send a new code</Btn>
         <a href="/sign-in/code" className="font-medium text-mute-2 hover:text-ink hover:underline">Use a different email</a>
       </form>
     </div>

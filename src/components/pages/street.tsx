@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, type ReactNode } from "react";
-import { ArrowRight, BookOpen, Building2, CheckCircle2, Circle, History, Inbox, Sparkles, X } from "lucide-react";
+import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, Circle, Plus, X } from "lucide-react";
 import { useDayPart, useStored } from "@/lib/stored";
 import { hexA, onColor, readable } from "@/lib/color";
 import { NEUTRAL } from "@/lib/constants";
@@ -13,20 +13,28 @@ import { markMentionsRead } from "@/app/actions";
 import { useApp } from "@/components/app/provider";
 import { noteWhere, useOnYou } from "@/components/app/inbox";
 import { ActivityRow } from "@/components/activity-row";
-import { Card, Eyebrow, IconTile, Page, cx } from "@/components/ui";
+import { Avatar, Btn, Card, Eyebrow, IconBtn, Page, cx } from "@/components/ui";
 
 const LIMIT = 6;
 const DAY = 86_400_000;
 /** Reviews older than this read as stuck, the same line the brand health check uses. */
 const STUCK_DAYS = 5;
 
-type Row = { key: string; label: string; sub: string; badge: string; tone: string; waited: string; stuck: boolean; go: () => void };
+type Tone = "review" | "change" | "mention";
+/** One accent per kind of thing waiting. Never red: nothing here is broken. */
+const TONE: Record<Tone, string> = {
+  review: "bg-warn/12 text-warn-ink",
+  change: "bg-change/10 text-change-ink",
+  mention: "bg-accent/10 text-accent",
+};
+
+type Row = { key: string; label: string; sub: string; badge: string; tone: Tone; waited: string; stuck: boolean; lead: ReactNode; go: () => void };
 
 /*
- * The dashboard opens on the list itself, as the prototype did: what is
- * waiting on you, and where you left off. No stat tiles, and no due dates —
- * ClickUp and Asana own time. What BrandOS shows instead is what is stuck:
- * how long something has sat in review.
+ * The dashboard opens on the list itself: what is waiting on you, then where
+ * you left off. No stat tiles and no due dates (ClickUp and Asana own time);
+ * what BrandOS shows instead is what is stuck: how long something has sat
+ * in review. Each number appears once: the queue count lives in the sidebar.
  */
 export function Street() {
   const { ws, openAsset, open, setInbox } = useApp();
@@ -37,14 +45,12 @@ export function Street() {
   const now = ws.d.now;
 
   const queue = useMemo(() => ws.queue(), [ws]);
-  // Exactly the inbox's "On you", in the same order: the bell and this card never disagree.
+  // Exactly the inbox's "On you", in the same order: the sidebar's count and this list never disagree.
   const onYou = useOnYou();
   const others = queue.filter((q) => q.who !== me.id).length;
-  const mentioned = onYou.some((x) => x.type === "mention");
 
   const clients = live(ws.d.clients);
   const brands = live(ws.d.brands);
-  const ideation = live(ws.d.offers).filter((o) => o.status === "Ideation");
 
   const waited = (since: number, act: "review" | "change") => {
     const days = Math.max(0, Math.floor((now - since) / DAY));
@@ -58,13 +64,20 @@ export function Street() {
     if (x.type === "work") {
       const q = x.q;
       const w = waited(x.since, q.act);
-      const tone = q.act === "review" ? "#B45309" : "#C2410C";
-      return { key: x.key, label: q.name, sub: q.sub, badge: q.verb, tone, waited: w.text, stuck: w.stuck, go: () => (q.kind === "asset" ? openAsset(q.id) : router.push(href.offer(q.id))) };
+      const item = q.kind === "asset" ? ws.asset(q.id) : null;
+      const brand = ws.brand(q.kind === "asset" ? item?.brandId : ws.offer(q.id)?.brandId);
+      const code = item ? ws.codeOf(item) : "OF";
+      return {
+        key: x.key, label: q.name, sub: q.sub, badge: q.verb, tone: q.act, waited: w.text, stuck: w.stuck,
+        lead: <CodeTile code={code} color={brand?.primary ?? NEUTRAL} />,
+        go: () => (q.kind === "asset" ? openAsset(q.id) : router.push(href.offer(q.id))),
+      };
     }
     // A note that @mentions you and that you have not read: opening it here counts as reading it.
     const c = x.c;
     return {
-      key: x.key, label: noteWhere(ws, c), sub: c.text, badge: "Mention", tone: "#1D4ED8", waited: `${ws.first(c.userId)} mentioned you ${ws.ago(c.createdAt)}`, stuck: false,
+      key: x.key, label: noteWhere(ws, c), sub: c.text, badge: "Mention", tone: "mention", waited: `${ws.first(c.userId)}, ${ws.ago(c.createdAt)}`, stuck: false,
+      lead: <span aria-hidden className="flex-none"><Avatar initials={ws.user(c.userId).initials} size={28} /></span>,
       go: () => { void markMentionsRead([c.id]); if (c.kind === "asset") openAsset(c.itemId, "discussion"); else router.push(href.offer(c.itemId) + "#discussion"); },
     };
   });
@@ -89,7 +102,7 @@ export function Street() {
   const doneSteps = steps.filter((s) => s.done).length;
   const showSetup = ws.can("access") && hideSetup === "0" && doneSteps < steps.length;
 
-  const activity = ws.d.activity.slice(0, 7);
+  const activity = ws.d.activity.slice(0, 4);
   const openActivity = (a: (typeof activity)[number]) => {
     if (a.type === "asset") return () => openAsset(a.itemId);
     if (a.type === "offer") return () => router.push(href.offer(a.itemId));
@@ -99,151 +112,148 @@ export function Street() {
     return undefined;
   };
 
-  const inReview = queue.length;
-  const summary = ws.isGuest
-    ? "Here is everything your agency has shared with you."
-    : `${plural(clients.length, "client")}, ${plural(brands.length, "brand")}. ` +
-      (inReview + ideation.length === 0 ? "Nothing is moving through review." : `${plural(inReview, "thing")} in review, ${plural(ideation.length, "offer")} still just an idea.`);
-
   return (
     <Page>
-      <div className="head-band -mt-8 mb-6 pb-6 pt-8 sm:-mt-10 sm:pt-10">
+      <div className="head-band -mt-8 mb-6 pb-5 pt-8 sm:-mt-10 sm:pt-10">
         <Eyebrow className="mb-2">Dashboard</Eyebrow>
-        <h1 className="display m-0 mb-1.5 text-display sm:text-display">{greeting}</h1>
-        <p className="m-0 max-w-[62ch] text-body text-mute-2 text-pretty">{summary}</p>
+        <h1 className="display m-0 text-display">{greeting}</h1>
       </div>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[1.35fr_1fr]">
-        <Card className="px-5 pb-3 pt-4">
-          <div className="mb-0.5 flex items-baseline justify-between gap-3">
-            <h2 className="m-0 flex items-center gap-2.5 text-lead font-semibold"><IconTile><Inbox /></IconTile>Waiting on you</h2>
-            <span className="text-meta text-mute-3">{rows.length ? `${rows.length} on you` : "Clear"}</span>
-          </div>
-          <p className="m-0 mb-2 text-meta text-mute-3">{rows.length ? (mentioned ? "Assigned to you by name, or mentioning you" : "Assigned to you by name") : "Nothing is assigned to you"}{others ? `. ${plural(others, "thing")} with other people.` : "."}</p>
+      {/* Phones and laptops: one column, in reading order. From 1280px: the lists on the left, where you were on the right. */}
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_360px] xl:gap-6">
+        <Panel title="Waiting on you" className="xl:col-start-1 xl:row-start-1">
           {rows.slice(0, LIMIT).map((r) => (
-            <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-3 rounded-lg border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
-              <span aria-hidden className="h-2 w-2 flex-none rounded-full" style={{ background: r.tone }} />
+            <RowButton key={r.key} onClick={r.go}>
+              {r.lead}
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium">{r.label}</span>
-                <span className="mt-px block truncate text-meta text-mute-2">{r.sub}</span>
-                {/* How long it has been stuck, instead of a deadline. */}
-                <span className={cx("mt-0.5 block text-small", r.stuck ? "font-semibold text-[#8A5300]" : "text-mute-3")}>{r.waited}</span>
+                <span className="block truncate text-body font-medium text-ink">{r.label}</span>
+                <span className="block truncate text-small text-mute-2">
+                  {/* How long it has been stuck, instead of a deadline. */}
+                  <span className={cx(r.stuck && "font-semibold text-warn-text")}>{r.waited}</span> · {r.sub}
+                </span>
               </span>
-              <span className="flex-none rounded-sm px-2 py-1 text-small font-semibold" style={{ background: hexA(r.tone, 0.13), color: readable(r.tone, 0.13) }}>{r.badge}</span>
-            </button>
+              <span className={cx("flex-none rounded-sm px-2 py-0.5 text-small font-semibold", TONE[r.tone])}>{r.badge}</span>
+            </RowButton>
           ))}
           {!rows.length && (
-            <div className="border-t border-divider py-6 text-center">
-              <div className="text-body font-medium">You are all caught up</div>
-              <div className="text-meta text-mute-3">Work sent to you for review or changes, and notes that @mention you, show up here.</div>
+            <div className="px-4 py-6 text-center">
+              <div className="text-body font-medium text-ink">You are all caught up</div>
+              <div className="mx-auto mt-0.5 max-w-[46ch] text-meta text-mute-2 text-pretty">Work sent to you for review or changes, and notes that @mention you, show up here.</div>
             </div>
           )}
-          {rows.length > LIMIT && <MoreLink onClick={() => setInbox(true)}>See all {rows.length} in your inbox</MoreLink>}
-        </Card>
-
-        <Card className="px-5 pb-3 pt-4">
-          <h2 className="m-0 mb-0.5 flex items-center gap-2.5 text-lead font-semibold"><IconTile><History /></IconTile>Continue where you left off</h2>
-          <p className="m-0 mb-2 text-meta text-mute-3">The last places you were working.</p>
-          {continueItems.map((r) => (
-            <button key={r.key} type="button" onClick={r.go} className="-mx-2 flex w-[calc(100%+16px)] items-center gap-3 rounded-lg border-t border-divider px-2 py-2.5 text-left transition-colors hover:bg-wash">
-              <span className="flex h-8 w-8 flex-none items-center justify-center rounded-md font-mono text-micro font-bold tracking-[0.04em]" style={{ background: hexA(r.color, 0.12), color: readable(r.color) }}>{r.code}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-body font-medium">{r.title}</span>
-                <span className="block truncate text-meta text-mute-2">{r.sub}</span>
-              </span>
-              <ArrowRight aria-hidden className="h-4 w-4 flex-none text-mute-4" />
+          {(rows.length > LIMIT || others > 0) && (
+            <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog"
+              className="flex h-10 w-full items-center gap-1.5 border-t border-divider px-4 text-left text-meta transition-colors duration-150 hover:bg-wash">
+              <span className="min-w-0 flex-1 truncate text-mute-2">{others > 0 && `${others} with other people`}</span>
+              <span className="flex flex-none items-center gap-1 font-medium text-accent">{rows.length > LIMIT ? `See all ${rows.length}` : "Open your queue"}<ArrowRight aria-hidden className="size-4" /></span>
             </button>
+          )}
+        </Panel>
+
+        <Panel title="Continue where you left off" className="xl:col-start-2 xl:row-start-1">
+          {continueItems.map((r) => (
+            <RowButton key={r.key} onClick={r.go}>
+              <CodeTile code={r.code} color={r.color} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-body font-medium text-ink">{r.title}</span>
+                <span className="block truncate text-small text-mute-2">{r.sub}</span>
+              </span>
+            </RowButton>
           ))}
-          {!continueItems.length && <div className="border-t border-divider py-5 text-body text-mute-3">Open a brand, an offer or an asset and it will show up here.</div>}
-        </Card>
-      </div>
+          {!continueItems.length && <div className="px-4 py-5 text-meta text-mute-2">Open a brand, an offer or an asset and it shows up here.</div>}
+        </Panel>
 
-      {showSetup && (
-        <Card className="mt-5 overflow-hidden">
-          <div className="flex items-start gap-4 border-b border-divider px-5 py-4">
-            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-soft text-accent"><Sparkles className="h-[18px] w-[18px]" /></span>
-            <div className="min-w-0 flex-1">
-              <h2 className="m-0 text-lead font-semibold">Get set up</h2>
-              <p className="m-0 mt-0.5 text-meta text-mute-2">{doneSteps} of {steps.length} done.</p>
-            </div>
-            <button type="button" onClick={() => setHideSetup("1")} aria-label="Hide the setup guide" className="flex h-8 w-8 flex-none items-center justify-center rounded-md text-mute-3 hover:bg-hover hover:text-ink"><X className="h-4 w-4" /></button>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-5">
-            {steps.map((s) => (
-              <button key={s.label} type="button" onClick={s.go} disabled={s.done} className="flex items-start gap-2.5 border-b border-divider px-5 py-3.5 text-left last:border-b-0 hover:bg-wash disabled:cursor-default disabled:hover:bg-transparent lg:border-b-0 lg:border-r lg:last:border-r-0">
-                {s.done ? <CheckCircle2 className="mt-0.5 h-[18px] w-[18px] flex-none text-ok" /> : <Circle className="mt-0.5 h-[18px] w-[18px] flex-none text-mute-4" />}
-                <span className="min-w-0">
-                  <span className={cx("block text-body font-medium", s.done && "text-mute-3 line-through")}>{s.label}</span>
-                  <span className="block text-small text-mute-3">{s.hint}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </Card>
-      )}
+        <div className="flex min-w-0 flex-col gap-5 xl:col-start-1 xl:row-start-2 xl:gap-6">
+          <Panel title="Clients" action={ws.can("structure") && <Btn size="sm" variant="ghost" className="-mr-2" onClick={() => open({ kind: "client" })}><Plus aria-hidden className="size-4" />Add client</Btn>}>
+            {clients.map((c) => {
+              const bs = brands.filter((b) => b.clientId === c.id);
+              const ids = new Set(bs.map((b) => b.id));
+              const os = live(ws.d.offers).filter((o) => ids.has(o.brandId)).length;
+              const as = live(ws.d.assets).filter((a) => a.brandId && ids.has(a.brandId)).length;
+              const counts = `${plural(bs.length, "brand")} · ${plural(os, "offer")} · ${plural(as, "asset")}`;
+              return (
+                <Link key={c.id} href={href.client(c.id)} className="group flex min-h-14 items-center gap-3 border-t border-divider px-4 py-2 transition-colors duration-150 first:border-t-0 hover:bg-wash">
+                  <span className="flex w-[52px] flex-none gap-1">
+                    {bs.slice(0, 2).map((b) => <span key={b.id} aria-hidden className="flex size-6 items-center justify-center rounded-md text-micro font-bold" style={{ background: b.primary, color: onColor(b.primary) }}>{b.mark}</span>)}
+                    {!bs.length && <span aria-hidden className="flex size-6 items-center justify-center rounded-md bg-chip text-micro text-mute-3">0</span>}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-body font-medium text-ink">{c.name}</span>
+                    <span className="block truncate text-small text-mute-2">{c.kind}</span>
+                  </span>
+                  <span className="hidden flex-none text-small tabular-nums text-mute-2 sm:block">{counts}</span>
+                  <ChevronRight aria-hidden className="size-4 flex-none text-mute-3" />
+                </Link>
+              );
+            })}
+            {!clients.length && <div className="px-4 py-5 text-meta text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>}
+          </Panel>
 
-      <div className="mt-10">
-        <div className="mb-3.5 flex items-baseline justify-between gap-4">
-          <h2 className="m-0 flex items-center gap-2.5 text-lead font-semibold"><IconTile><Building2 /></IconTile>Clients</h2>
-          {ws.can("structure") && <button type="button" onClick={() => open({ kind: "client" })} className="text-body font-medium text-accent hover:underline">+ Add client</button>}
+          {showSetup && (
+            <Panel title="Get set up" action={<span className="flex items-center gap-2"><span className="text-small text-mute-2">{doneSteps} of {steps.length} done</span><IconBtn label="Hide the setup guide" size="sm" className="-mr-1.5" onClick={() => setHideSetup("1")}><X aria-hidden /></IconBtn></span>}>
+              {steps.map((s) => (
+                <RowButton key={s.label} onClick={s.go} disabled={s.done}>
+                  {s.done ? <CheckCircle2 aria-hidden className="size-4 flex-none text-ok" /> : <Circle aria-hidden className="size-4 flex-none text-mute-3" />}
+                  <span className="min-w-0 flex-1">
+                    <span className={cx("block text-body font-medium", s.done ? "text-mute-2 line-through" : "text-ink")}>{s.label}</span>
+                    <span className="block text-small text-mute-2">{s.hint}</span>
+                  </span>
+                </RowButton>
+              ))}
+            </Panel>
+          )}
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {clients.map((c) => {
-            const bs = brands.filter((b) => b.clientId === c.id);
-            const ids = new Set(bs.map((b) => b.id));
-            const os = live(ws.d.offers).filter((o) => ids.has(o.brandId)).length;
-            const as = live(ws.d.assets).filter((a) => a.brandId && ids.has(a.brandId)).length;
-            return (
-              <Link key={c.id} href={href.client(c.id)} className="lift flex flex-col gap-3.5 rounded-xl border border-line bg-surface p-5 text-left">
-                <span className="flex gap-1">
-                  {bs.map((b) => <span key={b.id} className="flex h-7 w-7 items-center justify-center rounded-lg text-micro font-bold" style={{ background: b.primary, color: onColor(b.primary) }}>{b.mark}</span>)}
-                  {!bs.length && <span className="flex h-7 w-7 items-center justify-center rounded-lg border border-dashed border-line-strong text-meta text-mute-4">+</span>}
-                </span>
-                <span className="block">
-                  <span className="block text-lead font-semibold tracking-[-0.01em]">{c.name}</span>
-                  <span className="mt-1 block text-body text-mute-2">{c.kind}</span>
-                </span>
-                <span className="block border-t border-divider pt-3 font-mono text-micro uppercase tracking-[0.08em] text-mute-2">
-                  {plural(bs.length, "brand")} · {plural(os, "offer")} · {plural(as, "asset")}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-        {!clients.length && (
-          <div className="rounded-xl border border-dashed border-line-strong bg-surface/60 p-8 text-center">
-            <div className="text-body text-mute-2">{ws.can("structure") ? "No clients yet. Add the first one." : "You have not been given any clients yet. Ask an admin."}</div>
-          </div>
-        )}
-      </div>
 
-      {!ws.isGuest && (
-        <div className="mt-10 grid items-start gap-5 md:grid-cols-[1.4fr_1fr]">
-          <div>
-            <h2 className="m-0 mb-3.5 text-lead font-semibold">Recent activity</h2>
-            <Card className="px-5 py-1.5">
+        <div className="flex min-w-0 flex-col gap-5 xl:col-start-2 xl:row-start-2 xl:gap-6">
+          <Link href="/library" className="group flex items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-card transition-[border-color,box-shadow] duration-150 hover:border-line-strong hover:shadow-raise">
+            <span aria-hidden className="flex size-8 flex-none items-center justify-center rounded-lg bg-soft text-accent theme-fade"><BookOpen className="size-4" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-body font-semibold text-ink">Global Library</span>
+              <span className="block text-small text-mute-2 text-pretty">Checklists, prompts, templates, SOPs and ad creatives, shared across every client.</span>
+            </span>
+            <ChevronRight aria-hidden className="size-4 flex-none text-mute-3" />
+          </Link>
+
+          <Panel title="Recent activity">
+            <div className="px-4 py-1">
               {activity.map((a) => <ActivityRow key={a.id} a={a} onOpen={openActivity(a)} />)}
-              {!activity.length && <div className="py-6 text-center text-body text-mute-3">Nothing has happened yet.</div>}
-            </Card>
-          </div>
-          <div>
-            <h2 className="m-0 mb-3.5 text-lead font-semibold">Shared across every client</h2>
-            <Link href="/library" className="lift block rounded-xl border border-dashed border-line-strong bg-surface p-5 text-left">
-              <span className="mb-1 flex items-center gap-2 text-body font-semibold"><BookOpen aria-hidden className="h-[18px] w-[18px] text-accent" />Global Library</span>
-              <span className="block text-body leading-[1.5] text-mute-2 text-pretty">Checklists, prompts, templates, SOPs and ad creatives. Nothing in here belongs to one brand.</span>
-              <span className="mt-3 inline-flex items-center gap-1 text-body font-semibold text-accent">Open the library<ArrowRight aria-hidden className="h-4 w-4" /></span>
-            </Link>
-          </div>
+              {!activity.length && <div className="py-5 text-meta text-mute-2">Nothing has happened yet.</div>}
+            </div>
+          </Panel>
         </div>
-      )}
+      </div>
     </Page>
   );
 }
 
-function MoreLink({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+/** A titled list in a card: the dashboard's one building block. */
+function Panel({ title, action, children, className }: { title: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <button type="button" onClick={onClick} className="mt-1 flex w-full items-center justify-center gap-1.5 border-t border-divider pt-3 text-meta font-medium text-accent hover:underline">
-      {children}<ArrowRight aria-hidden className="h-4 w-4" />
+    <Card className={cx("min-w-0 overflow-hidden", className)}>
+      <div className="flex h-11 items-center gap-3 border-b border-divider px-4">
+        <h2 className="m-0 min-w-0 flex-1 truncate text-body font-semibold text-ink">{title}</h2>
+        {action}
+      </div>
+      <div>{children}</div>
+    </Card>
+  );
+}
+
+/** One row of a panel: at most 56px, the whole row is the target. */
+function RowButton({ onClick, children, disabled }: { onClick: () => void; children: ReactNode; disabled?: boolean }) {
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      className="flex min-h-14 w-full items-center gap-3 border-t border-divider px-4 py-2 text-left transition-colors duration-150 first:border-t-0 hover:bg-wash disabled:cursor-default disabled:hover:bg-transparent">
+      {children}
     </button>
+  );
+}
+
+/** The 28px code square in a brand's colour ("OF", "LP", a brand's mark). */
+function CodeTile({ code, color }: { code: string; color: string }) {
+  return (
+    <span aria-hidden className="flex h-7 min-w-8 flex-none items-center justify-center rounded-md px-1 font-mono text-micro font-bold tracking-[0.02em]" style={{ background: hexA(color, 0.12), color: readable(color) }}>
+      {code}
+    </span>
   );
 }

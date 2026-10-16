@@ -2,8 +2,9 @@
 
 import { useActionState } from "react";
 import { acceptInvite } from "@/app/auth-actions";
-import { Req } from "@/components/auth-shell";
+import { FormError, Req } from "@/components/auth-shell";
 import { PasswordInput } from "@/components/password-input";
+import { Btn } from "@/components/ui";
 
 export function InviteForm({ token, email, reset }: { token: string; email: string; reset?: boolean }) {
   const [state, action, pending] = useActionState(acceptInvite, undefined);
@@ -17,12 +18,10 @@ export function InviteForm({ token, email, reset }: { token: string; email: stri
       <label className="block">
         <Req>{reset ? "New password" : "Choose a password"}</Req>
         <PasswordInput name="password" autoComplete="new-password" minLength={10} required className="text-lead" autoFocus />
-        <span className="mt-1.5 block text-meta text-[#5A6862]">At least ten characters.</span>
+        <span className="mt-1.5 block text-meta text-mute-2">At least ten characters.</span>
       </label>
-      {state?.error && <div role="alert" className="rounded-lg bg-[rgba(194,65,18,.07)] px-3 py-2 text-body text-[#A63A12]">{state.error}</div>}
-      <button type="submit" disabled={pending} className="rounded-lg bg-[#2D4A5C] px-4 py-2.5 text-body font-semibold text-white hover:brightness-110 disabled:opacity-60">
-        {pending ? "Saving…" : reset ? "Save and sign in" : "Join the team"}
-      </button>
+      {state?.error && <FormError>{state.error}</FormError>}
+      <Btn type="submit" variant="primary" size="lg" disabled={pending} className="w-full">{pending ? "Saving…" : reset ? "Save and sign in" : "Join the team"}</Btn>
     </form>
   );
 }

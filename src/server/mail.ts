@@ -134,7 +134,7 @@ export async function deliver(m: Mail): Promise<{ ok: true } | { ok: false; erro
   if (!m.to) return { ok: false, error: "No address to send to." };
   const provider = mailProvider();
   if (!provider) {
-    if (process.env.NODE_ENV !== "production") console.info(`[mail skipped — no SMTP_HOST or RESEND_API_KEY] to=${m.to} subject="${m.subject}"${m.code ? ` code=${m.code}` : ""}${m.action ? ` link=${m.action.href}` : ""}`);
+    if (process.env.NODE_ENV !== "production") console.info(`[mail skipped: no SMTP_HOST or RESEND_API_KEY] to=${m.to} subject="${m.subject}"${m.code ? ` code=${m.code}` : ""}${m.action ? ` link=${m.action.href}` : ""}`);
     return { ok: false, error: "Email is not set up on this server." };
   }
   const { html, text } = render(m);

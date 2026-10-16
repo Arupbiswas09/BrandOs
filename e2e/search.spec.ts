@@ -162,3 +162,27 @@ test("inside a brand, results start in that brand, and Tab searches everywhere",
   await expect(s.results.getByRole("option", { name: /Free Audit Landing Page/ })).toBeVisible();
   await expect(s.box).toBeFocused();
 });
+
+test("copy a link from the results: an offer's page in BrandOS, an asset's own link", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await signIn(page);
+  const { box, results } = await openSearch(page);
+  const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
+
+  // ⌘C on the row you are on (nothing selected in the box) copies its link.
+  await box.fill("sponsor a squad");
+  const offer = results.getByRole("option", { name: /Sponsor A Squad/ }).first();
+  await expect(offer).toHaveAttribute("aria-selected", "true");
+  await box.press("ControlOrMeta+c");
+  await expect(page.getByText("Link copied")).toBeVisible();
+  expect(await clipboard()).toMatch(/^https?:\/\/[^/]+\/offers\/of21$/);
+
+  // The link button beside the row does the same; a typed link gets https:// added.
+  await box.fill("audit booked thank you");
+  const asset = results.getByRole("option", { name: /Audit Booked/ }).first();
+  await asset.hover();
+  await page.getByTitle("Copy link to Audit Booked — Thank You Page").click();
+  await expect.poll(clipboard).toBe("https://quokkaforgood.org/audit/thanks");
+  // Copying never opens anything.
+  await expect(box).toHaveAttribute("aria-expanded", "true");
+});

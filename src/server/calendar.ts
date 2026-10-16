@@ -39,7 +39,8 @@ export async function feedFor(token: string): Promise<string | null> {
   if (!feed) return null;
   const all = await readAll();
   const me = all.users.find((u) => u.id === feed.userId);
-  if (!me) return null;
+  // No access (the old Client role) means no feed either.
+  if (!me || me.access === "Client") return null;
 
   // Calendar apps poll often; recording every hit would be noise.
   if (!feed.lastUsedAt || Date.now() - +feed.lastUsedAt > 3600_000) {
@@ -57,7 +58,7 @@ export async function feedFor(token: string): Promise<string | null> {
     events.push({
       uid: `offer-${o.id}@brandos`,
       date: toDateInput(o.dueAt),
-      summary: `[${brand}] ${o.name} — Launch`,
+      summary: `[${brand}] ${o.name}: launch`,
       description: `Offer launch · ${o.status}${o.review !== "None" ? ` · ${o.review}` : ""}\n${url}`,
       url,
       stamp: o.updatedAt,
@@ -65,5 +66,5 @@ export async function feedFor(token: string): Promise<string | null> {
     });
   }
   events.sort((x, y) => x.date.localeCompare(y.date));
-  return buildCalendar(`BrandOS — ${me.name}`, events);
+  return buildCalendar(`BrandOS: ${me.name}`, events);
 }

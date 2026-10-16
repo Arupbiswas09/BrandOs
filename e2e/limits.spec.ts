@@ -40,13 +40,13 @@ test("an admin blocks one permission for one person", async ({ page }) => {
   await signIn(page);
   await page.goto("/team");
   await settle(page);
-  const row = page.locator("div").filter({ hasText: /^IBInes Batz/ }).first();
-  await row.getByRole("button", { name: "Access" }).click();
+  const row = page.getByRole("listitem").filter({ hasText: "Ines Batz" });
+  await row.getByRole("button", { name: "Access for Ines Batz" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByText(/Exceptions and limits for Ines/).click();
   await dialog.getByRole("radiogroup", { name: "Upload files" }).getByRole("radio", { name: "Block" }).click();
   await dialog.getByRole("button", { name: "Save access" }).click();
-  await expect(page.getByText(/Custom · 1/)).toBeVisible();
+  await expect(row.getByText("1 exception")).toBeVisible();
 
   await signIn(page, "Ines Batz");
   const res = await upload(page, "note.png", "image/png", 1024);
