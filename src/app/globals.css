@@ -117,6 +117,16 @@
 
 @layer base {
 html, body { margin: 0; padding: 0; }
+/*
+ * Scrolling. The page scrolls under a fixed sidebar and header; every panel,
+ * list, menu and drawer scrolls on its own and never hands its scroll on to
+ * the page behind it. While a drawer, dialog or full-screen view is open the
+ * page behind stays still, and the scrollbar's space is kept so nothing jumps.
+ */
+html { scrollbar-gutter: stable; }
+html:has([aria-modal="true"]) { overflow: hidden; }
+.overflow-y-auto, .overflow-auto, .overflow-x-auto, .overflow-scroll, [data-scroll],
+[role="dialog"], [role="listbox"], [role="menu"], aside nav { overscroll-behavior: contain; }
 body {
   font-family: var(--font-sans);
   font-size: 1rem;
