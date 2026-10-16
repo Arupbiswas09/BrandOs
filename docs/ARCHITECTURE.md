@@ -35,6 +35,13 @@ and every screen agrees.
 - `storage.ts`, `uploads.ts`: files (local disk or Vercel Blob), always served
   through `/api/files`, which checks visibility.
 - `mail.ts` (SMTP or Resend), `notify.ts`, `slack.ts`: outgoing messages.
+- `safe-fetch.ts`: the only way the server opens a page someone pasted. Only
+  http(s), every address checked at connect time (no private, loopback or
+  cloud-metadata addresses), redirects re-checked, time and size capped.
+  `link-check.ts` (broken links), `page-picture.ts` (a landing page's share
+  picture) and `site-scan.ts` (a brand from its website) all go through it.
+- `trash.ts`: the recycle bin. A file is only removed from storage when no
+  asset, earlier version or folder still uses it (`unreferenced`).
 
 ## Actions and routes — `src/app`
 
@@ -44,6 +51,10 @@ and every screen agrees.
   security; the action refuses on its own.
 - Clients, brands, services and offers are archived, never deleted. Assets and
   files can be deleted by admins and go to the recycle bin for 30 days.
+- One file per area: `actions.ts` (the core records), `file-actions.ts`
+  (versions), `folder-actions.ts`, `link-actions.ts`, `star-actions.ts`,
+  `results-actions.ts`, `import-actions.ts` and `onboarding-actions.ts`.
+- `/api/cron/links` is the daily link check (needs `CRON_SECRET`).
 
 ## Model — `src/lib`
 
@@ -62,6 +73,12 @@ sources of truth:
 | Upload limits | `upload-policy.ts` |
 | Funnel board rules and the first draft | `funnel.ts` |
 | Routes and links | `routes.ts` |
+| Whether a link is broken and how to say so | `link-health.ts` |
+| Stars (what can be starred, the limit of 30) | `stars.ts` |
+| Results per offer: totals, conversion, trend, what worked | `results.ts` |
+| Earlier versions of a file | `file-versions.ts` |
+| Tracked links (UTM) | `utm.ts` |
+| Spreadsheet import: parsing and the plan | `csv.ts`, `import-plan.ts` |
 
 `WS` (`ws.ts`) wraps the snapshot with fast lookups (maps built once per
 snapshot). Screens ask `WS`; they never recount or re-filter on their own.
@@ -69,7 +86,15 @@ snapshot). Screens ask `WS`; they never recount or re-filter on their own.
 ## Screens — `src/components`
 
 - `pages/*` one file per screen; `drawer/*` the asset drawer; `modals/*`
-  forms; `app/*` the shell (sidebar, header, search, inbox, theme).
+  forms; `app/*` the shell (sidebar, header, search, inbox, theme);
+  `features/*` the pieces of stars, results, links, files and onboarding that
+  several screens share.
+- Shared building blocks in `ui.tsx`: `Btn` (32, 36 or 40px), `Chip` and
+  `PILL` (the one pill shape for small labels), `CodeTile`, `Avatar`, `Mark`
+  (their text snaps to the type scale with `onScale`), `Field`, `Page`.
+  Dialogs use `modals/frame.tsx`: title and Save stay put while the body
+  scrolls, and optional fields wait behind `MoreDetail`. Menus use
+  `more-menu.tsx`.
 - The look is set by tokens in `app/globals.css` and the palette in
   `components/app/theme.ts`: Instrument Serif page titles, Asap text,
   JetBrains Mono labels, green-grey neutrals, petrol accent, and a brand's own
