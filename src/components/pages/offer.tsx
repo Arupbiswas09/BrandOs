@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Megaphone, Pencil, Split, Undo2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Link2, Megaphone, Pencil, Split, Undo2, X } from "lucide-react";
 import type { Asset, Cta, Offer } from "@/db/schema";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -11,11 +11,13 @@ import { plural } from "@/lib/ws";
 import { setArchived, setDue, setStatus } from "@/app/actions";
 import { toDateInput } from "@/lib/time";
 import { fmtDate } from "@/lib/format";
+import { isGoogleDrive } from "@/lib/link-health";
+import { parseWebUrl } from "@/lib/utm";
 import { useAction, useApp } from "@/components/app/provider";
 import { assetDownload, assetLink } from "@/components/cards";
 import { OfferAssets } from "@/components/folders/offer-assets";
 import { CommentText, Thread } from "@/components/discussion";
-import { ArchivedNote, Avatar, Btn, ChangeNote, Page, cx } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, ChangeNote, IconBtn, Page, cx } from "@/components/ui";
 import { EntityHeader, FOCUS, IconTile, PanelTabs, tabPanel } from "@/components/polish";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
@@ -23,16 +25,20 @@ import { CodeBadge } from "@/components/funnel/linked";
 import { CtaTag } from "@/components/cta-tag";
 import { ReviewLine, StatusSelect } from "@/components/workflow";
 import { displayUrl, linkBtn, useCopyLink } from "@/components/link-button";
+import { StarButton } from "@/components/features/stars/star-button";
+import { OfferResults } from "@/components/features/results/offer-results";
+import { LinkStatus } from "@/components/features/links/link-status";
+import { UtmBuilder } from "@/components/features/links/utm-builder";
 import { NotHere, useVisit } from "./common";
 
 /*
- * An offer: what it is in the header, its assets, funnel and discussion in
- * tabs, and on wide screens a summary column with the links people ask for
- * on calls (Key links), the positioning and where it stands.
+ * An offer: what it is in the header, its assets, funnel, discussion and
+ * results in tabs, and on wide screens a summary column with the links people
+ * ask for on calls (Key links), the positioning and where it stands.
  */
 
-type OfferTab = "assets" | "funnel" | "discussion";
-const TABS: OfferTab[] = ["assets", "funnel", "discussion"];
+type OfferTab = "assets" | "funnel" | "discussion" | "results";
+const TABS: OfferTab[] = ["assets", "funnel", "discussion", "results"];
 const isTab = (v: string | null): v is OfferTab => !!v && (TABS as string[]).includes(v);
 
 /** Small section labels in the summary column. */
@@ -93,6 +99,8 @@ function OfferView({ o }: { o: Offer }) {
   const sv = ws.service(o.serviceId);
   const canEdit = ws.canChange(o);
   const assets = ws.linkedAssets(o.id);
+  const periods = ws.d.offerResults.filter((r) => r.offerId === o.id).length;
+  const wide = tab === "funnel" || tab === "results";
   const nudgeAsset = nudge?.offerId === o.id ? ws.asset(nudge.assetId) : null;
 
   const adapt = () => {
@@ -136,19 +144,21 @@ function OfferView({ o }: { o: Offer }) {
             <span className={quiet}><Clock aria-hidden size={14} />Updated {ws.ago(o.updatedAt)}</span>
           </>
         }
-        actions={(canEdit || more.length > 0) && (
+        actions={
           <>
+            {/* Anyone who can see the offer can star it, Viewers too. */}
+            <StarButton kind="offer" id={o.id} name={o.name} />
             {canEdit && <Btn variant="primary" onClick={() => open({ kind: "offer", draft: o })}><Pencil aria-hidden size={16} />Edit</Btn>}
-            <CardMenu label="More offer actions" items={more} triggerClassName={MORE_BTN} />
+            {more.length > 0 && <CardMenu label="More offer actions" items={more} triggerClassName={MORE_BTN} />}
           </>
-        )}
+        }
       />
 
       {o.archived && <ArchivedNote className="-mt-2 mb-6">Archived. Its assets are still in the library; only this offer is closed.</ArchivedNote>}
 
-      <div className={cx("grid gap-6 xl:gap-8", tab !== "funnel" && "xl:grid-cols-[minmax(0,1fr)_360px]")}>
-        {/* First in the reading order, so on narrower screens the links sit above the tabs. On the funnel the board takes the whole width. */}
-        <Summary o={o} assets={assets} className={cx("xl:col-start-2 xl:row-start-1", tab === "funnel" && "xl:hidden")} />
+      <div className={cx("grid gap-6 xl:gap-8", !wide && "xl:grid-cols-[minmax(0,1fr)_360px]")}>
+        {/* First in the reading order, so on narrower screens the links sit above the tabs. The funnel board and the results table take the whole width. */}
+        <Summary o={o} assets={assets} className={cx("xl:col-start-2 xl:row-start-1", wide && "xl:hidden")} />
 
         <div className="min-w-0 xl:col-start-1 xl:row-start-1">
           <div className="mb-5 border-b border-line">
@@ -161,6 +171,7 @@ function OfferView({ o }: { o: Offer }) {
                 { key: "assets", label: "Assets", count: assets.length },
                 { key: "funnel", label: "Funnel" },
                 { key: "discussion", label: "Discussion", count: ws.openCount("offer", o.id) || undefined },
+                { key: "results", label: "Results", count: periods || undefined },
               ]}
             />
           </div>
@@ -182,6 +193,7 @@ function OfferView({ o }: { o: Offer }) {
             )}
             {tab === "funnel" && <FunnelBoard offer={o} />}
             {tab === "discussion" && <OfferDiscussion o={o} />}
+            {tab === "results" && <OfferResults offer={o} />}
           </div>
         </div>
       </div>
@@ -220,7 +232,7 @@ function Summary({ o, assets, className }: { o: Offer; assets: Asset[]; classNam
         className,
       )}
     >
-      <KeyLinks assets={assets} />
+      <KeyLinks o={o} assets={assets} />
       {waiting(o) && (
         <section aria-labelledby="review-h" className="border-t border-divider px-4 py-3">
           <h2 id="review-h" className={HEAD}>Review</h2>
@@ -247,14 +259,14 @@ function Summary({ o, assets, className }: { o: Offer; assets: Asset[]; classNam
   );
 }
 
-function KeyLinks({ assets }: { assets: Asset[] }) {
+function KeyLinks({ o, assets }: { o: Offer; assets: Asset[] }) {
   const list = keyLinksOf(assets);
   return (
     <section aria-labelledby="key-links-h" className="px-4 pb-1.5 pt-3">
       <h2 id="key-links-h" className={HEAD}>Key links</h2>
       {list.length ? (
         <ul className="m-0 mt-1 grid list-none gap-x-6 p-0 sm:grid-cols-2 xl:grid-cols-1">
-          {list.map((a) => <KeyLink key={a.id} a={a} />)}
+          {list.map((a) => <KeyLink key={a.id} o={o} a={a} />)}
         </ul>
       ) : (
         <p className="m-0 mb-1.5 mt-1.5 text-meta text-mute-2">No landing page or link yet. Linked pages and links show here.</p>
@@ -263,8 +275,18 @@ function KeyLinks({ assets }: { assets: Asset[] }) {
   );
 }
 
-/** One key link: the asset (opens it here), where it points, and Open, Copy link or Download. */
-function KeyLink({ a }: { a: Asset }) {
+/** Whether a link is worth tagging for analytics: a web page, not a Drive or Docs file. */
+const trackable = (href: string) => {
+  const u = parseWebUrl(href);
+  return !!u && !isGoogleDrive(u.hostname);
+};
+
+/**
+ * One key link in two lines: the asset (opens it here) with where it points
+ * beside it, then Open, Copy link and Tracked links, or Download, and a
+ * warning when the link stopped opening.
+ */
+function KeyLink({ o, a }: { o: Offer; a: Asset }) {
   const { ws, openAsset } = useApp();
   const copy = useCopyLink();
   const link = assetLink(a);
@@ -275,19 +297,73 @@ function KeyLink({ a }: { a: Asset }) {
     <li className="flex min-w-0 items-center gap-3 border-t border-divider py-1.5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0 xl:[&:nth-child(2)]:border-t">
       <CodeBadge code={ws.codeOf(a)} color={ws.colorOf(a)} size={32} />
       <div className="min-w-0 flex-1">
-        <button type="button" onClick={() => openAsset(a.id)} title={a.name} className="block max-w-full truncate rounded-sm text-left text-meta font-semibold text-ink hover:underline">{a.name}</button>
-        <div className="-mr-1.5 flex min-w-0 items-center gap-0.5">
+        {/* The name keeps its room; the address takes what is left (all of it is in the tooltip and behind Open). */}
+        <div className="flex min-w-0 items-baseline gap-2">
+          <button type="button" onClick={() => openAsset(a.id)} title={a.name} className="min-w-0 truncate rounded-sm py-0.5 text-left text-meta font-semibold text-ink hover:underline">{a.name}</button>
           <span title={link?.href} className="min-w-0 flex-1 truncate text-small text-mute-2">{where}</span>
-          {link && (
-            <>
-              <a href={link.href} target="_blank" rel="noreferrer" aria-label={`Open ${a.name}`} title={link.href} className={linkBtn("quiet")}><ExternalLink aria-hidden size={13} />Open</a>
-              <button type="button" onClick={() => void copy(link.href)} aria-label={`Copy link to ${a.name}`} className={linkBtn("quiet")}><Copy aria-hidden size={13} />Copy link</button>
-            </>
-          )}
-          {file && <a href={file.href} download aria-label={`Download ${a.name}`} title={file.title} className={linkBtn("quiet")}><Download aria-hidden size={13} />Download</a>}
         </div>
+        {(link || file) && (
+          <div className="-ml-1.5 flex flex-wrap items-center gap-0.5">
+            {link && (
+              <>
+                <a href={link.href} target="_blank" rel="noreferrer" aria-label={`Open ${a.name}`} title={link.href} className={linkBtn("quiet")}><ExternalLink aria-hidden size={13} />Open</a>
+                <button type="button" onClick={() => void copy(link.href)} aria-label={`Copy link to ${a.name}`} className={linkBtn("quiet")}><Copy aria-hidden size={13} />Copy link</button>
+                {a.type !== "Drive link" && trackable(link.href) && <TrackedLinks url={link.href} offer={o} asset={a} what={a.name} />}
+              </>
+            )}
+            {file && <a href={file.href} download aria-label={`Download ${a.name}`} title={file.title} className={linkBtn("quiet")}><Download aria-hidden size={13} />Download</a>}
+            <LinkStatus asset={a} variant="badge" className="ml-1.5" />
+          </div>
+        )}
       </div>
     </li>
+  );
+}
+
+/**
+ * "Tracked links" as a small text action in a row, opening the tracked-links
+ * builder (UtmBuilder) in a dialog: the same dialog as TrackedLinksButton in
+ * features/links, with a quieter trigger so Open and Copy link stay the
+ * everyday actions. `compact` is the icon alone, beside a CTA tag, where the
+ * words would need a line of their own. Campaign starts as the offer's name
+ * as a slug. Escape closes it and focus goes back to the trigger.
+ */
+function TrackedLinks({ url, offer, asset, cta, what, compact }: { url: string; offer: Offer; asset?: Asset; cta?: Cta; what: string; compact?: boolean }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [open, setOpen] = useState(false);
+  const titleId = useId();
+  useEffect(() => {
+    const d = dialog.current;
+    if (open && d && !d.open) d.showModal();
+  }, [open]);
+  if (!parseWebUrl(url)) return null;
+  const close = () => dialog.current?.close();
+  return (
+    <>
+      <button type="button" aria-haspopup="dialog" aria-label={`Tracked links for ${what}`} title={compact ? `Tracked links for ${what}` : undefined} onClick={() => setOpen(true)}
+        className={cx(linkBtn("quiet"), compact && "w-6 px-0")}>
+        <Link2 aria-hidden size={13} />{!compact && "Tracked links"}
+      </button>
+      {open && (
+        <dialog ref={dialog} aria-labelledby={titleId} onClose={() => setOpen(false)}
+          // Keys stay in the dialog, so Escape closes it and not the page behind.
+          onKeyDown={(e) => e.stopPropagation()}
+          onClick={(e) => { if (e.target === e.currentTarget) close(); }}
+          className="m-auto w-[min(680px,calc(100vw-32px))] max-w-none animate-pop overflow-visible rounded-xl border border-line bg-surface p-0 text-ink shadow-pop backdrop:bg-ink/30">
+          <div className="max-h-[calc(100dvh-48px)] overflow-y-auto p-5">
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 id={titleId} className="m-0 text-title font-semibold">Tracked links</h2>
+                <p className="m-0 mt-1 text-meta text-mute-2 text-pretty">For {what}. Each link opens the same page and tells analytics which channel the visit came from.</p>
+                <p className="m-0 mt-1.5 truncate font-mono text-small text-mute-2" title={url}>{url.trim()}</p>
+              </div>
+              <IconBtn label="Close" onClick={close}><X aria-hidden /></IconBtn>
+            </div>
+            <UtmBuilder url={url} offer={offer} asset={asset} cta={cta} />
+          </div>
+        </dialog>
+      )}
+    </>
   );
 }
 
@@ -312,7 +388,16 @@ function Positioning({ o }: { o: Offer }) {
         {row("Promise", o.promise || missing("Not written yet"))}
         {row("Proof", o.proof || missing("Not written yet"))}
         {row("Offer type", o.offerType || <span className="text-mute-2">Not set</span>)}
-        {row("CTAs", ctas.length ? <span className="flex flex-col items-start gap-1.5">{ctas.map((c) => <CtaTag key={c.id} c={c} />)}</span> : missing("None set"))}
+        {row("CTAs", ctas.length ? (
+          <span className="flex flex-col items-start gap-1.5">
+            {ctas.map((c) => (
+              <span key={c.id} className="flex max-w-full items-center gap-1">
+                <CtaTag c={c} className="min-w-0" />
+                {trackable(c.url) && <TrackedLinks url={c.url} offer={o} cta={c} what={c.text} compact />}
+              </span>
+            ))}
+          </span>
+        ) : missing("None set"))}
       </dl>
     </section>
   );

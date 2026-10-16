@@ -72,7 +72,7 @@ export function useThumbnail(endpoint: string) {
  * The small "Change thumbnail" panel. While it is open, pasting an image
  * anywhere sets it; so does dropping one on the preview or choosing a file.
  */
-export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel, fallback, onClose }: {
+export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel, fallback, extra, onClose }: {
   endpoint: string;
   /** What the thumbnail is for, under the title. */
   subject: string;
@@ -82,6 +82,8 @@ export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel
   resetLabel: string;
   /** Shown when there is no picture at all. */
   fallback: ReactNode;
+  /** More ways to set the picture, after "Choose image" (for a link asset, "Use the page's picture"). Keep them secondary. */
+  extra?: ReactNode;
   onClose: () => void;
 }) {
   const { busy, send, reset, limits } = useThumbnail(endpoint);
@@ -170,6 +172,7 @@ export function ThumbnailPicker({ endpoint, subject, preview, custom, resetLabel
         <div className="mt-3.5 flex flex-wrap items-center gap-2">
           <Btn variant="primary" size="sm" disabled={busy || !imagesOk} onClick={() => input.current?.click()}><ImagePlus aria-hidden size={15} />Choose image</Btn>
           {custom && <Btn size="sm" disabled={busy} onClick={async () => { if (await reset()) onClose(); }}><RotateCcw aria-hidden size={14} />{resetLabel}</Btn>}
+          {extra}
         </div>
         <p className="m-0 mt-3 text-small text-mute-3">
           {imagesOk ? `${THUMB_KINDS}, up to ${sizeLabel(limits.kinds.image.maxBytes)}.` : "Image uploads are switched off for you. Ask an admin if you need them."}
