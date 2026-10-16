@@ -15,7 +15,7 @@ test("brand sections live in the sidebar, not in a second row of tabs", async ({
   await expect(sections.getByRole("link", { name: "CTAs" })).toHaveCount(0);
   await sections.getByRole("link", { name: "Offers" }).click();
   await expect(page).toHaveURL(/\/brands\/br1\/offers$/);
-  // Inside a section the brand header is one line, with no borrowed actions.
+  // Inside a section there is no second brand header (the breadcrumb says where you are), and no borrowed actions.
   await expect(page.getByRole("heading", { name: "Quokka For Good", level: 1 })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Add asset/ })).toHaveCount(0);
   await expect(page.getByText(/^Kit \d+%$/)).toHaveCount(0);
