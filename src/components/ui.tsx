@@ -202,7 +202,7 @@ export function Blocks({ blocks, size = 12, gap = 3 }: { blocks: { id: string; c
 /* ---------------------------------------------------------------- surfaces */
 
 export function Card({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
-  return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(16, 22, 20,.04)] theme-fade", className)} style={style}>{children}</div>;
+  return <div className={cx("rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(16,22,20,.04)] theme-fade", className)} style={style}>{children}</div>;
 }
 
 /**

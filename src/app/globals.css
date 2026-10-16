@@ -166,7 +166,7 @@ input:focus, textarea:focus, select:focus { border-color: var(--bos-accent) !imp
   [data-invalid] .field:focus { box-shadow: 0 0 0 3px rgba(220, 38, 38, .15); }
   /* The kit's hover lift for clickable cards: one pixel up and a soft shadow. */
   .lift { transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease, background-color .16s ease; }
-  .lift:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16, 22, 20, .07); border-color: #c9d3ce; }
+  .lift:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(16,22,20, .07); border-color: #c9d3ce; }
   /* Skeleton blocks for loading screens. */
   .skel { background: #e6ece9; border-radius: 8px; animation: var(--animate-shimmer); }
   .kbd {

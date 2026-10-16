@@ -135,7 +135,7 @@ function AddMenu({ label, onPick, first }: { label: string; onPick: (type: strin
         <>
           <div className="fixed inset-0 z-[70]" onClick={() => setAt(null)} />
           <div ref={menu} id={id} role="menu" aria-label="What to add" style={{ top: at.top, left: at.left, width: Math.min(MENU_W, window.innerWidth - 32) }}
-            className="fixed z-[71] animate-pop rounded-lg border border-line bg-white p-1.5 text-left shadow-[0_16px_40px_rgba(16, 22, 20,.14)]">
+            className="fixed z-[71] animate-pop rounded-lg border border-line bg-white p-1.5 text-left shadow-[0_16px_40px_rgba(16,22,20,.14)]">
             {kinds.map((k) => (
               <button key={k.type} type="button" role="menuitem" onClick={() => { setAt(null); onPick(k.type); }}
                 className="flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left hover:bg-hover focus-visible:bg-hover focus-visible:outline-none">

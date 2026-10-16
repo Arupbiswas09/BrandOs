@@ -112,8 +112,8 @@ function Panel({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Inbox">
-      <div className="absolute inset-0 animate-fade bg-[rgba(16, 22, 20,.28)]" onClick={onClose} />
-      <div data-scroll className="absolute inset-y-0 right-0 flex w-[440px] max-w-full animate-slide flex-col overflow-y-auto border-l border-line bg-wash shadow-[-16px_0_44px_rgba(16, 22, 20,.12)]">
+      <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.28)]" onClick={onClose} />
+      <div data-scroll className="absolute inset-y-0 right-0 flex w-[440px] max-w-full animate-slide flex-col overflow-y-auto border-l border-line bg-wash shadow-[-16px_0_44px_rgba(16,22,20,.12)]">
         <div className="safe-top sticky top-0 z-[2] border-b border-line bg-white/95 backdrop-blur-[8px]">
           <div className="flex items-center gap-3 px-5 py-4">
             <span aria-hidden className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-soft text-accent"><Bell className="h-[18px] w-[18px]" /></span>
@@ -144,7 +144,7 @@ function Panel({ onClose }: { onClose: () => void }) {
                     const q = x.q;
                     const c = q.act === "review" ? "#8A6A12" : "#C2410C";
                     return (
-                      <button key={x.key} type="button" onClick={() => openItem(q.kind, q.id)} className="lift w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(16, 22, 20,.04)]">
+                      <button key={x.key} type="button" onClick={() => openItem(q.kind, q.id)} className="lift w-full rounded-xl border border-line bg-white px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(16,22,20,.04)]">
                         <span className="mb-1.5 flex flex-wrap items-center gap-2">
                           <span className="rounded-[5px] px-2 py-0.5 text-[12.5px] font-semibold" style={{ background: hexA(c, 0.15), color: readable(c, 0.15) }}>{q.verb}</span>
                           <span className="flex-1" /><span className="text-[13px] text-mute-3">{q.act === "review" ? `In review ${q.ago.replace(/ ago$/, "")}` : `Sent back ${q.ago}`}</span>

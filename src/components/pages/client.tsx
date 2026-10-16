@@ -100,7 +100,7 @@ export function ClientPage({ id }: { id: string }) {
           {tops.map((b) => {
             const subs = live(ws.subBrands(b.id));
             return (
-              <Card key={b.id} className="overflow-hidden transition duration-200 hover:shadow-[0_10px_24px_-12px_rgba(16, 22, 20,.18)]">
+              <Card key={b.id} className="overflow-hidden transition duration-200 hover:shadow-[0_10px_24px_-12px_rgba(16,22,20,.18)]">
                 <span aria-hidden className="block h-[3px]" style={{ background: b.primary }} />
                 <Link href={href.brand(b.id)} className="group flex w-full items-center gap-[15px] p-5 text-left focus-visible:outline-offset-[-2px]" style={{ background: hexA(b.primary, 0.06) }}>
                   <Mark mark={b.mark} color={b.primary} size={48} radius={12} />

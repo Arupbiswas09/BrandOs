@@ -21,7 +21,7 @@ export function DemoPicker({ people }: { people: Person[] }) {
           type="button"
           disabled={pending}
           onClick={() => start(async () => { await signInAs(p.id); })}
-          className="flex w-full items-center gap-3 rounded-xl border border-[#E1E7E4] bg-white px-3.5 py-3 text-left transition hover:-translate-y-px hover:border-[#7BA0A8] hover:shadow-[0_6px_16px_rgba(45, 74, 92,.08)] disabled:opacity-60"
+          className="flex w-full items-center gap-3 rounded-xl border border-[#E1E7E4] bg-white px-3.5 py-3 text-left transition hover:-translate-y-px hover:border-[#7BA0A8] hover:shadow-[0_6px_16px_rgba(45,74,92,.08)] disabled:opacity-60"
           title={ACCESS_NOTE[p.access]}
         >
           <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#EDF2F0] font-mono text-[13.5px] font-bold text-[#46534D]">{p.initials}</span>
