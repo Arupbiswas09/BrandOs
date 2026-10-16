@@ -46,20 +46,22 @@ export function Modal({
 
   const Inner = onSubmit ? "form" : "div";
   return (
-    <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto px-3 pb-10 pt-10 sm:px-6 sm:pt-18">
-      <div className="fixed inset-0 animate-fade bg-[rgba(16,22,20,.38)] " onClick={close} />
+    // The dialog never runs off the screen: its title and its footer (Save) stay put and only the middle scrolls.
+    <div onKeyDown={onClose ? (e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } } : undefined} className="fixed inset-0 z-[90] flex items-end justify-center sm:items-start sm:px-6 sm:pt-[7vh]">
+      <div className="fixed inset-0 animate-fade bg-[rgba(16,22,20,.38)]" onClick={close} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={label ?? (typeof title === "string" ? title : undefined)}
-        className="group/dlg relative w-full animate-pop overflow-hidden rounded-xl border border-line bg-surface shadow-pop"
+        className="group/dlg relative flex max-h-[calc(100dvh-12px)] w-full animate-pop flex-col overflow-hidden rounded-t-xl border border-line bg-surface shadow-pop sm:max-h-[86vh] sm:rounded-xl"
         style={{ maxWidth: width }}
       >
         <Inner
+          className="flex min-h-0 flex-1 flex-col"
           {...(onSubmit ? { onSubmit: (e: React.FormEvent) => { e.preventDefault(); onSubmit(); } } : {})}
         >
-          <div className={cx("relative py-5 pl-6 pr-14 sm:pl-7", (children || footer) ? "border-b border-line" : "")}>
+          <div className={cx("relative flex-none py-5 pl-6 pr-14 sm:pl-7", (children || footer) ? "border-b border-line" : "")}>
             {eyebrow && <div className="eyebrow mb-1.5">{eyebrow}</div>}
             <div className="text-title font-semibold leading-[1.3] tracking-[-0.015em]">{title}</div>
             {sub && <div className="mt-1 text-body leading-[1.5] text-mute-2 text-pretty">{sub}</div>}
@@ -67,10 +69,10 @@ export function Modal({
               <X aria-hidden />
             </IconBtn>
           </div>
-          {children && <div className={cx("flex flex-col gap-4 px-6 pb-6 pt-5 sm:px-7", bodyClass)}>{children}</div>}
+          {children && <div data-scroll className={cx("flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-6 pb-6 pt-5 sm:px-7", bodyClass)}>{children}</div>}
           {footer && (
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line bg-wash-2 px-6 py-3.5 sm:px-7">
-              <span className="mr-auto hidden text-small text-mute-3 group-has-[[required]]/dlg:inline"><span aria-hidden>*</span> Required</span>
+            <div className="flex flex-none flex-wrap items-center justify-end gap-2 border-t border-line bg-wash-2 px-6 py-3 pb-[max(12px,env(safe-area-inset-bottom))] sm:px-7">
+              <span className="mr-auto hidden text-small text-mute-3 sm:group-has-[[required]]/dlg:inline"><span aria-hidden>*</span> Required</span>
               {footer}
             </div>
           )}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { CloudUpload, Paperclip, X } from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
-import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY, type AssetCategory } from "@/lib/constants";
+import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY, roleOf, type AssetCategory } from "@/lib/constants";
 import { addTags, tagPool } from "@/lib/tags";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
 import { checkBatch, sizeLabel } from "@/lib/upload-policy";
@@ -16,6 +16,21 @@ import { Footer, Modal } from "./frame";
 import type { AssetDraft } from "./types";
 
 type Step = 0 | 1 | 2 | 3;
+
+const plural2 = (n: number, w: string) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+/** A name hint that fits the kind of thing being made. */
+function namePlaceholder(type: string): string {
+  const hints: Record<string, string> = {
+    "Landing page": "Free audit landing page", "Lead magnet": "Grant readiness checklist", "Thank you page": "Audit booked: thank you page",
+    "Meta ad": "Meta ad: grant intent, static 4:5", "Google ad": "Search ad: free audit", "LinkedIn post": "LinkedIn carousel: grant myths",
+    "Social post": "Instagram post: volunteer story", Email: "Audit invitation email", "Email sequence": "Audit nurture sequence",
+    Automation: "Audit request nurture flow", "Case study": "Case study: St Aidan", "Drive link": "Grant application source files",
+    "Ad creative": "Before and after carousel, 1:1", Checklist: "Landing page launch checklist", Prompt: "Ad headline variations",
+    Template: "Campaign landing page template", SOP: "New client onboarding", Logo: "Primary logo, full colour",
+  };
+  return hints[type] ?? (type ? `Name of the ${type.toLowerCase()}` : "What is it called?");
+}
 
 const plural = (n: number) => `${n} file${n === 1 ? "" : "s"}`;
 
@@ -68,6 +83,16 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   const [tagText, setTagText] = useState("");
   const tagsInUse = useMemo(() => tagPool(ws.d.assets), [ws.d.assets]);
   const uid = useId();
+  // Which fields this kind of asset uses, so the form only asks what matters for it.
+  const role = roleOf(d.type);
+  const urlFirst = role === "entry" || role === "after";
+  const withCopy = role === "traffic" || role === "entry" || role === "after" || d.type === "Ad creative";
+  const withDelivery = d.type === "Lead magnet" || d.type === "Document";
+  const withSpecs = role === "traffic" || d.type === "Ad creative";
+  const filled = [d.short, d.ctaId, d.tags.length ? "t" : "", d.copy.headline || d.copy.body || d.copy.cta, d.notes, d.specs, d.audienceNotes, !urlFirst && !drive ? d.url : "", d.gated ? "g" : ""].filter(Boolean).length;
+  const moreHint = withCopy ? "copy, channel, CTA, tags, notes" : "channel, tags, notes";
+  // Editing something that already has those details: open straight away so nothing is hidden.
+  const [more, setMore] = useState(() => editing && filled > 0);
   const known = !editing && !!d.brandId && d.offerIds.length > 0;
   const brand = ws.brand(d.brandId);
 
@@ -129,8 +154,8 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   };
 
   const valid = !!(d.name.trim() && d.type && (!drive || d.url.trim()));
-  const title = editing ? "Edit asset" : "What are you making?";
-  const stepLabel = editing ? undefined : known ? "One step — the rest is already known" : `Step ${step + 1} of 4`;
+  const title = editing ? "Edit asset" : step === 3 && d.type ? `New ${d.type.toLowerCase()}` : "What are you making?";
+  const stepLabel = editing || step === 3 ? undefined : known ? "One step: the rest is already known" : `Step ${step + 1} of 4`;
 
   // On the type step, picking a type is the way forward, so there is no Next or Save to press.
   const footer = (
@@ -149,7 +174,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
         <div>
           {known && (
             <div className="mb-3.5 rounded-lg bg-soft px-3 py-2.5 text-body text-ink-2">
-              Going into <span className="font-semibold">{brand?.name} · {ws.offer(d.offerIds[0])?.name}</span> — pick the kind and you are done.
+              Going into <span className="font-semibold">{brand?.name} · {ws.offer(d.offerIds[0])?.name}</span>: pick the kind and you are done.
             </div>
           )}
           {GROUPS.map(({ cat, what, where }) => (
@@ -189,7 +214,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
             ))}
           </div>
           <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-xl border border-dashed border-line-strong bg-surface p-3.5 text-left hover:border-mute-2">
-            <span className="block text-body font-semibold">No brand — put it in the Global Library</span>
+            <span className="block text-body font-semibold">No brand: put it in the Global Library</span>
             <span className="mt-0.5 block text-body text-mute-2">Checklists, prompts, templates, SOPs, ad creatives</span>
           </button>
         </div>
@@ -198,31 +223,31 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
       {step === 2 && (
         <div>
           <div className="mb-1.5 text-body text-mute-1">Which offers does it support?</div>
-          <div className="mb-3.5 text-body text-mute-3">Pick as many as apply. One asset, many rooms — nothing gets copied.</div>
+          <div className="mb-3.5 text-body text-mute-3">Pick as many as apply. One asset, many rooms: nothing gets copied.</div>
           <div data-scroll className="flex max-h-[260px] flex-col gap-2 overflow-y-auto">
             {ws.offersOf(d.brandId ?? "").filter((o) => !o.archived).map((o) => (
               <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => set("offerIds", d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id])}>{o.name}</CheckRow>
             ))}
           </div>
           {!ws.offersOf(d.brandId ?? "").length && <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-body text-mute-2">No offers in this brand yet. You can link it later.</div>}
-          <div className="mt-3 text-body text-mute-2">{d.offerIds.length ? `${d.offerIds.length} offer${d.offerIds.length > 1 ? "s" : ""} selected` : "No offers selected — it will sit in the library unlinked"}</div>
+          <div className="mt-3 text-body text-mute-2">{d.offerIds.length ? `${d.offerIds.length} offer${d.offerIds.length > 1 ? "s" : ""} selected` : "No offers selected: it will sit in the library unlinked"}</div>
         </div>
       )}
 
       {step === 3 && (
         <>
-          <div className="text-body text-mute-2">
-            {d.type || "Pick a type"} · {brand ? brand.name : "Global Library"}{d.brandId && ` · ${d.offerIds.length} offer${d.offerIds.length === 1 ? "" : "s"}`}
-            {!editing && <span className="text-mute-3"> · starts as {d.status}</span>}
+          <div className="flex flex-wrap items-baseline gap-x-2 text-meta text-mute-2">
+            <span>{brand ? brand.name : "Global Library"}{d.brandId && ` · ${plural2(d.offerIds.length, "offer")}`}{!editing && ` · starts as ${d.status}`}</span>
+            {!editing && <button type="button" onClick={() => setStep(0)} className="font-medium text-accent hover:underline">Change type</button>}
           </div>
-          <Field label="Asset name" required><input required className="field text-lead" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder="Grant Landing Page — Free Audit" /></Field>
+          <Field label="Asset name" required><input required className="field text-lead" value={d.name} onChange={(e) => set("name", e.target.value)} placeholder={namePlaceholder(d.type)} /></Field>
           {dupes.length > 0 && (
             <div className="rounded-xl border border-[rgba(201,154,46,.4)] bg-[rgba(201,154,46,.07)] px-4 py-3">
               <div className="mb-2 text-body font-semibold text-warn-ink">Similar assets already exist. Reuse before you rebuild.</div>
               <div className="flex flex-col gap-1">
                 {dupes.map((a) => (
                   <button key={a.id} type="button" onClick={() => openAsset(a.id)} className="py-0.5 text-left text-body text-warn-ink hover:underline">
-                    {a.name} <span className="text-[#8A6A12]">· {ws.brand(a.brandId)?.name ?? "Global"} · {a.type}</span>
+                    {a.name} <span className="text-warn-text">· {ws.brand(a.brandId)?.name ?? "Global"} · {a.type}</span>
                   </button>
                 ))}
               </div>
@@ -234,11 +259,8 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               <input required type="text" inputMode="url" className="field text-lead" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
             </Field>
           )}
-          {/* New assets start as the caller says (Draft, or Live in the Global Library); status then changes on the asset itself. */}
-          <div className={cx("grid gap-3", editing && "sm:grid-cols-2")}>
-            <Field label="Short description"><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
-            {editing && <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>}
-          </div>
+          {/* Pages people land on are their address; ask for it up front. */}
+          {!drive && urlFirst && <Field label="Live URL"><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/free-audit" /></Field>}
           {canUpload && !drive && (
             <div>
               <div className="label">Files</div>
@@ -249,7 +271,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                 className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed px-3.5 py-3 transition-colors", drag ? "border-accent bg-soft" : "border-line-strong bg-wash-2")}
               >
                 <CloudUpload aria-hidden size={20} className="flex-none text-mute-3" />
-                <span className="min-w-[140px] flex-1 text-body text-mute-2">Drop files here, or choose them from your computer.</span>
+                <span className="min-w-[140px] flex-1 text-body text-mute-2">Drop files here, or choose them.</span>
                 <Btn size="sm" onClick={() => picker.current?.click()}>Choose files</Btn>
                 <input ref={picker} type="file" multiple hidden onChange={(e) => { addFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
               </div>
@@ -268,66 +290,90 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                   ))}
                 </ul>
               )}
-              <p className="m-0 mt-1.5 text-small leading-[1.5] text-mute-3">
+              <p className="m-0 mt-1.5 text-small text-mute-3">
                 {queued.length ? `${plural(queued.length)} will upload when you save.` : editing ? "New files are added when you save." : "They upload as soon as the asset is saved."}
                 {editing && (draft.files?.length ?? 0) > 0 && " Replace or remove the files already here from the asset itself."}
               </p>
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Type" required><Select value={d.type} onChange={setType} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
-            <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
-          </div>
-          {d.brandId && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>
-              <TagInput value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="landing, evergreen" />
-            </div>
-          )}
-          <div className="grid items-end gap-3 sm:grid-cols-2">
-            <Field label="Delivery"><Select value={d.delivery} onChange={(v) => set("delivery", v)} options={DELIVERY.map((x) => ({ value: x, label: x }))} /></Field>
-            <button type="button" role="checkbox" aria-checked={d.gated} onClick={() => set("gated", !d.gated)} className="flex items-center gap-2 py-2 text-left text-body text-ink-3">
-              <Tick on={d.gated} />Gated — people request it
-            </button>
-          </div>
-          {!drive && <Field label="Live URL or doc link"><input className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="quokkaforgood.org/grant-audit" /></Field>}
-
+          {/* What a prompt or a checklist is, is its content: that stays up front. */}
           {d.type === "Prompt" && (
-            <div className="border-t border-divider pt-1.5">
-              <Field label="Use for" className="mt-2"><input className="field" value={d.promptFor} onChange={(e) => set("promptFor", e.target.value)} placeholder="Copy, Creative, Strategy…" /></Field>
-              <Field label="The prompt" className="mt-3" hint={<span className="font-normal text-mute-4">[BRACKETS] for the bits people swap</span>}>
-                <textarea rows={8} className="field font-[family-name:var(--font-code)] text-body leading-[1.65]" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
+            <>
+              <Field label="Use for"><input className="field" value={d.promptFor} onChange={(e) => set("promptFor", e.target.value)} placeholder="Copy, Creative, Strategy…" /></Field>
+              <Field label="The prompt" hint={<span className="font-normal text-mute-4">[BRACKETS] for the bits people swap</span>}>
+                <textarea rows={7} className="field font-[family-name:var(--font-code)] text-body leading-relaxed" value={d.prompt} onChange={(e) => set("prompt", e.target.value)} />
               </Field>
-            </div>
+            </>
           )}
           {d.type === "Checklist" && !editing && (
             <Field label="Checks" hint={<span className="font-normal text-mute-4">one per line</span>}>
-              <textarea rows={6} className="field leading-[1.55]" value={d.checks} onChange={(e) => set("checks", e.target.value)} placeholder={"Tracking fires on submit\nCTA matches the library entry"} />
+              <textarea rows={6} className="field leading-relaxed" value={d.checks} onChange={(e) => set("checks", e.target.value)} placeholder={"Tracking fires on submit\nCTA matches the library entry"} />
             </Field>
           )}
-          {(ASSET_TYPES[d.type]?.cat !== "global" || d.type === "Ad creative") && !drive && (
-            <div className="border-t border-divider pt-1.5">
-              <div className="label mt-2">Copy</div>
-              <input className="field mb-2" value={d.copy.headline} onChange={(e) => set("copy", { ...d.copy, headline: e.target.value })} placeholder="Headline" aria-label="Headline" />
-              <textarea rows={3} className="field mb-2 leading-[1.55]" value={d.copy.body} onChange={(e) => set("copy", { ...d.copy, body: e.target.value })} placeholder="Body copy" aria-label="Body copy" />
-              <input className="field" value={d.copy.cta} onChange={(e) => set("copy", { ...d.copy, cta: e.target.value })} placeholder="CTA text" aria-label="CTA text" />
-            </div>
-          )}
-          <Field label="Notes"><textarea rows={2} className="field leading-[1.55]" value={d.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Why this exists, and anything the next person needs to know." /></Field>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Creative specs"><input className="field" value={d.specs} onChange={(e) => set("specs", e.target.value)} placeholder="1080x1350, 4:5" /></Field>
-            <Field label="Audience notes"><input className="field" value={d.audienceNotes} onChange={(e) => set("audienceNotes", e.target.value)} /></Field>
-          </div>
-          {editing && d.brandId && (
-            <div>
-              <div className="label">Linked offers</div>
-              <div data-scroll className="flex max-h-[180px] flex-col gap-1.5 overflow-y-auto">
-                {ws.offersOf(d.brandId).filter((o) => !o.archived || d.offerIds.includes(o.id)).map((o) => (
-                  <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => set("offerIds", d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id])}>{o.name}</CheckRow>
-                ))}
+
+          {/* Everything else is optional and waits behind More detail, as on the offer form. */}
+          <div className="border-t border-line">
+            <button type="button" aria-expanded={more} aria-controls={`${uid}-more`} onClick={() => setMore((m) => !m)} className="group flex w-full items-center gap-3 rounded-lg py-3 text-left">
+              <span aria-hidden className="w-3 flex-none text-center text-lead leading-none text-mute-3">{more ? "−" : "+"}</span>
+              <span className="min-w-0 flex-1 text-body text-ink-3">
+                <span className="font-semibold text-ink group-hover:underline">{more ? "Less detail" : "More detail"}</span>
+                {!more && <span className="font-medium">{filled ? ` · ${filled} filled` : ` · ${moreHint}`}</span>}
+              </span>
+              <span className="flex-none text-small text-mute-3">optional</span>
+            </button>
+            <div id={`${uid}-more`} hidden={!more} className="flex flex-col gap-4 pb-1 pt-1">
+              <div className={cx("grid gap-3", editing && "sm:grid-cols-2")}>
+                <Field label="One line about it" hint={<span className="font-normal text-mute-4">shown on the card</span>}><input className="field" value={d.short} onChange={(e) => set("short", e.target.value)} /></Field>
+                {editing && <Field label="Status"><Select value={d.status} onChange={(v) => set("status", v as Asset["status"])} options={Object.keys(ASSET_STATUS).map((x) => ({ value: x, label: x }))} /></Field>}
               </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Type" required><Select value={d.type} onChange={setType} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
+                <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
+              </div>
+              {!drive && !urlFirst && <Field label="Live URL or doc link"><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/page or a doc link" /></Field>}
+              {d.brandId && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>
+                  <TagInput value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="landing, evergreen" />
+                </div>
+              )}
+              {withCopy && !drive && (
+                <div>
+                  <div className="label">Copy</div>
+                  <div className="flex flex-col gap-2">
+                    <input className="field" value={d.copy.headline} onChange={(e) => set("copy", { ...d.copy, headline: e.target.value })} placeholder="Headline" aria-label="Headline" />
+                    <textarea rows={3} className="field leading-relaxed" value={d.copy.body} onChange={(e) => set("copy", { ...d.copy, body: e.target.value })} placeholder="Body copy" aria-label="Body copy" />
+                    <input className="field" value={d.copy.cta} onChange={(e) => set("copy", { ...d.copy, cta: e.target.value })} placeholder="Button text" aria-label="CTA text" />
+                  </div>
+                </div>
+              )}
+              {withDelivery && (
+                <div className="grid items-end gap-3 sm:grid-cols-2">
+                  <Field label="Delivery"><Select value={d.delivery} onChange={(v) => set("delivery", v)} options={DELIVERY.map((x) => ({ value: x, label: x }))} /></Field>
+                  <button type="button" role="checkbox" aria-checked={d.gated} onClick={() => set("gated", !d.gated)} className="flex items-center gap-2 py-2 text-left text-body text-ink-3">
+                    <Tick on={d.gated} />Gated: people ask for it
+                  </button>
+                </div>
+              )}
+              {withSpecs && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Creative specs"><input className="field" value={d.specs} onChange={(e) => set("specs", e.target.value)} placeholder="1080×1350, 4:5" /></Field>
+                  <Field label="Audience notes"><input className="field" value={d.audienceNotes} onChange={(e) => set("audienceNotes", e.target.value)} /></Field>
+                </div>
+              )}
+              <Field label="Notes"><textarea rows={2} className="field leading-relaxed" value={d.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Why this exists, and anything the next person needs to know." /></Field>
+              {editing && d.brandId && (
+                <div>
+                  <div className="label">Linked offers</div>
+                  <div data-scroll className="flex max-h-[180px] flex-col gap-1.5 overflow-y-auto">
+                    {ws.offersOf(d.brandId).filter((o) => !o.archived || d.offerIds.includes(o.id)).map((o) => (
+                      <CheckRow key={o.id} on={d.offerIds.includes(o.id)} sub={o.segment} onClick={() => set("offerIds", d.offerIds.includes(o.id) ? d.offerIds.filter((x) => x !== o.id) : [...d.offerIds, o.id])}>{o.name}</CheckRow>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </>
       )}
     </Modal>

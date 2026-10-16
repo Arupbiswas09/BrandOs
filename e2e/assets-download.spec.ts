@@ -83,8 +83,8 @@ test("the Global Library has an Ad creatives category you can add to, files incl
   await expect(page.getByRole("menu", { name: "What to add" }).getByRole("menuitem", { name: "Checklist" })).toBeVisible();
   await page.getByRole("menuitem", { name: "Ad creative" }).click();
 
-  const dialog = page.getByRole("dialog", { name: "What are you making?" });
-  await expect(dialog.getByText("Ad creative · Global Library")).toBeVisible();
+  const dialog = page.getByRole("dialog", { name: "New ad creative" });
+  await expect(dialog.getByText(/Global Library · starts as/)).toBeVisible();
   await dialog.getByRole("textbox", { name: /Asset name/ }).fill("Spring Appeal Carousel");
   await dialog.locator('input[type="file"]').setInputFiles({ name: "spring-carousel.png", mimeType: "image/png", buffer: PNG });
   await expect(dialog.getByRole("list", { name: "Files to upload" }).getByText("spring-carousel.png")).toBeVisible();
