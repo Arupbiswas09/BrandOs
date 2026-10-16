@@ -1,0 +1,21 @@
+@charset "UTF-8";
+:root {
+  --brand-primary: #0F5C5A;
+  --brand-accent: #E07A3F;
+  --ink: #1A1A1A;
+  --font-heading: "Fraunces", Georgia, serif;
+}
+/* A comment with a colour that should not count: #FF00FF */
+body { font-family: "Inter", system-ui, sans-serif; color: #222222; background: #FFFFFF; }
+h1, h2, h3 { font-family: var(--font-heading); color: #0F5C5A; }
+a { color: #0f5c5b; }
+.btn { background: #E07A3F; color: #fff; border: 1px solid #E07A3F; }
+.btn:hover { background: #d9733a; }
+.card { border-top: 4px solid #0F5C5A; background: #F7F7F5; }
+.muted { color: #6B7280; }
+.icon { font-family: "Font Awesome 6 Free"; }
+.hero { background-image: url("data:image/svg+xml;charset=utf8,%3Csvg fill='%23123456'%3E%3C/svg%3E"); }
+@media (min-width: 800px) {
+  .site-header { border-bottom: 2px solid #0F5C5A; }
+}
+@font-face { font-family: "Inter"; src: url("/inter.woff2") format("woff2"); font-weight: 400; }
