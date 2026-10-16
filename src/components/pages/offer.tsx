@@ -26,6 +26,7 @@ import { CtaTag } from "@/components/cta-tag";
 import { ReviewLine, StatusSelect } from "@/components/workflow";
 import { displayUrl, linkBtn, useCopyLink } from "@/components/link-button";
 import { StarButton } from "@/components/features/stars/star-button";
+import { useStarShortcut } from "@/components/features/stars/use-star-shortcut";
 import { OfferResults } from "@/components/features/results/offer-results";
 import { LinkStatus } from "@/components/features/links/link-status";
 import { TrackedLinksButton } from "@/components/features/links/utm-builder";
@@ -94,6 +95,7 @@ function OfferView({ o }: { o: Offer }) {
   const [run] = useAction();
   const [tab, setTab] = useOfferTab();
   useEffect(() => () => setNudge(null), [setNudge]);
+  useStarShortcut("offer", o.id, o.name);
 
   const b = ws.brand(o.brandId);
   const sv = ws.service(o.serviceId);

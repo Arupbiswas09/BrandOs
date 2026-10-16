@@ -32,6 +32,7 @@ import { AiDraftButton } from "@/components/ai";
 import { ProofView } from "@/components/proof";
 import { PinLink, isPinned, proofFiles, type PinnedComment } from "@/components/proof-link";
 import { StarButton } from "@/components/features/stars/star-button";
+import { useStarShortcut } from "@/components/features/stars/use-star-shortcut";
 import { LinkStatus } from "@/components/features/links/link-status";
 import { PagePictureButton } from "@/components/features/links/page-picture-button";
 import { FileHistory } from "@/components/features/files/file-history";
@@ -84,6 +85,7 @@ function Missing() {
 
 function Drawer({ a }: { a: Asset }) {
   const { ws, closeAsset, open, modal } = useApp();
+  useStarShortcut("asset", a.id, a.name);
   const [run] = useAction();
   const copy = useCopyLink();
   const params = useSearchParams();
