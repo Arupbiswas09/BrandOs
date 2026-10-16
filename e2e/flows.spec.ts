@@ -3,11 +3,11 @@ import { settle, signIn } from "./helpers";
 
 test.use({ viewport: { width: 1440, height: 940 } });
 
-test("create an offer from a coverage gap, link an asset, discuss, review", async ({ page }) => {
+test("create an offer from a service page, link an asset, discuss, review", async ({ page }) => {
   await signIn(page);
-  await page.goto("/brands/br1/services");
+  await page.goto("/services/sv1");
   await settle(page);
-  await page.locator('button[title="No offer here yet"]').first().click();
+  await page.getByRole("button", { name: "New offer", exact: true }).click();
   await page.getByPlaceholder("Google Ads Grant Growth").fill("Playwright Offer");
   await page.getByPlaceholder("One sentence a stranger would understand.").fill("Tested end to end.");
   await page.getByRole("button", { name: "Save offer" }).click();
