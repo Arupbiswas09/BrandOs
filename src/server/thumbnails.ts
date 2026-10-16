@@ -28,6 +28,12 @@ function looksLike(type: string, b: Uint8Array) {
   }
 }
 
+/** Which thumbnail type these bytes really are, judged by their first bytes alone, or null for anything else (SVG, HTML, broken files). */
+export function sniffThumbnailType(b: Uint8Array): string | null {
+  for (const type of THUMB_TYPES) if (looksLike(type, b)) return type;
+  return null;
+}
+
 /** The one image in a thumbnail upload, or why it is refused. */
 export async function readThumbnail(req: Request): Promise<{ ok: true; file: File; type: string } | { ok: false; error: string; status: number }> {
   const form = await req.formData().catch(() => null);
