@@ -20,23 +20,36 @@ Secrets live outside the repository:
 
 ## How a deploy happens
 
-Push to `main`. `.github/workflows/deploy.yml` builds the Dockerfile, pushes
-`ghcr.io/arupbiswas09/brandos:<sha>` and `:latest`, pins the Coolify app to that
-tag and deploys it, then checks `/api/health`. The server never clones the
-private repository; it only pulls the finished image. Migrations run when the
-app starts.
+Push to `main`. `.github/workflows/deploy.yml` asks Coolify to deploy the
+**Git-build app**: Coolify clones this public repository, builds the
+`Dockerfile` and rolls it out. No container registry is involved. Migrations
+run when the app starts, and `/api/health` reports the commit as `version`.
+
+Coolify has **two** BrandOS apps in Contabo_software / production. Only one is live:
+
+| App | Source | State |
+|---|---|---|
+| Git-build app (`COOLIFY_APP_UUID`) | builds from this repo | **live**, serves pm.software.thatha.net |
+| `brandos` | pulls `ghcr.io/arupbiswas09/brandos:latest` | retired since 25 Sep 2026; its image is no longer published, so a deploy fails ("unauthorized") or, if it pulled, would run old code |
+
+If the GitHub deploy step fails with HTTP 401, the `COOLIFY_TOKEN` secret has
+expired: make a new token in Coolify (Keys & Tokens) and save it with
+`gh secret set COOLIFY_TOKEN -R Arupbiswas09/BrandOs`, or press **Deploy** on
+the Git-build app in Coolify.
+
+Uploaded files live in `/app/.data` in the container. The Git-build app must
+have a Persistent Storage volume with destination `/app/.data`, or a redeploy
+loses them (the database is separate and always safe).
 
 ## One-time setup
 
 1. **Database** — `brandos-db` already exists in Contabo_software / production.
-2. **App** — run `bash scripts/coolify-setup.sh`. It creates the `brandos`
-   application from the image, sets every environment variable, and deploys.
-3. **Registry** — Coolify has to be able to pull the image. Either make the
-   package public (it holds compiled code only; secrets are env vars):
-   github.com/users/Arupbiswas09/packages/container/brandos/settings → Change visibility → Public,
-   or keep it private and on the server run `docker login ghcr.io` with a
-   read-only token.
-4. **Uploads** — Coolify → brandos → Persistent Storage → add a volume with
+2. **App** — a Coolify application from this public Git repository (branch
+   `main`, build pack Dockerfile, port 3000) with every environment variable
+   from `~/.config/brandos/prod.env`. (`scripts/coolify-setup.sh` created the
+   original image-based app, which is retired; see above.)
+3. **Build argument** — `GIT_SHA` set to the commit, so `/api/health` reports it.
+4. **Uploads** — Coolify → the app → Persistent Storage → add a volume with
    destination `/app/.data`. Without it, uploaded files are lost on redeploy.
 5. **DNS** — Cloudflare → thatha.net → DNS → add `A  pm.work  173.249.4.108`,
    **DNS only** (grey cloud) so Coolify can issue the Let's Encrypt certificate.
@@ -60,8 +73,8 @@ All three are optional; without them the app works and Settings says what is off
 
 1. Make a secret: `openssl rand -hex 32`. Add `CRON_SECRET` to
    `~/.config/brandos/prod.env` and re-run the setup script, or set it in
-   Coolify → brandos → Environment Variables, then redeploy.
-2. Coolify → brandos → **Scheduled Tasks** → Add:
+   Coolify → the Git-build app → Environment Variables, then redeploy.
+2. Coolify → the Git-build app → **Scheduled Tasks** → Add:
    - Name: `digest`
    - Command: `curl -fsS -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/digest`
    - Frequency: `0 7 * * *` (07:00 every day, server time)
@@ -72,7 +85,7 @@ Each person gets at most one digest per day (the server's time zone; set `TZ`,
 e.g. `Europe/London`, to move the day boundary), so running it twice is harmless.
 The endpoint returns a JSON summary (`sent`, `alreadySent`, `failed`); a
 non-2xx status makes the task show as failed in Coolify. Test by hand with the
-same command in Coolify → brandos → Terminal.
+same command in Coolify → the Git-build app → Terminal.
 
 Without `CRON_SECRET`, anything set to "Daily digest" is emailed straight
 away and due-date reminders are not sent.
