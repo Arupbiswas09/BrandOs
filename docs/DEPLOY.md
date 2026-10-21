@@ -67,6 +67,11 @@ loses them (the database is separate and always safe).
 
 ## Daily digest, Slack and calendar feeds
 
+**Set up on live (21 Oct 2026):** the Git-build app has two scheduled tasks,
+`links` at `0 5 * * *` and `digest` at `0 7 * * *` (server time, UTC), each a
+`curl` with `$CRON_SECRET` to `/api/cron/links` and `/api/cron/digest`. Their run
+history is in Coolify → the app → Scheduled Tasks.
+
 All three are optional; without them the app works and Settings says what is off.
 
 **Daily digest.** Needs email (above) and a `CRON_SECRET`:
