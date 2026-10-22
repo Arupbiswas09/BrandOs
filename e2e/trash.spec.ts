@@ -12,7 +12,9 @@ test("a deleted asset comes back from the recycle bin with its links", async ({ 
   await page.getByRole("menuitem", { name: "Delete" }).click();
   await page.getByRole("dialog", { name: "Delete Youth Instagram Set?" }).getByRole("button", { name: "Delete" }).click();
   await expect(drawer).toHaveCount(0);
-  await expect(page.getByText("Youth Instagram Set")).toHaveCount(0);
+  // It says where the asset went, and it is gone from the page.
+  await expect(page.getByRole("status").filter({ hasText: "Deleted Youth Instagram Set. You can restore it from the Recycle bin for 30 days." })).toBeVisible();
+  await expect(page.getByRole("main").getByText("Youth Instagram Set")).toHaveCount(0);
 
   await page.goto("/trash");
   await settle(page);

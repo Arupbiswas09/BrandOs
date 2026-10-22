@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
@@ -67,6 +67,13 @@ export function Calendar() {
     return `Launched ${date}`;
   };
   const shift = (n: number) => { setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1)); setSelected(null); };
+  // The chosen day's launches open under the month, often below the fold (and under the phone's bottom bar), so they are brought into view.
+  const dayList = useRef<HTMLElement>(null);
+  const pick = (k: string) => {
+    const next = selected === k ? null : k;
+    setSelected(next);
+    if (next) requestAnimationFrame(() => dayList.current?.scrollIntoView({ block: "nearest" }));
+  };
 
   const row = (x: (typeof items)[number]) => (
     <button key={x.id} type="button" onClick={() => router.push(href.offer(x.id))} className="focus-inset flex min-h-14 w-full items-center gap-3 border-t border-divider px-4 py-2 text-left transition-colors duration-150 first:border-t-0 hover:bg-hover">
@@ -94,7 +101,8 @@ export function Calendar() {
   return (
     <Page>
       <PageHead eyebrow="When offers go live" title="Launches"
-        sub="Offer launch dates across every brand you can see. Set a launch date on any offer page. Tasks and deadlines stay in ClickUp."
+        // Only people who can change offers are told to set dates; readers and reviewers cannot.
+        sub={`Offer launch dates across every brand you can see.${ws.can("edit") ? " Set a launch date on any offer page." : ""} Tasks and deadlines stay in ClickUp.`}
         actions={
           <div role="group" aria-label="View" className="flex rounded-lg border border-line bg-surface p-0.5">
             {VIEWS.map((v) => (
@@ -142,7 +150,7 @@ export function Calendar() {
                 const inMonth = d.getMonth() === month.getMonth();
                 const isToday = k === key(today);
                 return (
-                  <button key={i} type="button" onClick={() => setSelected(selected === k ? null : k)} aria-pressed={selected === k} aria-label={`${fmtLongDate(d)}, ${plural(on.length, "launch", "launches")}`}
+                  <button key={i} type="button" onClick={() => pick(k)} aria-pressed={selected === k} aria-label={`${fmtLongDate(d)}, ${plural(on.length, "launch", "launches")}`}
                     className={cx("focus-inset flex min-h-14 flex-col items-stretch gap-1 border-b border-r border-divider p-1.5 text-left transition-colors duration-150 hover:bg-hover sm:min-h-24", !inMonth && "bg-wash-2", selected === k && "bg-soft outline-2 -outline-offset-2 outline-accent")}>
                     <span className={cx("self-start rounded-full px-1.5 text-small", isToday ? "bg-accent font-bold text-on-accent" : inMonth ? "text-ink-3" : "text-mute-2")}>{d.getDate()}</span>
                     <span className="hidden flex-col gap-1 sm:flex">
@@ -160,7 +168,7 @@ export function Calendar() {
             </div>
           </Card>
           {dayItems && (
-            <section aria-labelledby="launch-day" className="mt-5">
+            <section ref={dayList} aria-labelledby="launch-day" className="mt-5 scroll-mt-24 scroll-mb-[calc(80px+env(safe-area-inset-bottom))] lg:scroll-mb-6">
               <h2 id="launch-day" className="m-0 mb-2 text-body font-semibold text-ink">{fmtLongDate(weeks.find((d) => key(d) === selected)!)}</h2>
               <Card className="overflow-hidden">
                 {dayItems.map(row)}
@@ -171,7 +179,8 @@ export function Calendar() {
         </>
       )}
 
-      <Link href="/settings?section=calendar" className="mt-6 inline-flex min-h-6 items-center gap-1.5 text-meta font-medium text-mute-2 hover:text-ink hover:underline">
+      {/* The one way from here to the calendar feed, so it reads as a link like the app's others, not as a grey note. */}
+      <Link href="/settings?section=calendar" className="mt-6 inline-flex min-h-6 items-center gap-1.5 text-meta font-medium text-accent hover:underline">
         <CalendarPlus aria-hidden className="h-4 w-4" />Add launches to your calendar
       </Link>
     </Page>

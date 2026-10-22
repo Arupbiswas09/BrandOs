@@ -124,7 +124,12 @@ export function HeaderSearch() {
     if (a === "new-client") return openModal({ kind: "client" });
     if (a === "new-library") return openModal({ kind: "asset", draft: { brandId: null, type: "Checklist", status: "Live", offerIds: [] }, step: 3 });
     if (a === "new-brand" && h.clientId) return openModal({ kind: "brand", draft: { clientId: h.clientId } });
-    if (!b || a === "new") { window.dispatchEvent(new CustomEvent(NEW_MENU_EVENT)); return; }
+    if (!b || a === "new") {
+      // No brand to put it in and no right to add one: there is no New menu to open, so say why instead of doing nothing.
+      if (!b && !ws.can("structure")) { toast("There is no brand to add it to yet. Ask an admin to give you access to one.", "info"); return; }
+      window.dispatchEvent(new CustomEvent(NEW_MENU_EVENT));
+      return;
+    }
     if (a === "new-offer") return openModal({ kind: "offer", draft: { brandId: b.id, serviceId: h.service?.id ?? null, segment: "All segments", status: "Ideation" } });
     if (a === "new-asset") return openModal({ kind: "asset", draft: { brandId: b.id, status: "Draft", offerIds: h.offer ? [h.offer.id] : [] }, step: 0 });
     if (a === "new-service") return openModal({ kind: "service", draft: { brandId: b.id } });

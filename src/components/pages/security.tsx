@@ -182,7 +182,7 @@ export function SessionsCard({ info }: { info: SecurityInfo }) {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-divider px-5 py-3">
         <h3 className="m-0 text-body font-semibold">Where you&apos;re signed in</h3>
         {others.length > 0 && (
-          <Btn size="sm" variant="ghost" disabled={pending} onClick={() => act(revokeOtherSessions, "Signed out everywhere else.")}>Sign out everywhere else</Btn>
+          <Btn size="sm" disabled={pending} onClick={() => act(revokeOtherSessions, "Signed out everywhere else.")}>Sign out everywhere else</Btn>
         )}
       </div>
       {info.sessions.map((x) => (

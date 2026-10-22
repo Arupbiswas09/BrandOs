@@ -15,8 +15,10 @@ const typing = (el: EventTarget | null) =>
  */
 export function Shortcuts() {
   const [navMode, setNavMode] = useNavMode();
-  const { modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav } = useApp();
+  const { ws, modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav } = useApp();
   const router = useRouter();
+  // Team and access is for admins: for anyone else the page sends them back to the Dashboard, so the key does nothing.
+  const team = ws.can("access");
 
   useEffect(() => {
     let g = false;
@@ -38,7 +40,7 @@ export function Shortcuts() {
       if (typing(e.target) || e.metaKey || e.ctrlKey || e.altKey || modal || cmdk) return;
       if (g) {
         g = false;
-        const to = ({ s: "/", l: "/library", t: "/team", p: "/settings", c: "/calendar" } as Record<string, string>)[e.key.toLowerCase()];
+        const to = ({ s: "/", l: "/library", ...(team && { t: "/team" }), p: "/settings", c: "/calendar" } as Record<string, string>)[e.key.toLowerCase()];
         if (to) { e.preventDefault(); router.push(to); }
         return;
       }
@@ -52,7 +54,7 @@ export function Shortcuts() {
     };
     window.addEventListener("keydown", onKey);
     return () => { window.removeEventListener("keydown", onKey); clearTimeout(gTimer); };
-  }, [modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav, router, navMode, setNavMode]);
+  }, [modal, close, cmdk, setCmdk, inbox, setInbox, assetId, closeAsset, open, nav, setNav, router, navMode, setNavMode, team]);
 
   return null;
 }
