@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { Asset, Offer, Service } from "@/db/schema";
-import { Archive, ArchiveRestore, ChevronDown, Ellipsis, Plus } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Ellipsis, Pencil, Plus } from "lucide-react";
 import { assetStand, offerStand, roleOf, type Stand } from "@/lib/constants";
 import { fmtDateTime } from "@/lib/format";
 import { href } from "@/lib/routes";
@@ -86,7 +86,9 @@ export function ServicePage({ id }: { id: string }) {
   const archivedOffers = ws.offersOfService(v.id).filter((o) => o.archived);
   const assets = ws.assetsOfOffers(offers);
   const stats = ws.serviceStats(v.brandId, v.id);
+  // Changing the service itself follows ownership; adding an offer to it is open to everyone who creates work.
   const canEdit = ws.canChange(v);
+  const canAdd = ws.can("edit");
   const newOffer = (segment = "All segments") => open({ kind: "offer", draft: { brandId: v.brandId, serviceId: v.id, segment, status: "Ideation" } });
   const needs = needsOf(ws, offers, assets);
   const archive = () => void run(setArchived, "service", v.id, !v.archived);
@@ -107,8 +109,8 @@ export function ServicePage({ id }: { id: string }) {
           <>
             {/* For everyone who can see the service, whatever they may change. */}
             <StarButton kind="service" id={v.id} name={v.name} />
-            {canEdit && <Btn onClick={() => open({ kind: "service", draft: v })}>Edit</Btn>}
-            {canEdit && <Btn variant="primary" onClick={() => newOffer()}><Plus aria-hidden size={16} />New offer</Btn>}
+            {canEdit && <Btn onClick={() => open({ kind: "service", draft: v })}><Pencil aria-hidden size={16} />Edit</Btn>}
+            {canAdd && <Btn variant="primary" onClick={() => newOffer()}><Plus aria-hidden size={16} />New offer</Btn>}
             {/* Services are never deleted; archiving puts one out of sight and keeps its offers. */}
             {ws.can("archive") && (
               <CardMenu
@@ -121,13 +123,21 @@ export function ServicePage({ id }: { id: string }) {
           </>
         )}
       />
-      {v.archived && <ArchivedNote className="mb-6">Archived. Its offers still exist and are reachable from the brand&apos;s Offers.</ArchivedNote>}
+      {/* Restoring is what an archived service is opened for, so it sits in plain sight as well as in the … menu. */}
+      {v.archived && (
+        <ArchivedNote className="mb-6">
+          <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <span>Archived. Its offers still exist and are reachable from the brand&apos;s Offers.</span>
+            {ws.can("archive") && <Btn size="sm" onClick={archive}><ArchiveRestore aria-hidden size={15} />Restore service</Btn>}
+          </span>
+        </ArchivedNote>
+      )}
 
       {offers.length === 0 ? (
         <>
           {v.description && <p className="m-0 mb-6 max-w-[64ch] text-body leading-[1.6] text-ink-3 text-pretty">{v.description}</p>}
           <Empty title="No offers for this service yet" body="An offer is this service argued at one segment.">
-            {canEdit && <Btn variant="primary" size="lg" onClick={() => newOffer()}>Write the first offer</Btn>}
+            {canAdd && <Btn variant="primary" size="lg" onClick={() => newOffer()}>Write the first offer</Btn>}
           </Empty>
           {archivedOffers.length > 0 && <ArchivedOffersNote n={archivedOffers.length} brandId={v.brandId} />}
         </>
@@ -139,7 +149,7 @@ export function ServicePage({ id }: { id: string }) {
             <div role="tabpanel" id="service-panel" aria-labelledby={`service-tab-${tab}`} className="mt-5">
               {tab === "offers" && (
                 <>
-                  <OffersBySegment offers={offers} brandId={v.brandId} canEdit={canEdit} newOffer={newOffer} view={offerView} onView={setOfferView} />
+                  <OffersBySegment offers={offers} brandId={v.brandId} canEdit={canAdd} newOffer={newOffer} view={offerView} onView={setOfferView} />
                   {archivedOffers.length > 0 && <ArchivedOffersNote n={archivedOffers.length} brandId={v.brandId} />}
                 </>
               )}

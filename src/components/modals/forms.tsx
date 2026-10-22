@@ -119,7 +119,7 @@ export function ServiceModal({ draft }: { draft: Partial<Service> & { brandId: s
     if (r.ok) { close(); if (!draft.id && r.id) router.push(href.service(r.id)); }
   };
   return (
-    <Modal title={draft.id ? "Edit service" : "New service"} sub={`In ${ws.brand(d.brandId)?.name}. A capability you sell — offers hang off it, one per segment.`} onSubmit={save} footer={<Footer saveLabel="Save service" pending={pending} disabled={!d.name.trim()} />}>
+    <Modal title={draft.id ? "Edit service" : "New service"} sub={`In ${ws.brand(d.brandId)?.name}. A capability you sell. Offers hang off it, one per segment.`} onSubmit={save} footer={<Footer saveLabel="Save service" pending={pending} disabled={!d.name.trim()} />}>
       <Field label="Service name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Google Ad Grant" /></Field>
       <Field label="One line"><input className="field" value={d.short} onChange={(e) => setD({ ...d, short: e.target.value })} placeholder="Ten thousand a month, actually spent" /></Field>
       <Field label="What it is"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="The capability itself, before it is aimed at anyone." /></Field>
@@ -171,13 +171,28 @@ export function GoalModal({ brandId, name, description, original }: { brandId: s
   const { ws, close } = useApp();
   const [run, pending] = useAction();
   const [d, setD] = useState({ name: name ?? "", description: description ?? "" });
+  // Removing a goal takes it off every offer and cannot be undone, so it asks first.
+  const [removing, setRemoving] = useState(false);
   const save = async () => { const r = await run(saveGoal, { brandId, original, ...d }); if (r.ok) close(); };
   const remove = async () => { const r = await run(deleteGoal, brandId, original!); if (r.ok) close(); };
+  if (removing && original) {
+    const n = ws.offersOf(brandId).filter((o) => o.goals.includes(original)).length;
+    // Keyed, so each view mounts fresh and focus lands inside it (here on the question, back on the form after Cancel).
+    return (
+      <Modal key="remove" title={`Remove ${original}?`} width={440} onSubmit={remove}
+        footer={<Footer saveLabel="Remove goal" pending={pending} saveVariant="danger-solid" onCancel={() => setRemoving(false)} />}>
+        <div data-autofocus tabIndex={-1} className="text-body leading-[1.6] text-mute-1 outline-none text-pretty">
+          {n ? `It comes off the ${n === 1 ? "offer that chases" : `${n} offers that chase`} it, and this cannot be undone.` : "No offer chases it yet. This cannot be undone."}
+        </div>
+        {n > 0 && ws.brand(brandId)!.goals.length > 1 && <div className="text-meta text-mute-3">To keep those offers tagged, merge it into another goal instead.</div>}
+      </Modal>
+    );
+  }
   return (
-    <Modal title={original ? "Edit goal" : "New goal"} sub={`In ${ws.brand(brandId)?.name}. Keep it broad enough that a tactic never fits it exactly.`} width={480} onSubmit={save}
-      footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <button type="button" onClick={remove} className="px-0.5 py-1.5 text-body text-danger hover:underline">Remove from every offer</button> : undefined} />}>
+    <Modal key="edit" title={original ? "Edit goal" : "New goal"} sub={`In ${ws.brand(brandId)?.name}. Keep it broad enough that a tactic never fits it exactly.`} width={480} onSubmit={save}
+      footer={<Footer saveLabel="Save goal" pending={pending} disabled={!d.name.trim()} left={original ? <Btn variant="danger" onClick={() => setRemoving(true)}>Remove goal</Btn> : undefined} />}>
       <Field label="Goal" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Audience growth" /></Field>
-      <Field label="What it means here"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="Grow the audience we own — list, followers, members." /></Field>
+      <Field label="What it means here"><textarea rows={3} className="field leading-[1.55]" value={d.description} onChange={(e) => setD({ ...d, description: e.target.value })} placeholder="Grow the audience we own: list, followers, members." /></Field>
     </Modal>
   );
 }

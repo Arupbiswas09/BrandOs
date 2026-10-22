@@ -8,7 +8,7 @@ import { cx } from "@/components/ui";
 
 /*
  * Where people find onboarding from the rest of the app: the New menu,
- * the empty dashboard, and a quiet Import on a brand's Offers and Assets.
+ * the empty dashboard, and an Import button on a brand's Offers and Assets.
  */
 
 export const fromWebsiteHref = (clientId?: string) => `/brands/new/from-website${clientId ? `?client=${encodeURIComponent(clientId)}` : ""}`;
@@ -39,13 +39,17 @@ export function useOnboardingMenuItems(here: { brandId?: string | null; clientId
   return out;
 }
 
-/** The quiet "Import" link for a brand's Offers or Assets tab, next to its own actions. */
+/**
+ * "Import" for a brand's Offers or Assets tab, next to its own actions. A
+ * bordered button like the ones beside it: as grey text it read as a label.
+ */
 export function ImportLink({ brandId, kind, className }: { brandId: string; kind: ImportKind; className?: string }) {
   const { ws } = useApp();
   if (!ws.can("edit")) return null;
   return (
-    <Link href={importHref({ brandId, kind })} className={cx("inline-flex h-8 items-center rounded-lg px-2 text-meta font-medium text-mute-2 transition-colors duration-150 hover:bg-hover hover:text-ink", className)}>
-      Import
+    <Link href={importHref({ brandId, kind })} title={kind === "assets" ? "Bring in assets from a spreadsheet" : "Bring in offers from a spreadsheet"}
+      className={cx("inline-flex h-10 flex-none items-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-surface px-4 text-body font-medium text-ink-3 transition-[background-color,border-color] duration-150 hover:border-line-strong hover:bg-wash", className)}>
+      <FileSpreadsheet aria-hidden className="size-4 flex-none" />Import
     </Link>
   );
 }

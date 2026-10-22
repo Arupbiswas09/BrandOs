@@ -164,12 +164,13 @@ function LogoSection({ b }: { b: Brand }) {
   const k = b.kit ?? {};
   const logos = live(ws.assetsOf(b.id)).filter((a) => a.type === "Logo");
   const logoPreview = logos.map((a) => ws.previewOf(a)).find(Boolean) ?? null;
-  const canEdit = ws.can("kit");
+  // A logo file is an asset, so anyone who creates assets can add one (the rules for using it stay with the kit's editors).
+  const canAdd = ws.can("edit");
   const add = () => open({ kind: "asset", draft: { brandId: b.id, type: "Logo", status: "Ready", offerIds: [] }, step: 3 });
   return (
     <section aria-label="Logo">
       <SectionTitle title="Logo" sub="The master files and the rules for using them."
-        actions={canEdit && <Btn size="sm" onClick={add}><Plus aria-hidden className="h-4 w-4" />Add a logo file</Btn>} />
+        actions={canAdd && <Btn size="sm" onClick={add}><Plus aria-hidden className="h-4 w-4" />Add a logo file</Btn>} />
       <div className="grid grid-cols-3 gap-3">
         {[
           { bg: "#FFFFFF", label: "On white", ring: true },
@@ -430,7 +431,7 @@ function VoiceSection({ b }: { b: Brand }) {
       <Card className="mt-3 px-5 py-4">
         <div className="mb-1 flex items-center justify-between gap-3">
           <h3 className="m-0 text-meta font-semibold text-ink-3">Boilerplate</h3>
-          {b.boilerplate && <Btn size="sm" variant="ghost" onClick={copy}><Copy aria-hidden className="h-3.5 w-3.5" />Copy</Btn>}
+          {b.boilerplate && <Btn size="sm" onClick={copy}><Copy aria-hidden className="h-3.5 w-3.5" />Copy<span className="sr-only"> the boilerplate</span></Btn>}
         </div>
         <p className="m-0 max-w-[75ch] text-body leading-[1.6] text-ink-3 text-pretty">{b.boilerplate || <Missing />}</p>
       </Card>
@@ -463,13 +464,16 @@ function ImagerySection({ b }: { b: Brand }) {
 /* ---------------------------------------------------------------- files */
 
 function FilesSection({ b }: { b: Brand }) {
-  const { ws, openAsset } = useApp();
+  const { ws, open, openAsset } = useApp();
   const all = live(ws.assetsOf(b.id));
   // Guideline documents have their own section; this is everything else people come to download.
   const files = [...all.filter((a) => a.type === "Font"), ...all.filter((a) => a.isTemplate && a.type !== "Font")];
+  // As with logo files: a font file is an asset, added like one.
+  const add = () => open({ kind: "asset", draft: { brandId: b.id, type: "Font", status: "Ready", offerIds: [] }, step: 3 });
   return (
     <section aria-label="Files">
-      <SectionTitle title="Files and templates" sub="Font files and the reusable templates for this brand." />
+      <SectionTitle title="Files and templates" sub="Font files and the reusable templates for this brand."
+        actions={ws.can("edit") && <Btn size="sm" onClick={add}><Plus aria-hidden className="h-4 w-4" />Add a font file</Btn>} />
       {files.length ? (
         <Card className="overflow-hidden">
           {files.map((a) => <FileRow key={a.id} a={a} onOpen={() => openAsset(a.id)} />)}
@@ -635,8 +639,8 @@ function GuidelinesPdf({ b }: { b: Brand }) {
                   <span className="text-small text-mute-2">Not uploaded yet</span>
                 ) : (
                   <span className="flex items-center gap-1.5">
-                    {embeddable(g.file) && <Btn size="sm" variant="ghost" onClick={() => { setPick(g.file.key ?? null); window.scrollTo({ top: 0 }); }}>Show here</Btn>}
-                    <a href={g.file.url} download={g.file.name} aria-label={`Download ${g.file.name}`} className="inline-flex size-8 items-center justify-center rounded-lg text-mute-2 hover:bg-hover hover:text-ink"><Download aria-hidden className="h-4 w-4" /></a>
+                    {embeddable(g.file) && <Btn size="sm" onClick={() => { setPick(g.file.key ?? null); window.scrollTo({ top: 0 }); }}>Show here<span className="sr-only">: {g.file.name}</span></Btn>}
+                    <a href={g.file.url} download={g.file.name} aria-label={`Download ${g.file.name}`} title={`Download ${g.file.name}`} className="inline-flex size-8 items-center justify-center rounded-lg text-mute-2 hover:bg-hover hover:text-ink"><Download aria-hidden className="h-4 w-4" /></a>
                   </span>
                 )}
               </div>

@@ -190,7 +190,7 @@ test("the services tab has no coverage grid and no asset squares", async ({ page
   // Offer types stay editable from the Strategy tab.
   await page.goto("/brands/br1/strategy");
   await settle(page);
-  await expect(page.getByRole("button", { name: "+ New type" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New type" })).toBeVisible();
 });
 
 test("the brand's offers are rows grouped by service, with a Cards view that is remembered", async ({ page }) => {

@@ -8,8 +8,9 @@ import { useAction, useApp } from "@/components/app/provider";
 import { Btn, cx } from "@/components/ui";
 import { Modal } from "./frame";
 
-/** Why a type cannot be removed right now, or "" when it can. */
-function removeBlock(type: string, types: string[], used: number) {
+/** Why a type cannot be removed right now, or "" when it can. Archived offers count too, and the reason says so, since the type's count leaves them out. */
+function removeBlock(type: string, types: string[], used: number, archived: number) {
+  if (used && used === archived) return `${used === 1 ? "An archived offer still uses" : `${used} archived offers still use`} ${type}. Give ${used === 1 ? "it" : "them"} another type first: archived offers are listed at the foot of Offers.`;
   if (used) return `${plural(used, "offer")} still ${used === 1 ? "uses" : "use"} ${type}. Give ${used === 1 ? "it" : "them"} another type before removing it.`;
   if (types.length < 2) return "A brand needs at least one offer type. Add another before removing this one.";
   return "";
@@ -23,19 +24,20 @@ export function RemoveOfferType({ brandId, type, className, onRemoved }: { brand
   const { ws } = useApp();
   const [run, pending] = useAction();
   const types = offerTypesOf(ws.brand(brandId));
-  const used = ws.offersOf(brandId).filter((o) => o.offerType === type).length;
-  const blocked = removeBlock(type, types, used);
+  const using = ws.offersOf(brandId).filter((o) => o.offerType === type);
+  const blocked = removeBlock(type, types, using.length, using.filter((o) => o.archived).length);
   const off = !!blocked || pending;
   return (
-    <button
-      type="button"
+    <Btn
+      size="sm"
+      variant="danger"
       aria-disabled={off || undefined}
       title={blocked || undefined}
       onClick={async () => { if (off) return; const r = await run(deleteOfferType, brandId, type); if (r.ok) onRemoved?.(); }}
-      className={cx("text-meta", off ? "cursor-not-allowed text-mute-4" : "text-danger hover:underline", className)}
+      className={cx("aria-disabled:cursor-not-allowed aria-disabled:opacity-50", className)}
     >
       Remove<span className="sr-only"> {type}</span>
-    </button>
+    </Btn>
   );
 }
 
@@ -115,14 +117,13 @@ export function OfferTypesModal({ brandId, edit, add }: { brandId: string; edit?
                 <>
                   <span className="min-w-0 flex-1 truncate text-body font-semibold">{t}</span>
                   <span className="flex-none text-meta font-medium" style={{ color: n ? "#46534D" : "#8A6A12" }}>{n ? plural(n, "offer") : "None yet"}</span>
-                  <button
-                    type="button"
+                  <Btn
+                    size="sm"
                     ref={(el) => { if (el) editBtns.current.set(t, el); else editBtns.current.delete(t); }}
                     onClick={() => { setEditing(t); setName(t); }}
-                    className="flex-none text-meta text-mute-2 hover:text-ink"
                   >
                     Edit<span className="sr-only"> {t}</span>
-                  </button>
+                  </Btn>
                   <RemoveOfferType brandId={brandId} type={t} className="flex-none" onRemoved={() => { focusNext.current = ""; }} />
                 </>
               )}
