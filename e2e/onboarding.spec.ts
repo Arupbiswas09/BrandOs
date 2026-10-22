@@ -289,7 +289,7 @@ test("a brand from its website: scan, check the draft, create it with its servic
   await expect(page.getByText("#E07A3F").filter({ visible: true }).first()).toBeVisible();
 });
 
-test("the way in: the New menu, a quiet Import on a brand's Offers and Assets, and the pages' breadcrumbs", async ({ page }) => {
+test("the way in: the New menu, an Import button on a brand's Offers and Assets, and the pages' breadcrumbs", async ({ page }) => {
   await signIn(page);
   // Inside a brand, the New menu's import goes to that brand and a new brand goes under its client.
   await page.goto("/brands/br1");
@@ -300,7 +300,7 @@ test("the way in: the New menu, a quiet Import on a brand's Offers and Assets, a
   await expect(menu.getByRole("menuitem", { name: /Import from a spreadsheet/ })).toHaveAttribute("href", "/import?brand=br1");
   await page.keyboard.press("Escape");
 
-  // A quiet link beside each tab's one primary button, never a second primary.
+  // A bordered Import beside each tab's one primary button, never a second primary.
   await page.goto("/brands/br1/offers");
   await settle(page);
   await expect(page.getByRole("link", { name: "Import", exact: true })).toHaveAttribute("href", "/import?brand=br1");

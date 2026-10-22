@@ -311,7 +311,7 @@ function Review({ draft, form, setForm, reviewRef, clients, saving, problem, onC
             </li>
           ))}
         </ul>
-        <Btn variant="ghost" size="sm" className="mt-2 px-1" disabled={form.colours.length >= 12}
+        <Btn size="sm" className="mt-2" disabled={form.colours.length >= 12}
           onClick={() => set({ colours: [...form.colours, { key: k(), hex: "#5E6C66", text: "#5E6C66", role: "Extra", from: "added" }] })}>
           <Plus aria-hidden className="size-4" />Add a colour
         </Btn>
@@ -336,7 +336,7 @@ function Review({ draft, form, setForm, reviewRef, clients, saving, problem, onC
             ))}
           </ul>
         )}
-        <Btn variant="ghost" size="sm" className="px-1" disabled={form.fonts.length >= 8}
+        <Btn size="sm" disabled={form.fonts.length >= 8}
           onClick={() => set({ fonts: [...form.fonts, { key: k(), name: "", role: "", weights: "", source: "", fallback: "" }] })}>
           <Plus aria-hidden className="size-4" />Add a font
         </Btn>
@@ -390,7 +390,7 @@ function Review({ draft, form, setForm, reviewRef, clients, saving, problem, onC
             ))}
           </ul>
         )}
-        <Btn variant="ghost" size="sm" className="px-1" disabled={form.services.length >= 12}
+        <Btn size="sm" disabled={form.services.length >= 12}
           onClick={() => set({ services: [...form.services, { key: k(), on: true, name: "", short: "" }] })}>
           <Plus aria-hidden className="size-4" />Add a service
         </Btn>

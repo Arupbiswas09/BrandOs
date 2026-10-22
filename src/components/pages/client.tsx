@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, ChevronRight, FolderOpen, GitBranch, Megaphone, Pencil } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, FolderOpen, GitBranch, Megaphone, Pencil, Plus } from "lucide-react";
 import { fmtDateTime, fmtMonthShort } from "@/lib/format";
 import { hexA } from "@/lib/color";
 import { href } from "@/lib/routes";
@@ -50,9 +50,11 @@ export function ClientPage({ id }: { id: string }) {
   ];
   const contact = c.contactId ? ws.user(c.contactId) : null;
   // Clients are never deleted. Archiving one is for admins only, and sits out of the way.
+  const archive = () => void run(setArchived, "client", c.id, !c.archived);
   const more = ws.can("del") ? [
-    { label: c.archived ? "Restore client" : "Archive client", icon: c.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />, onSelect: () => void run(setArchived, "client", c.id, !c.archived) },
+    { label: c.archived ? "Restore client" : "Archive client", icon: c.archived ? <ArchiveRestore aria-hidden size={16} /> : <Archive aria-hidden size={16} />, onSelect: archive },
   ] : [];
+  const addBrand = () => open({ kind: "brand", draft: { clientId: c.id } });
 
   return (
     <Page>
@@ -71,7 +73,15 @@ export function ClientPage({ id }: { id: string }) {
       >
         {c.note && <p className="m-0 max-w-[64ch] pb-8 pt-4 text-lead leading-[1.6] text-ink-3 text-pretty">{c.note}</p>}
       </EntityHeader>
-      {c.archived && <ArchivedNote className="mb-6">Archived. Hidden from the street and from search unless you go looking.</ArchivedNote>}
+      {/* Restoring is what an archived client is opened for, so it sits in plain sight, not only in the … menu. */}
+      {c.archived && (
+        <ArchivedNote className="mb-6">
+          <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <span>Archived. Hidden from the street and from search unless you go looking.{ws.can("del") ? "" : " Only an admin can restore it."}</span>
+            {ws.can("del") && <Btn size="sm" onClick={archive}><ArchiveRestore aria-hidden size={15} />Restore client</Btn>}
+          </span>
+        </ArchivedNote>
+      )}
 
       {/* One strip, as in the prototype, ending with who looks after this client. */}
       <Card className="flex flex-wrap items-stretch overflow-hidden">
@@ -101,7 +111,7 @@ export function ClientPage({ id }: { id: string }) {
       </Card>
 
       <div className="mt-10">
-        <H2 right={ws.can("structure") && <button type="button" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })} className="text-body text-mute-2 hover:text-ink">+ Add brand</button>}>Brands</H2>
+        <H2 right={ws.can("structure") && tops.length > 0 && <Btn size="sm" onClick={addBrand}><Plus aria-hidden size={15} />Add brand</Btn>}>Brands</H2>
         <div className="grid gap-4 md:grid-cols-2">
           {tops.map((b) => {
             const subs = live(ws.subBrands(b.id));
@@ -137,8 +147,8 @@ export function ClientPage({ id }: { id: string }) {
           })}
         </div>
         {!tops.length && (
-          <Empty title="No brands yet" body="A brand is where offers and assets live.">
-            {ws.can("structure") && <Btn variant="primary" size="lg" onClick={() => open({ kind: "brand", draft: { clientId: c.id } })}>Add the first brand</Btn>}
+          <Empty title={bs.length ? "Every brand here is archived" : "No brands yet"} body={bs.length ? "They are listed below, with everything in them as it was." : "A brand is where offers and assets live."}>
+            {ws.can("structure") && <Btn variant="primary" size="lg" onClick={addBrand}>{bs.length ? "Add a brand" : "Add the first brand"}</Btn>}
           </Empty>
         )}
         <ArchExpander items={archivedOnly(bs)} noun="brand" onOpen={(b) => router.push(href.brand(b.id))} />
