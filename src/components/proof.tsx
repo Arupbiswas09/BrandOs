@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Asset } from "@/db/schema";
-import { deleteComment, postComment, toggleResolve } from "@/app/actions";
+import { postComment } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
-import { CommentText } from "@/components/discussion";
+import { CommentText, NoteActions, NoteEditor } from "@/components/discussion";
 import { Avatar, Btn, Hint, Pills, cx } from "@/components/ui";
 import { pinsOn, proofFiles, type PinnedComment } from "./proof-link";
 
@@ -257,8 +257,7 @@ function DraftNote({ a, fileKey, spot, n, onDone }: { a: Asset; fileKey: string;
 
 function PinNote({ c, n, on, onPick, onHover }: { c: PinnedComment; n: number; on: boolean; onPick: () => void; onHover: (id: string | null) => void }) {
   const { ws } = useApp();
-  const [run, pending] = useAction();
-  const mine = c.userId === ws.me.id;
+  const [editing, setEditing] = useState(false);
   return (
     <div
       id={`note-${c.id}`}
@@ -275,17 +274,17 @@ function PinNote({ c, n, on, onPick, onHover }: { c: PinnedComment; n: number; o
         <span className="text-body font-semibold">{ws.first(c.userId)}</span>
         {c.resolved && <span className="eyebrow text-micro">Resolved</span>}
         <span className="flex-1" />
-        <span className="font-mono text-small text-mute-4">{ws.ago(c.createdAt)}</span>
-        {ws.can("comment") && (
-          <button type="button" disabled={pending} onClick={() => run(toggleResolve, c.id)} aria-label={`${c.resolved ? "Reopen" : "Resolve"} note ${n}`} className="px-1 py-0.5 text-small text-mute-3 hover:text-ink">{c.resolved ? "Reopen" : "Resolve"}</button>
-        )}
-        {(mine || ws.can("del")) && (
-          <button type="button" disabled={pending} onClick={() => { if (window.confirm(`Delete note ${n}?`)) void run(deleteComment, c.id); }} className="px-1 py-0.5 text-small text-mute-3 hover:text-danger">Delete</button>
-        )}
+        <span className="text-small text-mute-2">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
+        {/* The same actions as in the discussion, Edit included. */}
+        {!editing && <NoteActions c={c} n={n} onEdit={() => setEditing(true)} />}
       </div>
-      <div onClick={onPick} className="cursor-pointer">
-        <CommentText c={c} />
-      </div>
+      {editing ? (
+        <NoteEditor c={c} label={`Edit note ${n}`} onDone={() => setEditing(false)} />
+      ) : (
+        <div onClick={onPick} className="cursor-pointer">
+          <CommentText c={c} />
+        </div>
+      )}
     </div>
   );
 }

@@ -89,7 +89,10 @@ export function OfferResults({ offer }: { offer: Offer }) {
       {editing === "new" && <div className="mb-4">{form()}</div>}
 
       {!rows.length && editing !== "new" && (
-        <Empty compact body="After launch, record the leads, calls booked and conversions for each period, with one lesson learned.">
+        <Empty compact body={canEdit
+          ? "After launch, record the leads, calls booked and conversions for each period, with one lesson learned."
+          // Only people who can record results are asked to.
+          : "No results recorded yet. After launch, the offer's owner or an editor records them here."}>
           {canEdit && <Btn variant="primary" onClick={() => open("new")}><Plus aria-hidden size={16} />Record the first results</Btn>}
         </Empty>
       )}
@@ -187,7 +190,7 @@ function ConfirmRemove({ period, pending, onRemove, onKeep }: { period: string; 
       <span className="min-w-[200px] flex-1 text-body text-ink">Remove the results for {period}? This cannot be undone.</span>
       <span className="flex gap-2">
         <Btn variant="danger" size="sm" disabled={pending} onClick={onRemove}>Remove</Btn>
-        <Btn ref={keep} variant="ghost" size="sm" onClick={onKeep}>Keep</Btn>
+        <Btn ref={keep} size="sm" onClick={onKeep}>Keep</Btn>
       </span>
     </div>
   );
@@ -346,7 +349,7 @@ function ResultForm({ offer, row, periods, onDone }: { offer: Offer; row?: Offer
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Btn type="submit" variant="primary" disabled={pending}>{row ? "Save changes" : "Save results"}</Btn>
-        <Btn variant="ghost" onClick={onDone}>Cancel</Btn>
+        <Btn onClick={onDone}>Cancel</Btn>
         {tried && empty && <span role="alert" className="text-meta font-medium text-danger">Add at least one number or a lesson.</span>}
       </div>
     </form>

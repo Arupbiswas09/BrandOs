@@ -40,11 +40,17 @@ test("pin a note on an image, find it in the discussion, and jump back to it", a
   const pin = drawer.getByRole("button", { name: /^Note \d+: Logo is too close to the edge/ });
   await expect(pin).toBeVisible();
 
+  // Its author corrects it right here, as in the discussion.
+  await drawer.getByRole("button", { name: /^Edit note \d+$/ }).click();
+  await drawer.getByRole("textbox", { name: /^Edit note \d+$/ }).fill("Logo is too close to the edge, move it in");
+  await drawer.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(drawer.getByRole("button", { name: /^Note \d+: Logo is too close to the edge, move it in/ })).toBeVisible();
+
   // Resolving greys the pin out and moves it under the Resolved filter.
   await drawer.getByRole("button", { name: /^Resolve note \d+/ }).click();
   await expect(pin).toHaveCount(0);
   await drawer.getByRole("button", { name: /^Resolved/ }).click();
-  await expect(drawer.getByRole("button", { name: /Logo is too close to the edge \(resolved\)/ })).toBeVisible();
+  await expect(drawer.getByRole("button", { name: /Logo is too close to the edge.* \(resolved\)/ })).toBeVisible();
 
   await drawer.getByRole("tab", { name: /^Discussion/ }).click();
   // Resolved notes fold away until asked for.
