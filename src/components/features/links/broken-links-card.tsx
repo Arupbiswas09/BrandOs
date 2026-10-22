@@ -6,7 +6,7 @@ import { useApp } from "@/components/app/provider";
 import { Btn, Card, cx } from "@/components/ui";
 import { isLinkBroken, linkCheckOf, linkProblem } from "@/lib/link-health";
 import { plural } from "@/lib/ws";
-import { CheckedAt, useCheckAgain } from "./link-status";
+import { CheckedAt, useCheckAgain, useEditLink } from "./link-status";
 import { useRun } from "./use-run";
 
 /*
@@ -23,6 +23,7 @@ const shortUrl = (u: string) => u.trim().replace(/^https?:\/\//i, "").replace(/\
 export function BrokenLinksCard({ brandId, className }: { brandId?: string; className?: string }) {
   const { ws, openAsset } = useApp();
   const { again, busyId } = useCheckAgain();
+  const editLink = useEditLink();
   const [all, setAll] = useState(false);
   const inBrand = (id: string | null) => !brandId || id === brandId || (!!id && ws.brand(id)?.parentId === brandId);
   const items = ws.d.assets
@@ -43,7 +44,7 @@ export function BrokenLinksCard({ brandId, className }: { brandId?: string; clas
         {brandId && <CheckBrandLinksButton brandId={brandId} />}
       </div>
       <p className="m-0 mb-3 text-meta text-mute-2 text-pretty">
-        Checked once a day, last at <CheckedAt at={linkCheckOf(items[0])!.checkedAt} now={ws.d.now} />. Fix the address on the asset, or check again once the page is back.
+        Checked once a day, last at <CheckedAt at={linkCheckOf(items[0])!.checkedAt} now={ws.d.now} />. Press Edit link to fix an address, or Check again once the page is back.
       </p>
       <ul className="m-0 list-none p-0">
         {shown.map((a) => {
@@ -59,11 +60,14 @@ export function BrokenLinksCard({ brandId, className }: { brandId?: string; clas
                   {" · "}<span className="font-mono">{shortUrl(a.url)}</span>
                 </span>
               </button>
-              {canCheck && (
-                <Btn size="sm" variant="ghost" disabled={busyId !== null} onClick={() => again(a.id)} aria-label={`${busyId === a.id ? "Checking" : "Check again"}: ${a.name}`}>
-                  {busyId === a.id ? "Checking…" : "Check again"}
-                </Btn>
-              )}
+              <span className="flex flex-none flex-wrap justify-end gap-1.5">
+                {ws.canChange(a) && <Btn size="sm" onClick={() => editLink(a)} aria-label={`Edit link: ${a.name}`}>Edit link</Btn>}
+                {canCheck && (
+                  <Btn size="sm" disabled={busyId !== null} onClick={() => again(a.id)} aria-label={`${busyId === a.id ? "Checking" : "Check again"}: ${a.name}`}>
+                    {busyId === a.id ? "Checking…" : "Check again"}
+                  </Btn>
+                )}
+              </span>
             </li>
           );
         })}

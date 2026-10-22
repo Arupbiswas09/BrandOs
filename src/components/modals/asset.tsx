@@ -7,6 +7,7 @@ import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY, roleOf, type AssetCategory } from "@/lib/constants";
 import { addTags, tagPool } from "@/lib/tags";
+import { linkAddressIssue } from "@/lib/link-health";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
 import { checkBatch, sizeLabel } from "@/lib/upload-policy";
 import { useAction, useApp } from "@/components/app/provider";
@@ -155,7 +156,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     if (files.length && id) void uploadQueued(id, files);
   };
 
-  const valid = !!(d.name.trim() && d.type && (!drive || d.url.trim()));
+  // Two links pasted into one field never open: say so here, before saving.
+  const urlIssue = linkAddressIssue(d.url);
+  const urlError = urlIssue && (urlIssue === "Two links in one address"
+    ? "This has two links in it. Keep one here; add the other as its own asset or in the notes."
+    : "This has a space in it, so it can't open. Take the space out.");
+  const valid = !!(d.name.trim() && d.type && (!drive || d.url.trim()) && !urlIssue);
   const title = editing ? "Edit asset" : step === 3 && d.type ? `New ${d.type.toLowerCase()}` : "What are you making?";
   const stepLabel = editing || step === 3 ? undefined : known ? "One step: the rest is already known" : `Step ${step + 1} of 4`;
 
@@ -260,12 +266,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           {/* A Drive link is the link itself, so it is asked for first and files are left out of the way. */}
           {drive && (
-            <Field label="Drive link" required>
+            <Field label="Drive link" required error={urlError}>
               <input required type="text" inputMode="url" className="field text-lead" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
             </Field>
           )}
           {/* Pages people land on are their address; ask for it up front. */}
-          {!drive && urlFirst && <Field label="Live URL"><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/free-audit" /></Field>}
+          {!drive && urlFirst && <Field label="Live URL" error={urlError}><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/free-audit" /></Field>}
           {canUpload && !drive && (
             <div>
               <div className="label">Files</div>
@@ -326,7 +332,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                 <Field label="Type" required><Select value={d.type} onChange={setType} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
                 <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
               </div>
-              {!drive && !urlFirst && <Field label="Live URL or doc link"><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/page or a doc link" /></Field>}
+              {!drive && !urlFirst && <Field label="Live URL or doc link" error={urlError}><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/page or a doc link" /></Field>}
               {/* CTAs belong to a brand; tags do not, so Global Library items keep theirs editable too. */}
               <div className={cx("grid gap-3", d.brandId && "sm:grid-cols-2")}>
                 {d.brandId && <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>}

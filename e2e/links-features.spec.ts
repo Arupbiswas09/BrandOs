@@ -183,8 +183,8 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   expect(body).toContain('"status":404');
   // In the drawer: what failed and when, under the title.
   let drawer = await drawerFor(page, id, name);
-  await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
-  await expect(drawer.getByText(/checked \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}/)).toBeVisible();
+  await expect(drawer.getByText("Page not found (404).")).toBeVisible();
+  await expect(drawer.getByText(/checked \d{1,2} [A-Z][a-z]{2}, \d{2}:\d{2}/i)).toBeVisible();
   // On the offer: a badge on its card and beside its key link.
   await page.goto(`/offers/${OFFER}`);
   await settle(page);
@@ -202,7 +202,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   // A new address hides the old result at once, before it is checked.
   await saveAsset(page, { id, name, url: `${base}/moved`, linked: true });
   drawer = await drawerFor(page, id, name);
-  await expect(drawer.getByText(/Link not responding/)).toHaveCount(0);
+  await expect(drawer.getByText(/This link doesn.t open/)).toHaveCount(0);
 
   // It redirects to a page that refuses HEAD but opens with GET.
   hits.length = 0;
@@ -211,7 +211,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   expect(ok).toContain('"status":200');
   expect(hits).toEqual(expect.arrayContaining(["HEAD /moved", "HEAD /ok", "GET /ok"]));
   drawer = await drawerFor(page, id, name);
-  await expect(drawer.getByText(/Link not responding/)).toHaveCount(0);
+  await expect(drawer.getByText(/This link doesn.t open/)).toHaveCount(0);
 
   // When a link that opened stops opening, history says so once.
   movedBreaks = true;
@@ -219,7 +219,7 @@ test("a link that answers 404 is flagged, and one that opens is not", async ({ p
   const broke = await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [id]);
   expect(broke).toContain('"status":404');
   drawer = await drawerFor(page, id, name);
-  await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
+  await expect(drawer.getByText("Page not found (404).")).toBeVisible();
   await drawer.getByRole("tab", { name: /^History/ }).click();
   await expect(drawer.getByText("Found a broken link on: Page not found (404)", { exact: true })).toHaveCount(1);
   movedBreaks = false;
@@ -237,7 +237,7 @@ test("a link that never answers, or whose domain does not exist, says so plainly
   const nowhere = await saveAsset(page, { name: `Nowhere page ${tag}`, url: "no-such-place.invalid/landing" });
   expect(await callAction(page, FROM, "app/link-actions.ts", "checkLinkNow", [nowhere])).toMatch(/No such domain|The domain could not be looked up/);
   const drawer = await drawerFor(page, slow, `Slow page ${tag}`);
-  await expect(drawer.getByText(/^Link not responding · Did not answer in 8 seconds · checked/)).toBeVisible();
+  await expect(drawer.getByText("Did not answer in 8 seconds.")).toBeVisible();
 });
 
 test("the page's picture becomes the card picture; SVG and missing pictures are refused", async ({ page }) => {
@@ -305,7 +305,7 @@ test("the daily run checks links and gives a new landing page its picture, once"
   expect(r.checked).toBeGreaterThan(0);
   expect(r.pictures).toBeGreaterThanOrEqual(1);
   const drawer = await drawerFor(page, id, name);
-  await expect(drawer.getByText(/Link not responding/)).toHaveCount(0);
+  await expect(drawer.getByText(/This link doesn.t open/)).toHaveCount(0);
   await expect(drawer.locator(`img[src*="/api/assets/${id}/thumbnail/"]`)).toBeVisible();
   // A second run straight after skips everything that is fresh.
   const again = await (await page.request.get("/api/cron/links", { headers: auth, timeout: 280_000 })).json();
@@ -373,7 +373,7 @@ test("the warnings and the tracked links dialog meet WCAG 2.2 AA, at 1440 and 39
     await expect(trigger).toBeFocused();
 
     const drawer = await drawerFor(page, id, name);
-    await expect(drawer.getByText("Link not responding (404)")).toBeVisible();
+    await expect(drawer.getByText("Page not found (404).")).toBeVisible();
     r = await new AxeBuilder({ page }).withTags(TAGS).analyze();
     expect(r.violations.map((v) => `${width} drawer: ${v.id}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`)).toEqual([]);
   }

@@ -1,5 +1,6 @@
 "use server";
 
+import { linkAddressIssue } from "@/lib/link-health";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, desc } from "drizzle-orm";
@@ -500,7 +501,7 @@ const assetDraft = z.object({
   channel: str(80).default("Owned"),
   status: z.enum(["Draft", "Ready", "Live", "Archived"]).default("Draft"),
   short: str(300).default(""),
-  url: str(1000).default(""),
+  url: str(1000).default("").refine((u) => !linkAddressIssue(u), "Put one link in the address. This one has a space in it, so it can't open: if it is two links, add the other as its own asset or in the notes."),
   notes: str().default(""),
   specs: str(1000).default(""),
   audienceNotes: str(2000).default(""),

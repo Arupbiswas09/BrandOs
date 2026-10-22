@@ -53,6 +53,35 @@ export function linkProblem(c: Pick<LinkCheck, "status" | "error">): string {
   return STATUS_WORDS[c.status] ?? (c.status >= 500 ? "Server error" : "Did not open");
 }
 
+/**
+ * Something wrong with the address itself, before anyone opens it: a space,
+ * usually two links pasted into one field. Null when it looks like one address.
+ */
+export function linkAddressIssue(raw: string): string | null {
+  const t = raw.trim();
+  if (!t || !/\s/.test(t)) return null;
+  const links = t.split(/\s+/).filter((p) => /^(https?:\/\/|www\.|[a-z0-9-]+(\.[a-z0-9-]+)+(\/|$))/i.test(p));
+  return links.length > 1 ? "Two links in one address" : "A space in the address";
+}
+
+/** What to do about a failed check, in one plain sentence. */
+export function linkAdvice(c: Pick<LinkCheck, "status" | "error">, url: string): string {
+  const host = (() => { try { return new URL(/^https?:\/\//i.test(url.trim()) ? url.trim() : `https://${url.trim()}`).hostname; } catch { return ""; } })();
+  if (c.error === "Two links in one address") return "Keep one link here. Put the other in its own asset or in the notes.";
+  if (c.error === "A space in the address") return "Take the space out, or copy the link again and paste it on its own.";
+  if (c.error === "No such domain" || c.error === "The domain could not be looked up") return "The web address may be misspelt, or the domain has run out.";
+  if (c.error === "Not a web address") return "Paste a full web address, for example yoursite.org/page.";
+  if (c.status === 404 || c.status === 410 || c.status === 400) {
+    return isGoogleDrive(host)
+      ? "Google can't find it. Open it in Drive yourself; if it opens, copy the link again with Drive's Share button."
+      : "The page isn't there any more. Paste its new address, or ask whoever runs the site.";
+  }
+  if (c.status === 401 || c.status === 403) return "The page asks for a sign-in or turns visitors away. If the team can open it, it is fine.";
+  if (c.status != null && c.status >= 500) return "The site has a problem on its side. Check again later.";
+  if (c.error?.startsWith("Did not answer")) return "The site was too slow to answer. Check again later.";
+  return "Open the link to see what is wrong, then edit it or check again.";
+}
+
 /** Google Drive and Docs links answer 401 or 403 when a file is private, which is normal for client files. */
 export function isGoogleDrive(host: string): boolean {
   const h = host.toLowerCase();

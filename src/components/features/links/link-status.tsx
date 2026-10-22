@@ -4,9 +4,9 @@ import { useState, useSyncExternalStore } from "react";
 import type { Asset } from "@/db/schema";
 import { checkLinkNow } from "@/app/link-actions";
 import { useApp } from "@/components/app/provider";
-import { cx } from "@/components/ui";
+import { Btn, cx } from "@/components/ui";
 import { fmtDate, fmtTime } from "@/lib/format";
-import { isLinkBroken, linkCheckOf, linkProblem } from "@/lib/link-health";
+import { isLinkBroken, linkAdvice, linkCheckOf, linkProblem } from "@/lib/link-health";
 import { useRun } from "./use-run";
 
 /*
@@ -27,6 +27,12 @@ export function CheckedAt({ at, now }: { at: string; now?: number }) {
 /** "Link not responding (404)". */
 export function notRespondingLabel(status: number | null | undefined) {
   return `Link not responding${status ? ` (${status})` : ""}`;
+}
+
+/** Opens the asset's edit form, where its address is. Shared by the warning and the broken-links card. */
+export function useEditLink() {
+  const { ws, open } = useApp();
+  return (a: Asset) => open({ kind: "asset", draft: { ...a, offerIds: ws.linkedOfferIds(a.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 });
 }
 
 /** Checks one asset's link again and says how it went. Shared by the status line and the broken-links card. */
@@ -53,6 +59,7 @@ export function useCheckAgain() {
 export function LinkStatus({ asset, variant = "line", className }: { asset: Asset; variant?: "line" | "badge"; className?: string }) {
   const { ws } = useApp();
   const { again, pending } = useCheckAgain();
+  const editLink = useEditLink();
   if (!isLinkBroken(asset)) return null;
   const check = linkCheckOf(asset)!;
   const problem = linkProblem(check);
@@ -69,19 +76,23 @@ export function LinkStatus({ asset, variant = "line", className }: { asset: Asse
   }
 
   const canCheck = ws.can("edit");
+  const canEdit = ws.canChange(asset);
+  // A clear message, not a status code: what is wrong, what to do, and the buttons to do it.
   return (
-    <div className={cx("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-warn/35 bg-warn/8 px-3 py-2", className)}>
-      <span aria-hidden className="size-1.5 flex-none rounded-full bg-warn" />
-      <p className="m-0 min-w-0 flex-1 text-meta leading-[1.45] text-warn-ink">
-        <span className="font-semibold">{label}</span>
-        {(check.error || !check.status) && <> · {problem}</>}
-        <span className="text-warn-text"> · checked <CheckedAt at={check.checkedAt} now={ws.d.now} /></span>
+    <div className={cx("rounded-xl border border-warn/40 bg-warn/8 px-4 py-3", className)}>
+      <p className="m-0 flex items-center gap-2 text-body font-semibold text-warn-ink">
+        <span aria-hidden className="size-2 flex-none rounded-full bg-warn" />
+        {"This link doesn't open"}
       </p>
-      {canCheck && (
-        <button type="button" disabled={pending} onClick={() => again(asset.id)}
-          className="-my-1 min-h-7 flex-none rounded-sm px-1 text-meta font-semibold text-warn-ink underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-60">
-          {pending ? "Checking…" : "Check again"}
-        </button>
+      <p className="m-0 mt-1 text-meta leading-[1.5] text-ink-3 text-pretty">
+        <span className="font-semibold text-ink">{problem}{check.status ? ` (${check.status})` : ""}.</span> {linkAdvice(check, asset.url)}
+      </p>
+      <p className="m-0 mt-1 text-small text-mute-2">Checked <CheckedAt at={check.checkedAt} now={ws.d.now} /></p>
+      {(canEdit || canCheck) && (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {canEdit && <Btn size="sm" onClick={() => editLink(asset)}>Edit link</Btn>}
+          {canCheck && <Btn size="sm" disabled={pending} aria-busy={pending || undefined} onClick={() => again(asset.id)}>{pending ? "Checking…" : "Check again"}</Btn>}
+        </div>
       )}
     </div>
   );

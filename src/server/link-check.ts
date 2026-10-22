@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb, schema as s } from "@/db";
 import type { Asset, LinkCheck } from "@/db/schema";
-import { CHECK_TIMEOUT_S, linkCheckDue, linkCheckOf, linkProblem, statusAnswers, wantsPagePicture, type StoredLinkCheck } from "@/lib/link-health";
+import { CHECK_TIMEOUT_S, linkAddressIssue, linkCheckDue, linkCheckOf, linkProblem, statusAnswers, wantsPagePicture, type StoredLinkCheck } from "@/lib/link-health";
 import { readAll, type All } from "@/server/data";
 import { getUploadPolicy } from "@/server/limits";
 import { LINK_CHECKER, linkFetch, type Fetcher } from "@/server/link-fetcher";
@@ -47,6 +47,9 @@ const challenged = (r: SafeResponse) => (r.status === 403 || r.status === 503) &
 export async function checkAssetLink(asset: Pick<Asset, "url">, fetcher: Fetcher = linkFetch, now = new Date()): Promise<StoredLinkCheck> {
   const raw = asset.url.trim();
   const checkedAt = now.toISOString();
+  // Two links pasted into one field never open; say so instead of asking the site.
+  const issue = linkAddressIssue(raw);
+  if (issue) return { ok: false, status: null, error: issue, checkedAt, url: raw };
   let url: URL;
   try { url = normaliseUrl(raw); } catch { return { ok: false, status: null, error: "Not a web address", checkedAt, url: raw }; }
 
