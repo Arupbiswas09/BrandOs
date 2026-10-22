@@ -233,15 +233,22 @@ function build(ws: WS): Entry[] {
   page("launches", "Launches", "Offer launch dates", { type: "href", href: "/calendar" }, "calendar dates launch schedule month");
   page("inbox", "Your queue", "What is waiting on you", { type: "action", action: "inbox" }, "inbox notifications mentions review waiting");
   if (!ws.isGuest) page("library", "Global Library", "Checklists, prompts, templates, SOPs", { type: "href", href: "/library" }, "checklists prompts templates sops shared");
-  page("settings", "Settings", "Profile, display, notifications, security", { type: "href", href: "/settings" }, "profile password two-step verification notifications email display theme calendar feed sessions security");
+  page("settings", "Settings", "Profile, display, notifications, security", { type: "href", href: "/settings" }, "profile password two-step verification sessions security install app");
+  // Each Settings section can be found by what it is about, and opens on that section.
+  const section = (key: string, name: string, sub: string, keywords: string) => page(`settings-${key}`, name, sub, { type: "href", href: `/settings?section=${key}` }, keywords);
+  section("appearance", "Appearance", "Settings · colours for this browser", "colour colours theme palette accent display look");
+  section("notifications", "Notifications", "Settings · what BrandOS tells you about", "email emails digest daily alerts notify");
+  section("calendar", "Calendar feed", "Settings · launches in your own calendar", "calendar feed link ics google apple outlook subscribe");
+  if (ws.can("access") || ws.can("export")) section("workspace", "Slack and export", "Settings · messages and a full backup", "slack export backup download data json");
+  if (d.uploads.admin) section("uploads", "Upload limits", "Settings · largest file for each kind", "upload limits file size storage quota");
   if (seeTeam) {
-    page("team", "Team and access", `${d.users.length} people`, { type: "href", href: "/team" }, "people invite roles groups permissions upload limits access map");
+    page("team", "Team and access", `${d.users.length} people`, { type: "href", href: "/team" }, "people invite roles groups permissions access map");
     page("audit", "Audit log", "Sign-ins, access changes and deletions", { type: "href", href: "/audit" }, "security log history sign-ins");
   }
   if (ws.can("del")) page("trash", "Recycle bin", "Deleted assets and files", { type: "href", href: "/trash" }, "trash bin deleted restore");
   page("shortcuts", "Keyboard shortcuts", "Every key BrandOS listens for", { type: "action", action: "shortcuts" }, "keys help hotkeys");
   if (ws.can("edit")) {
-    page("new", "Create something", "Offer, asset, service, CTA, brand or client", { type: "action", action: "new" }, "new add create");
+    page("new", "Create something", "Offer, asset, service, brand or client", { type: "action", action: "new" }, "new add create");
     page("new-offer", "New offer", "Positioning, goals, promise and proof", { type: "action", action: "new-offer" }, "create add offer");
     page("new-asset", "New asset", "A landing page, email, ad or file", { type: "action", action: "new-asset" }, "create add asset upload landing page email ad");
     page("new-service", "New service", "A capability you sell", { type: "action", action: "new-service" }, "create add service");
