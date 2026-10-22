@@ -59,6 +59,62 @@ export function pruneArrows(f: Funnel): Funnel {
 
 export const sameLink = (a?: FunnelLink, b?: FunnelLink) => (!a && !b) || (!!a && !!b && a.type === b.type && a.id === b.id);
 
+/* ---------------------------------------------------------------- delete and undo */
+
+/** What one delete took off the board, and where each piece sat in its list, so Undo can put it back as it was. */
+export type Removed = { boxes: { at: number; box: FunnelBox }[]; arrows: { at: number; arrow: FunnelArrow }[] };
+
+const without = (f: Funnel, boxIds: Set<string>, arrowIds: Set<string>): Funnel => ({
+  boxes: f.boxes.filter((b) => !boxIds.has(b.id)),
+  arrows: f.arrows.filter((a) => !arrowIds.has(a.id)),
+});
+
+/** Takes a box off the board with every arrow that starts or ends at it. Null when it is not there. */
+export function removeBox(f: Funnel, id: string): { funnel: Funnel; removed: Removed } | null {
+  const at = f.boxes.findIndex((b) => b.id === id);
+  if (at < 0) return null;
+  const arrows = f.arrows.flatMap((arrow, i) => (arrow.from === id || arrow.to === id ? [{ at: i, arrow }] : []));
+  const removed: Removed = { boxes: [{ at, box: f.boxes[at] }], arrows };
+  return { funnel: without(f, new Set([id]), new Set(arrows.map((x) => x.arrow.id))), removed };
+}
+
+/** Takes one arrow off the board. Null when it is not there. */
+export function removeArrow(f: Funnel, id: string): { funnel: Funnel; removed: Removed } | null {
+  const at = f.arrows.findIndex((a) => a.id === id);
+  if (at < 0) return null;
+  return { funnel: without(f, new Set(), new Set([id])), removed: { boxes: [], arrows: [{ at, arrow: f.arrows[at] }] } };
+}
+
+/**
+ * Puts back what a delete took, each piece at its old place in its list, so
+ * the board reads exactly as before. Anything already back is left alone, as
+ * is an arrow whose two boxes another arrow now joins the same way. An arrow
+ * whose box at either end has gone since cannot come back: `missed` counts
+ * those. Null when the board has no room for it all any more.
+ */
+export function restore(f: Funnel, r: Removed): { funnel: Funnel; missed: number } | null {
+  const have = new Set(f.boxes.map((b) => b.id));
+  const back = r.boxes.filter((x) => !have.has(x.box.id)).sort((a, b) => a.at - b.at);
+  for (const x of back) have.add(x.box.id);
+  const ids = new Set(f.arrows.map((a) => a.id));
+  const joins = new Set(f.arrows.map((a) => `${a.from}>${a.to}`));
+  let missed = 0;
+  const comeBack = [...r.arrows].sort((a, b) => a.at - b.at).filter(({ arrow: a }) => {
+    const key = `${a.from}>${a.to}`;
+    if (ids.has(a.id) || joins.has(key)) return false;
+    if (!have.has(a.from) || !have.has(a.to)) { missed++; return false; }
+    joins.add(key);
+    return true;
+  });
+  if (f.boxes.length + back.length > MAX_BOXES || f.arrows.length + comeBack.length > MAX_ARROWS) return null;
+  if (!back.length && !comeBack.length) return { funnel: f, missed };
+  const boxes = [...f.boxes];
+  for (const x of back) boxes.splice(Math.min(x.at, boxes.length), 0, x.box);
+  const arrows = [...f.arrows];
+  for (const x of comeBack) arrows.splice(Math.min(x.at, arrows.length), 0, x.arrow);
+  return { funnel: { boxes, arrows }, missed };
+}
+
 /* ---------------------------------------------------------------- geometry */
 
 export type Rect = { x: number; y: number; w: number; h: number };

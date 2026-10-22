@@ -7,7 +7,11 @@ import { WS } from "@/lib/ws";
 import type { Result } from "@/app/actions";
 import type { ModalSpec } from "@/components/modals/types";
 
-export type Toast = { id: number; text: string; tone: "ok" | "error" | "info" };
+/** One thing a toast offers to do, such as Undo. Pressing it also closes the toast. */
+export type ToastAction = { label: string; onClick: () => void };
+/** `signal` closes the toast early when it aborts: an Undo that only makes sense while its screen is open, say. */
+export type ToastOptions = { action?: ToastAction; signal?: AbortSignal };
+export type Toast = { id: number; text: string; tone: "ok" | "error" | "info"; action?: ToastAction };
 
 type Ctx = {
   ws: WS;
@@ -23,7 +27,8 @@ type Ctx = {
   assetId: string | null;
   openAsset: (id: string, tab?: string) => void;
   closeAsset: () => void;
-  toast: (text: string, tone?: Toast["tone"]) => void;
+  /** Shows a toast; the Toasts stack decides how long it stays. */
+  toast: (text: string, tone?: Toast["tone"], options?: ToastOptions) => void;
   toasts: Toast[];
   dismissToast: (id: number) => void;
   nudge: { assetId: string; offerId: string } | null;
@@ -49,12 +54,14 @@ export function WorkspaceProvider({ data, children }: { data: Workspace; childre
   const [lastPath, setLastPath] = useState(pathname);
   if (lastPath !== pathname) { setLastPath(pathname); if (nav) setNav(false); }
 
-  const toast = useCallback((text: string, tone: Toast["tone"] = "ok") => {
-    const id = ++seq.current;
-    setToasts((t) => [...t, { id, text, tone }]);
-    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), tone === "error" ? 6000 : 3200);
-  }, []);
   const dismissToast = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
+  // Each toast times itself out in the Toasts stack, which holds one with an action while it is hovered or focused.
+  const toast = useCallback((text: string, tone: Toast["tone"] = "ok", options?: ToastOptions) => {
+    if (options?.signal?.aborted) return;
+    const id = ++seq.current;
+    setToasts((t) => [...t, { id, text, tone, ...(options?.action && { action: options.action }) }]);
+    options?.signal?.addEventListener("abort", () => dismissToast(id), { once: true });
+  }, [dismissToast]);
 
   const withParam = useCallback((key: string, value: string | null, extra?: Record<string, string | null>) => {
     const next = new URLSearchParams(params.toString());

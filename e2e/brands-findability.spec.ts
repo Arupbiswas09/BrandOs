@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator } from "@playwright/test";
 import { settle, signIn } from "./helpers";
 
@@ -152,4 +153,68 @@ test("on a phone, a brand's Assets keeps Add asset on screen, and Import looks l
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
   expect(await bordered(page.getByRole("link", { name: "Import", exact: true }))).toBe(true);
+});
+
+test("Strategy: a segment opens the brand's offers for that segment, and the filter shows and clears", async ({ page }) => {
+  await signIn(page);
+  await page.goto("/brands/br1/strategy");
+  await settle(page);
+  await page.getByRole("link", { name: /^Church\W*\d+ offers?$/ }).click();
+  await expect(page).toHaveURL(/\/brands\/br1\/offers\?segment=Church$/);
+  await settle(page);
+  const main = page.getByRole("main");
+  const chip = main.getByRole("button", { name: "Segment: Church, clear this filter" });
+  await expect(chip).toBeVisible();
+  await expect(main.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
+  await expect(main.getByRole("link", { name: /Ad Grant for School Enrolment/ })).toHaveCount(0);
+  // The chip takes the Segment menu's place, so the choice is shown once.
+  await expect(main.getByRole("combobox", { name: "Segment" })).toHaveCount(0);
+
+  // The other filters still work alongside it.
+  await main.getByRole("combobox", { name: "Status" }).selectOption("Ideation");
+  await expect(main.getByRole("link", { name: /Workspace for Churches/ })).toBeVisible();
+  await expect(main.getByRole("link", { name: /Ad Grant for Church Reach/ })).toHaveCount(0);
+  await main.getByRole("combobox", { name: "Status" }).selectOption("All");
+  await expect(main.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
+
+  const scan = await new AxeBuilder({ page }).include("main").withTags(["wcag2a", "wcag2aa", "wcag22aa"]).analyze();
+  const problems = scan.violations.map((v) => `${v.id} × ${v.nodes.length}: ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
+  expect(problems, problems.join("\n")).toEqual([]);
+
+  // Clearing it shows every segment and hands focus to the Segment menu; choosing from the menu brings a chip back.
+  await chip.focus();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/brands\/br1\/offers$/);
+  await expect(main.getByRole("link", { name: /Ad Grant for School Enrolment/ })).toBeVisible();
+  const menu = main.getByRole("combobox", { name: "Segment" });
+  await expect(menu).toBeFocused();
+  await menu.selectOption("Education");
+  await expect(page).toHaveURL(/\?segment=Education$/);
+  await expect(main.getByRole("button", { name: "Segment: Education, clear this filter" })).toBeFocused();
+
+  // A segment the brand does not have says so, with a way out.
+  await page.goto("/brands/br1/offers?segment=Nobody");
+  await settle(page);
+  await expect(main.getByText("No segment by that name")).toBeVisible();
+  await expect(main.getByText(/no segment called “Nobody”/)).toBeVisible();
+  await main.getByRole("button", { name: "Show every segment" }).click();
+  await expect(page).toHaveURL(/\/brands\/br1\/offers$/);
+  await expect(main.getByRole("link", { name: /Ad Grant for Church Reach/ })).toBeVisible();
+
+  // A service's segment heading reaches the same list when other services speak to that segment too.
+  await page.goto("/services/sv1");
+  await settle(page);
+  const across = page.getByRole("tabpanel").getByRole("link", { name: /^Church offers: All \d+ in this brand$/ });
+  await expect(across).toHaveAttribute("href", "/brands/br1/offers?segment=Church");
+  await across.click();
+  await expect(page).toHaveURL(/\/brands\/br1\/offers\?segment=Church$/);
+  await expect(main.getByRole("button", { name: "Segment: Church, clear this filter" })).toBeVisible();
+
+  // On a phone the filtered list fits without sideways scrolling.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await settle(page);
+  await expect(main.getByRole("button", { name: "Segment: Church, clear this filter" })).toBeVisible();
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  expect(overflow, `the offers page scrolls sideways by ${overflow}px`).toBeLessThanOrEqual(1);
 });

@@ -3,13 +3,13 @@
 import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { Spline } from "lucide-react";
 import type { Funnel, FunnelBox, FunnelLink, Offer } from "@/db/schema";
-import type { Result } from "@/app/actions";
-import { draftFunnel, saveFunnel } from "@/app/funnel-actions";
+import { draftFunnel, saveFunnel, type SaveResult } from "@/app/funnel-actions";
 import {
-  EMPTY_FUNNEL, GRID, MAX_ARROWS, MAX_BOXES, arrowLine, boxHeightGuess, boxWidth, buildDraft, clampCoord, draftSource, fid, snap, type Rect,
+  EMPTY_FUNNEL, GRID, MAX_ARROWS, MAX_BOXES, arrowLine, boxHeightGuess, boxWidth, buildDraft, clampCoord, draftSource, fid, removeArrow, removeBox, restore, snap,
+  type Rect, type Removed,
 } from "@/lib/funnel";
 import { plural } from "@/lib/ws";
-import { useAction, useApp } from "@/components/app/provider";
+import { useAction, useApp, type ToastAction } from "@/components/app/provider";
 import { Btn, Card, Empty, cx } from "@/components/ui";
 import { BoxView, DEFAULT_TEXT, boxName } from "./box";
 import { ArrowInspector, BoxInspector } from "./inspector";
@@ -19,7 +19,9 @@ import { LinkSelect, linkGroups, parseLinkValue, resolveLink, type Resolved } fr
  * The funnel board on an offer page. Local state is the truth while you
  * edit; changes save themselves 600 ms after you stop. What the server sends
  * back is taken on only when nothing local is waiting to save, so a refresh
- * never undoes what you just did.
+ * never undoes what you just did. Deleting a box or an arrow offers Undo in
+ * a toast for as long as the board is on screen; Undo is one more change
+ * through the same autosave.
  */
 
 type Sel = { kind: "box" | "arrow"; id: string; focus?: boolean } | null;
@@ -30,6 +32,21 @@ const SAVE_AFTER = 600;
 const PANEL_W = 300, PANEL_H = 300, ARROW_W = 280, ARROW_H = 200;
 const LINE = "#7B8798";
 const typing = (el: EventTarget | null) => el instanceof HTMLElement && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
+
+type Undoable = { action: ToastAction; close: AbortController };
+
+/** The signed notes for the boxes on this board, or nothing when there are none. */
+const notesFor = (kept: Map<string, string>, f: Funnel) => {
+  const out = f.boxes.flatMap((b) => kept.get(b.id) ?? []);
+  return out.length ? out : undefined;
+};
+
+/** "Deleted the box and its 2 arrows", in the toast that offers Undo. */
+const deletedText = (r: Removed) => {
+  if (!r.boxes.length) return "Deleted the arrow";
+  const n = r.arrows.length;
+  return `Deleted the box${n === 1 ? " and its arrow" : n > 1 ? ` and its ${n} arrows` : ""}`;
+};
 
 const moveBox = (f: Funnel, id: string, x: number, y: number): Funnel => ({ ...f, boxes: f.boxes.map((b) => (b.id === id ? { ...b, x, y } : b)) });
 const patchBox = (f: Funnel, id: string, p: Partial<Omit<FunnelBox, "link">>): Funnel => ({ ...f, boxes: f.boxes.map((b) => (b.id === id ? { ...b, ...p } : b)) });
@@ -49,7 +66,7 @@ function freeSpot(rects: Rect[], nb: Pick<FunnelBox, "kind" | "link">, left: num
 }
 
 export function FunnelBoard({ offer }: { offer: Offer }) {
-  const { ws, toast } = useApp();
+  const { ws, toast, toasts } = useApp();
   const [runAction, drafting] = useAction();
   // Used in SVG url(#…) references, so only plain characters.
   const uid = "fb" + useId().replace(/[^a-zA-Z0-9_-]/g, "");
@@ -83,17 +100,24 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
   const scroller = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
   const ro = useRef<ResizeObserver | null>(null);
+  // The server's signed note for each linked box a save took off the board, sent back if Undo puts the box back (see saveFunnel).
+  const kept = useRef(new Map<string, string>());
+  // Deletes that can still be undone, newest last: each one's toast action, and a way to close that toast.
+  const undos = useRef<Undoable[]>([]);
 
   const flush = useCallback(async () => {
     if (timer.current) { clearTimeout(timer.current); timer.current = null; }
     if (inflight.current) { again.current = true; return; }
     inflight.current = true;
     setStatus("saving");
-    let r: Result = { ok: true };
+    let r: SaveResult = { ok: true };
     do {
       again.current = false;
-      try { r = await saveFunnel(offerId, ref.current); }
-      catch { r = { ok: false, error: "The funnel did not save. Check your connection and try again." }; }
+      const f = ref.current;
+      try {
+        r = await saveFunnel(offerId, f, notesFor(kept.current, f));
+        for (const k of r.kept ?? []) kept.current.set(k.box, k.token);
+      } catch { r = { ok: false, error: "The funnel did not save. Check your connection and try again." }; }
     } while (again.current);
     inflight.current = false;
     if (timer.current) return; // a newer change is already on its way
@@ -119,14 +143,22 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
 
   // Leaving the page (or this offer) with a save still waiting sends it straight away.
   useEffect(() => {
-    const t = timer, f = ref;
+    const t = timer, f = ref, k = kept;
     return () => {
       if (!t.current) return;
       clearTimeout(t.current);
       t.current = null;
-      void saveFunnel(offerId, f.current);
+      void saveFunnel(offerId, f.current, notesFor(k.current, f.current));
     };
   }, [offerId]);
+  // Undo belongs to this board: it goes when the board does, or when you can no longer change it.
+  useEffect(() => {
+    const u = undos;
+    return () => {
+      for (const x of u.current) x.close.abort();
+      u.current = [];
+    };
+  }, [offerId, editable]);
   useEffect(() => {
     if (!busy) return;
     const warn = (e: BeforeUnloadEvent) => e.preventDefault();
@@ -250,13 +282,46 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
     if (sel.kind === "box") focusBox(sel.id); else focusArrow(sel.id);
   };
 
+  /** Puts back what one delete took, through the same autosave, and returns focus to it. */
+  const undo = (removed: Removed) => {
+    const r = restore(ref.current, removed);
+    if (!r) { toast(`The board is full (up to ${MAX_BOXES} boxes and ${MAX_ARROWS} arrows), so this cannot come back. Delete something first.`, "error"); return; }
+    change(() => r.funnel);
+    const box = removed.boxes[0]?.box;
+    if (r.missed) {
+      toast(box
+        ? `${r.missed === 1 ? "One arrow" : `${r.missed} arrows`} could not come back, because the box at the other end has gone.`
+        : "The arrow could not come back, because a box at one end has gone.", "info");
+    }
+    if (box) {
+      focusBox(box.id);
+      requestAnimationFrame(() => canvas.current?.querySelector(`[data-box-id="${box.id}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" }));
+    } else if (!r.missed) focusArrow(removed.arrows[0].arrow.id);
+  };
+
   const removeSel = () => {
     if (!sel) return;
-    const id = sel.id;
-    if (sel.kind === "box") change((f) => ({ boxes: f.boxes.filter((b) => b.id !== id), arrows: f.arrows.filter((a) => a.from !== id && a.to !== id) }));
-    else change((f) => ({ ...f, arrows: f.arrows.filter((a) => a.id !== id) }));
+    const cut = sel.kind === "box" ? removeBox(ref.current, sel.id) : removeArrow(ref.current, sel.id);
     setSel(null);
     canvas.current?.focus({ preventScroll: true });
+    if (!cut) return;
+    change(() => cut.funnel);
+    const x: Undoable = {
+      action: { label: "Undo", onClick: () => { undos.current = undos.current.filter((y) => y !== x); undo(cut.removed); } },
+      close: new AbortController(),
+    };
+    undos.current.push(x);
+    toast(deletedText(cut.removed), "ok", { action: x.action, signal: x.close.signal });
+  };
+
+  /** ⌘Z (Ctrl+Z) on the board: the newest delete whose Undo is still showing, as if its button were pressed. */
+  const undoLatest = () => {
+    undos.current = undos.current.filter((y) => toasts.some((t) => t.action === y.action));
+    const x = undos.current.at(-1);
+    if (!x) return false;
+    x.close.abort();
+    x.action.onClick();
+    return true;
   };
 
   /** A click or Enter on a box: select it, or finish the arrow being drawn. */
@@ -365,7 +430,12 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
       if (sel) { e.stopPropagation(); closeSel(); }
       return;
     }
-    if (!editable || !sel || typing(e.target)) return;
+    if (!editable || typing(e.target)) return;
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "z") {
+      if (undoLatest()) e.preventDefault();
+      return;
+    }
+    if (!sel) return;
     if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); removeSel(); }
   };
 
@@ -448,7 +518,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
                 <span className="ml-auto flex items-center gap-3">
                   <span role="status" className={cx("text-small", status === "error" ? "font-semibold text-danger" : "text-mute-3")}>{saveNote}</span>
                   {status === "error" && <Btn size="sm" variant="link" onClick={() => void flush()}>Retry</Btn>}
-                  <span className="hidden text-small text-mute-3 lg:inline">Delete key removes what is selected</span>
+                  <span className="hidden text-small text-mute-3 lg:inline">Delete key removes what is selected, ⌘Z puts it back</span>
                 </span>
               </>
             )}

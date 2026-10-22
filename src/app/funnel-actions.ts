@@ -10,6 +10,7 @@ import { can, canChange } from "@/lib/access";
 import { MAX_ARROWS, MAX_BOXES, MAX_COORD, MAX_LABEL, MAX_TEXT, buildDraft, draftSource, pruneArrows, sameLink } from "@/lib/funnel";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { getViewer } from "@/server/session";
+import { sign, unsign } from "@/server/signed";
 import type { Result } from "./actions";
 
 /*
@@ -40,7 +41,7 @@ async function context(offerId: string) {
   return { me, all, vis, db, offer };
 }
 
-async function run(fn: () => Promise<Result | void>): Promise<Result> {
+async function run<R extends Result = Result>(fn: () => Promise<R | void>): Promise<R | Result> {
   try {
     const r = await fn();
     refresh();
@@ -118,9 +119,40 @@ function linkAllowed(all: All, vis: ReturnType<typeof makeVisibility>, offer: Of
   }
 }
 
-/** Replaces the offer's funnel with this one. Called by the board's autosave. */
-export async function saveFunnel(offerId: string, funnel: Funnel) {
-  return run(async () => {
+/*
+ * Undo after a delete. A box's link is only checked when it is new, so a box
+ * put back after its delete has saved is checked again, and would be refused
+ * if what it points at has gone since (a deleted file shows "Not available").
+ * So each save that takes linked boxes off the board hands back a signed note
+ * per box: this offer, this person, this box, this link. Sent back with that
+ * box within UNDO_FOR, the link counts as one that was already there.
+ * Everything else is checked as usual.
+ */
+const UNDO_FOR = 15 * 60_000;
+type KeptLink = { o: string; u: string; b: string; t: FunnelLink["type"]; i: string };
+/** A signed note for one linked box a save removed (see above). */
+export type Kept = { box: string; token: string };
+export type SaveResult = Result & { kept?: Kept[] };
+
+/** The links these notes vouch for, by box id. A note for another offer or person, or one changed or expired, counts for nothing. */
+function keptLinks(tokens: unknown, offerId: string, userId: string) {
+  const out = new Map<string, FunnelLink>();
+  if (!Array.isArray(tokens)) return out;
+  for (const t of tokens.slice(0, MAX_BOXES)) {
+    const v = typeof t === "string" ? unsign<KeptLink>(t) : null;
+    if (!v || v.o !== offerId || v.u !== userId || typeof v.b !== "string" || typeof v.i !== "string") continue;
+    const type = linkSchema.shape.type.safeParse(v.t);
+    if (type.success) out.set(v.b, { type: type.data, id: v.i });
+  }
+  return out;
+}
+
+/**
+ * Replaces the offer's funnel with this one. Called by the board's autosave.
+ * `kept` holds notes from earlier saves for boxes Undo has put back.
+ */
+export async function saveFunnel(offerId: string, funnel: Funnel, kept?: string[]): Promise<SaveResult> {
+  return run<SaveResult>(async () => {
     const { me, all, vis, db, offer } = await context(offerId);
     const d = funnelSchema.parse(funnel);
     const ids = new Set<string>();
@@ -130,8 +162,9 @@ export async function saveFunnel(offerId: string, funnel: Funnel) {
     }
     // A link that was already there stays, even if its item has since gone; new or changed links are checked.
     const before = new Map((offer.funnel?.boxes ?? []).map((b) => [b.id, b.link]));
+    const undone = keptLinks(kept, offer.id, me.id);
     for (const b of d.boxes) {
-      if (!b.link || sameLink(before.get(b.id), b.link)) continue;
+      if (!b.link || sameLink(before.get(b.id), b.link) || sameLink(undone.get(b.id), b.link)) continue;
       need(linkAllowed(all, vis, offer, b.link), "A box links to something you cannot see, or to something from another brand.");
     }
     const clean: Funnel = pruneArrows({
@@ -144,6 +177,11 @@ export async function saveFunnel(offerId: string, funnel: Funnel) {
     });
     await db.update(s.offers).set({ funnel: clean, updatedAt: new Date() }).where(eq(s.offers.id, offer.id));
     await logFunnel(db, me.id, offer);
+    // A note for each linked box this save took off the board, so Undo can put it back as it was.
+    const gone = (offer.funnel?.boxes ?? []).flatMap((b) => (b.link && !ids.has(b.id) ? [{ id: b.id, link: b.link }] : []));
+    if (!gone.length) return;
+    const note = (b: (typeof gone)[number]): KeptLink => ({ o: offer.id, u: me.id, b: b.id, t: b.link.type, i: b.link.id });
+    return { ok: true as const, kept: gone.map((b) => ({ box: b.id, token: sign(note(b), UNDO_FOR) })) };
   });
 }
 
