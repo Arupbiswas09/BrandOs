@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
-const PORT = 3200;
+// PW_PORT lets several checkouts run the suite side by side.
+const PORT = Number(process.env.PW_PORT) || 3200;
 
 /*
  * Runs against a throwaway database (PGLITE_DIR) so tests never touch your
