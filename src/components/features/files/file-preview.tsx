@@ -6,6 +6,7 @@ import { Check, Copy, Download, ExternalLink, Globe, Link2, Maximize2, Play, X }
 import type { Asset, FileRef } from "@/db/schema";
 import { linkEmbed, linkParts, webUrl, type Embed } from "@/lib/embeds";
 import { extOf, previewKind } from "@/lib/files";
+import { useApp } from "@/components/app/provider";
 import { Btn, IconBtn, cx } from "@/components/ui";
 import { FOCUS } from "@/components/polish";
 import { KindIcon, LINK_BTN } from "./parts";
@@ -261,14 +262,20 @@ function FileCard({ f }: { f: FileRef }) {
 
 /** "Copy link", saying so for two seconds once it worked. */
 function CopyLink({ href }: { href: string }) {
+  const { toast } = useApp();
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
     const t = setTimeout(() => setCopied(false), 2000);
     return () => clearTimeout(t);
   }, [copied]);
+  // Where the browser will not copy (no clipboard, or permission refused), say so rather than doing nothing.
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(href); setCopied(true); }
+    catch { toast("The link could not be copied. Open it and copy it from the address bar.", "error"); }
+  };
   return (
-    <Btn size="sm" onClick={() => navigator.clipboard?.writeText(href).then(() => setCopied(true), () => {})}>
+    <Btn size="sm" onClick={() => void copy()}>
       {copied ? <Check aria-hidden size={14} className="text-ok" /> : <Copy aria-hidden size={14} />}
       <span aria-live="polite">{copied ? "Copied" : "Copy link"}</span>
     </Btn>

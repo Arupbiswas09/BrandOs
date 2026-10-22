@@ -600,6 +600,7 @@ export async function restoreVersion(assetId: string, versionId: string) {
     need(vis.asset(assetId));
     const current = all.assets.find((a) => a.id === assetId)!;
     own(me, current);
+    if (!current.brandId) need(can(me, "library"), "Only managers and admins can change the Global Library.");
     const [v] = await db.select().from(s.assetVersions).where(and(eq(s.assetVersions.id, versionId), eq(s.assetVersions.assetId, assetId)));
     need(v, "That version no longer exists.");
     const data = v.data as Partial<s.Asset>;
@@ -1146,7 +1147,11 @@ async function editItems(assetId: string, perm: Perm, fn: (items: s.CheckItem[])
     const { me, vis, db, all } = await context(perm);
     need(vis.asset(assetId));
     const a = all.assets.find((x) => x.id === assetId)!;
-    if (perm === "edit") own(me, a);
+    if (perm === "edit") {
+      own(me, a);
+      // Ticking is for everyone who comments; changing the checks of a Global Library master is the library's own permission.
+      if (!a.brandId) need(can(me, "library"), "Only managers and admins can change the Global Library.");
+    }
     await db.update(s.assets).set({ items: fn((a.items ?? []).map((i) => ({ ...i }))) }).where(eq(s.assets.id, assetId));
   });
 }
@@ -1190,11 +1195,15 @@ export async function removeFile(assetId: string, fileName: string) {
     need(vis.asset(assetId));
     const a = all.assets.find((x) => x.id === assetId)!;
     own(me, a);
-    const gone = a.files.find((f) => f.name === fileName);
-    await db.update(s.assets).set({ files: a.files.filter((f) => f.name !== fileName), updatedAt: new Date() }).where(eq(s.assets.id, assetId));
-    await log(db, me.id, "removed a file from", "asset", assetId, a.name, fileName);
-    // Keep the stored copy if an earlier version still points at it.
-    if (gone?.key && !all.assets.some((x) => x.id !== assetId && x.files.some((f) => f.key === gone.key))) await removeStoredFile(gone.key);
+    if (!a.brandId) need(can(me, "library"), "Only managers and admins can change the Global Library.");
+    if (!a.files.some((f) => f.name === fileName)) return;
+    // Like every edit, the version before is saved first, so History can put the file back. That
+    // version still points at the stored copy, so the stored copy stays.
+    await db.transaction(async (tx) => {
+      await tx.insert(s.assetVersions).values({ id: newId("av"), assetId, version: a.version, data: assetSnapshot(a), userId: me.id });
+      await tx.update(s.assets).set({ files: a.files.filter((f) => f.name !== fileName), version: a.version + 1, updatedAt: new Date() }).where(eq(s.assets.id, assetId));
+      await log(tx, me.id, "removed a file from", "asset", assetId, a.name, fileName);
+    });
   });
 }
 
