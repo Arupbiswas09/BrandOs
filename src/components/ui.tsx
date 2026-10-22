@@ -15,7 +15,8 @@ export function onScale(px: number) {
 }
 
 /** The one pill shape for small labels: status words, roles, counts in words. Chip adds a colour. */
-export const PILL = "inline-flex h-[22px] flex-none items-center whitespace-nowrap rounded-full px-2.5 text-small font-medium leading-none";
+const PILL_SHAPE = "inline-flex flex-none items-center whitespace-nowrap rounded-full font-medium leading-none";
+export const PILL = `${PILL_SHAPE} h-[22px] px-2.5 text-small`;
 
 /* ---------------------------------------------------------------- type */
 
@@ -239,9 +240,9 @@ export const IconBtn = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLBu
  * `round` is kept for older call sites; every chip is a pill now.
  */
 export function Chip({ color, children, size = "sm", className, title }: { color: string; children: ReactNode; round?: boolean; size?: "xs" | "sm" | "md"; className?: string; title?: string }) {
-  const s = { xs: "px-2", sm: "", md: "h-[26px] px-3 text-meta" }[size];
+  const s = { xs: "h-[22px] px-2 text-small", sm: "h-[22px] px-2.5 text-small", md: "h-[26px] px-3 text-meta" }[size];
   return (
-    <span title={title} className={cx(PILL, s, className)} style={{ background: hexA(color, 0.12), color: readable(color, 0.12) }}>
+    <span title={title} className={cx(PILL_SHAPE, s, className)} style={{ background: hexA(color, 0.12), color: readable(color, 0.12) }}>
       {children}
     </span>
   );

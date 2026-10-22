@@ -71,6 +71,7 @@ const KEYS: [string, string, ((ws: WS) => boolean)?][] = [
   ["G then P", "Go to Settings"],
   ["Esc", "Close whatever is on top"],
   ["⌘ ↵", "Post a note", (ws) => ws.can("comment")],
+  ["⌘ Z", "Undo a delete on the funnel board", (ws) => ws.can("edit")],
   ["?", "This list"],
 ];
 
