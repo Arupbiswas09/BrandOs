@@ -78,7 +78,7 @@ export const PERM_INFO: { perm: Perm | "view" | "own"; label: string; note: stri
   { perm: "kit", label: "Edit Brand Kits", note: "Colours, fonts, logo rules and voice." },
   { perm: "library", label: "Edit the Global Library", note: "Checklists, prompts, templates and SOPs." },
   { perm: "share", label: "Clear work to send", note: "Mark an asset as signed off and safe to send to the client." },
-  { perm: "del", label: "Delete assets, and archive clients or brands", note: "Delete assets with their files, and CTAs, and use the recycle bin, where they wait 30 days. Clients, brands, services and offers are never deleted by anyone: they are archived." },
+  { perm: "del", label: "Delete assets, and archive clients or brands", note: "Delete assets with their files, and CTAs, and use the recycle bin, where they wait 30 days. Anyone who can create work may also delete a CTA they made. Clients, brands, services and offers are never deleted by anyone: they are archived." },
   { perm: "export", label: "Export all data", note: "Download everything as JSON." },
   { perm: "access", label: "Manage the team", note: "Invite people, set roles and choose what they see." },
 ];
