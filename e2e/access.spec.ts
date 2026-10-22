@@ -55,7 +55,7 @@ test("someone with the old Client role cannot sign in, and shows as No access", 
   const row = page.getByRole("listitem").filter({ hasText: "Ruth Hale" });
   await expect(row.getByText("No access").filter({ visible: true })).toBeVisible();
   await expect(row.getByRole("button", { name: "View as" })).toHaveCount(0);
-  await row.getByRole("button", { name: "Access for Ruth Hale" }).click();
+  await row.getByRole("button", { name: "Edit access for Ruth Hale" }).click();
   const dialog = page.getByRole("dialog", { name: "Edit access" });
   await expect(dialog.getByText(/had the old Client role and cannot sign in/)).toBeVisible();
   const roles = dialog.getByRole("radiogroup", { name: "Role", exact: true }).getByRole("radio");

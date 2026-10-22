@@ -69,7 +69,7 @@ export function RoleMatrix() {
         </div>
       </Card>
       <Hint className="mt-4">
-        Roles decide what someone can <b className="font-semibold">do</b>. Scope decides what they can <b className="font-semibold">see</b>: every client, or only the clients, brands and groups you pick. Admins can also block or allow single permissions for one person (their <b className="font-semibold">Access</b> button, then Exceptions and limits), and set upload limits in Settings. Buttons a person cannot use are hidden, and the server refuses the change anyway if someone tries.
+        Roles decide what someone can <b className="font-semibold">do</b>. Scope decides what they can <b className="font-semibold">see</b>: every client, or only the clients, brands and groups you pick. Admins can also block or allow single permissions for one person (their <b className="font-semibold">Edit access</b> button, then Exceptions and limits), and set upload limits in Settings. Buttons a person cannot use are hidden, and the server refuses the change anyway if someone tries.
       </Hint>
     </>
   );
@@ -83,7 +83,7 @@ export function AccessMap() {
   const people = ws.d.users.map((u) => ({ u, scope: scopeOf(u, ws.d.groups) }));
   return (
     <>
-      <p className="mb-4 mt-0 max-w-[70ch] text-body text-mute-2">Everyone who can open each client, and what they can do there. Change it from a person&apos;s <b className="font-semibold text-ink">Access</b> button on the People tab.</p>
+      <p className="mb-4 mt-0 max-w-[70ch] text-body text-mute-2">Everyone who can open each client, and what they can do there. Change it with <b className="font-semibold text-ink">Edit access</b> on the People tab.</p>
       <div className="grid gap-4 md:grid-cols-2">
         {clients.map((c) => {
           const cb = brands.filter((b) => b.clientId === c.id);

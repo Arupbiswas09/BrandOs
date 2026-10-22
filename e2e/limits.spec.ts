@@ -41,7 +41,7 @@ test("an admin blocks one permission for one person", async ({ page }) => {
   await page.goto("/team");
   await settle(page);
   const row = page.getByRole("listitem").filter({ hasText: "Ines Batz" });
-  await row.getByRole("button", { name: "Access for Ines Batz" }).click();
+  await row.getByRole("button", { name: "Edit access for Ines Batz" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByText(/Exceptions and limits for Ines/).click();
   await dialog.getByRole("radiogroup", { name: "Upload files" }).getByRole("radio", { name: "Block" }).click();

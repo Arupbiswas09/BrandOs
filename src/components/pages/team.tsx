@@ -2,7 +2,7 @@
 
 import { useRef, useSyncExternalStore, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { Plus, UserPlus } from "lucide-react";
+import { Plus, ShieldCheck, UserPlus } from "lucide-react";
 import { PERM_INFO } from "@/lib/access";
 import { plural } from "@/lib/ws";
 import type { PublicUser } from "@/lib/types";
@@ -139,7 +139,8 @@ function PersonRow({ u }: { u: PublicUser }) {
   const items: CardMenuItem[] = [
     // On phones the row has no room for its buttons, so they come first in the menu.
     ...(!wide && canViewAs ? [{ kind: "item" as const, label: "View as", onSelect: () => void run(switchUser, u.id) }] : []),
-    ...(!wide && canAccess ? [{ kind: "item" as const, label: "Edit access", onSelect: editAccess }] : []),
+    // Edit access leads the menu on every screen: the menu is where people look for it.
+    ...(canAccess ? [{ kind: "item" as const, label: "Edit access", icon: <ShieldCheck aria-hidden size={16} className="text-mute-2" />, onSelect: editAccess }] : []),
     ...(!demo && canAccess && !isMe && !noAccess ? [{ kind: "item" as const, label: u.hasPassword ? "Copy a password reset link" : "Copy an invite link", onSelect: () => void invite() }] : []),
     ...(!demo && canAccess && !isMe && u.twoFactor ? [{ kind: "item" as const, label: "Reset two-step verification", onSelect: () => void security("2fa") }] : []),
     ...(!demo && canAccess && !isMe ? [{ kind: "item" as const, label: "Sign out everywhere", onSelect: () => void security("sessions") }] : []),
@@ -164,7 +165,9 @@ function PersonRow({ u }: { u: PublicUser }) {
         </span>
       </span>
       <span className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex">
-        <RoleChip role={u.access} />
+        {canAccess
+          ? <button type="button" onClick={editAccess} title={`Change ${u.name}'s role or what they see`} aria-label={`Change role for ${u.name}: ${u.access === "Client" ? "No access" : u.access}`} className="rounded-full transition-[filter] duration-150 hover:brightness-95"><RoleChip role={u.access} /></button>
+          : <RoleChip role={u.access} />}
         {exceptions.length > 0 && (
           <span className="flex-none rounded-sm bg-warn/12 px-2 py-0.5 text-small font-semibold text-warn-ink" title={Object.entries(u.permOverrides).map(([p, v]) => `${v ? "Allowed" : "Blocked"}: ${PERM_INFO.find((x) => x.perm === p)?.label ?? p}`).join("\n")}>
             {plural(exceptions.length, "exception")}
@@ -177,7 +180,7 @@ function PersonRow({ u }: { u: PublicUser }) {
       <span className="hidden text-right text-meta tabular-nums text-mute-2 md:block">{waiting}<span className="sr-only"> waiting</span></span>
       <span className="flex flex-none items-center justify-end gap-1">
         {canViewAs && <Btn size="sm" className="max-sm:hidden" onClick={() => run(switchUser, u.id)}>View as</Btn>}
-        {canAccess && <Btn size="sm" variant="ghost" className="max-sm:hidden" aria-label={`Access for ${u.name}`} onClick={editAccess}>Access</Btn>}
+        {canAccess && <Btn size="sm" className="max-sm:hidden" aria-label={`Edit access for ${u.name}`} onClick={editAccess}><ShieldCheck aria-hidden size={15} />Edit access</Btn>}
         {items.length > 0
           ? <CardMenu label={`More for ${u.name}`} items={items} triggerClassName="flex size-8 items-center justify-center rounded-lg text-mute-2 transition-colors duration-150 hover:bg-hover hover:text-ink" />
           : <span aria-hidden className="hidden size-8 sm:block" />}
