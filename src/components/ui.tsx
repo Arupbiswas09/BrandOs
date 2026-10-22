@@ -35,7 +35,7 @@ export function PageHead({
           <h1 className="display m-0 text-display text-ink">{title}</h1>
           {sub && <p className="mb-0 mt-2 max-w-[68ch] text-body text-mute-2 text-pretty">{sub}</p>}
         </div>
-        {actions && <div className="flex flex-none flex-wrap gap-2">{actions}</div>}
+        {actions && <div className="flex min-w-0 flex-wrap gap-2">{actions}</div>}
       </div>
       {children}
       {tabs}
@@ -368,7 +368,8 @@ export function ArchExpander<T extends { id: string; name: string }>({ items, no
   if (!items.length) return null;
   return (
     <details className="group mt-4">
-      <summary className="cursor-pointer list-none py-1.5 font-mono text-body tracking-[0.04em] text-mute-3 hover:text-ink [&::-webkit-details-marker]:hidden">
+      {/* A real button: it is the only way to reach archived things. */}
+      <summary className="inline-flex h-8 cursor-pointer list-none items-center rounded-lg border border-line bg-surface px-3 text-meta font-medium text-ink-3 transition-colors duration-150 hover:border-line-strong hover:text-ink [&::-webkit-details-marker]:hidden">
         <span className="group-open:hidden">{items.length} archived {items.length === 1 ? noun : noun + "s"} ▾</span>
         <span className="hidden group-open:inline">Hide the {items.length} archived {items.length === 1 ? noun : noun + "s"} ▴</span>
       </summary>

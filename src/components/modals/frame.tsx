@@ -28,9 +28,10 @@ export function Modal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // Remember what opened the dialog before focus moves inside it, so closing goes back there.
+    const prev = document.activeElement as HTMLElement | null;
     const first = el.querySelector<HTMLElement>("[data-autofocus], input:not([type=hidden]):not([disabled]), textarea, select");
     first?.focus();
-    const prev = document.activeElement as HTMLElement | null;
     // Keep Tab inside the dialog.
     const trap = (e: KeyboardEvent) => {
       if (e.key !== "Tab") return;
@@ -41,7 +42,7 @@ export function Modal({
       else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
     };
     el.addEventListener("keydown", trap);
-    return () => { el.removeEventListener("keydown", trap); prev?.focus?.(); };
+    return () => { el.removeEventListener("keydown", trap); if (prev?.isConnected) prev.focus({ preventScroll: true }); };
   }, []);
 
   const Inner = onSubmit ? "form" : "div";
