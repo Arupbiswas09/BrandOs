@@ -8,8 +8,9 @@ import { href } from "@/lib/routes";
 import type { WS } from "@/lib/ws";
 import { plural } from "@/lib/ws";
 import { useState, type ReactNode } from "react";
-import { useApp } from "./app/provider";
-import { CalendarDays, ChevronRight, Download, ExternalLink, ImagePlus, Link2, MessageSquare, Pencil } from "lucide-react";
+import { setArchived, toggleLink } from "@/app/actions";
+import { useAction, useApp } from "./app/provider";
+import { Archive, ArchiveRestore, CalendarDays, ChevronRight, CopyPlus, Download, ExternalLink, ImagePlus, Link2, MessageSquare, Pencil, Trash2, Unlink } from "lucide-react";
 import { CodeTile, IconBtn, Tick, cx } from "./ui";
 import { FOCUS, LIFT } from "./polish";
 import { CardMenu, type CardMenuItem } from "./card-menu";
@@ -108,15 +109,32 @@ export type FolderMove = { folders: { id: string; name: string }[]; current: str
 /** What a dragged asset card carries, so a folder knows which asset landed on it. */
 export const ASSET_DRAG = "application/x-brandos-asset";
 
-/** What a person may do to one asset from a card or a row: edit it, and the "…" menu (thumbnail, folders). */
-function useAssetTools(a: Asset, move?: FolderMove) {
-  const { ws, open: openModal } = useApp();
+/**
+ * What a person may do to one asset from a card or a row: edit it, and the "…" menu. The menu
+ * offers what the asset's own "…" menu offers (thumbnail, clone, offers, archive, delete), so
+ * the card is enough; on an offer page (`offerId`) also unlinking from that offer, and folders.
+ */
+function useAssetTools(a: Asset, move?: FolderMove, offerId?: string) {
+  const { ws, open: openModal, toast } = useApp();
+  const [run] = useAction();
   const [picking, setPicking] = useState(false);
   const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
   const canThumb = canEdit && ws.can("upload");
+  const offer = offerId ? ws.offer(offerId) : null;
   const edit = () => openModal({ kind: "asset", draft: { ...a, offerIds: ws.linkedOfferIds(a.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 });
+  const unlink = async () => {
+    if (!offer) return;
+    const r = await run(toggleLink, a.id, offer.id);
+    if (r.ok) toast(`Unlinked ${a.name} from ${offer.name}. It is still in ${ws.brand(a.brandId)?.name ?? "its brand"}'s assets.`);
+  };
+  const icon = (I: typeof ImagePlus) => <I aria-hidden size={16} className="text-mute-4" />;
   const menu: CardMenuItem[] = [
-    ...(canThumb ? [{ kind: "item" as const, label: "Change thumbnail", icon: <ImagePlus aria-hidden size={16} className="text-mute-4" />, onSelect: () => setPicking(true) }] : []),
+    ...(canThumb ? [{ kind: "item" as const, label: "Change thumbnail", icon: icon(ImagePlus), onSelect: () => setPicking(true) }] : []),
+    ...(ws.can("edit") ? [{ kind: "item" as const, label: "Clone", icon: icon(CopyPlus), onSelect: () => openModal({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] }) }] : []),
+    ...(canEdit && a.brandId ? [{ kind: "item" as const, label: "Link to offers", icon: icon(Link2), onSelect: () => openModal({ kind: "linkAsset", assetId: a.id }) }] : []),
+    ...(offer && ws.canChange(a) && ws.linkedOfferIds(a.id).includes(offer.id) ? [{ kind: "item" as const, label: "Unlink from this offer", icon: icon(Unlink), onSelect: () => void unlink() }] : []),
+    ...(ws.can("archive") ? [{ kind: "item" as const, label: a.archived ? "Restore" : "Archive", icon: icon(a.archived ? ArchiveRestore : Archive), onSelect: () => void run(setArchived, "asset", a.id, !a.archived) }] : []),
+    ...(ws.can("del") ? [{ kind: "item" as const, label: "Delete", icon: <Trash2 aria-hidden size={16} />, danger: true, onSelect: () => openModal({ kind: "confirm", item: "asset", id: a.id, label: a.name }) }] : []),
     ...(move?.folders.length ? [{
       kind: "choice" as const, label: "Move to folder",
       options: [
@@ -141,16 +159,17 @@ const CARD_ACTION = cx(
  * it), so each is its own keyboard stop and the card keeps the accessible name it always had.
  * They show on hover or keyboard focus, and always on touch screens. `move` (offer pages
  * with folders) adds "Move to folder" to the menu and lets the card be dragged onto a folder.
+ * `offerId` (an offer's Assets tab) adds "Unlink from this offer".
  *
  * Only a real picture gets picture space. Without one the card is compact: the type's code
  * on a small tile beside the words, never a large empty frame.
  */
-export function AssetCard({ a, variant = "full", selecting, selected, onToggle, move }: {
-  a: Asset; variant?: AssetVariant; selecting?: boolean; selected?: boolean; onToggle?: () => void; move?: FolderMove;
+export function AssetCard({ a, variant = "full", selecting, selected, onToggle, move, offerId }: {
+  a: Asset; variant?: AssetVariant; selecting?: boolean; selected?: boolean; onToggle?: () => void; move?: FolderMove; offerId?: string;
 }) {
   const { ws, openAsset } = useApp();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { canEdit, edit, menu, picking, setPicking } = useAssetTools(a, move);
+  const { canEdit, edit, menu, picking, setPicking } = useAssetTools(a, move, offerId);
   const color = ws.colorOf(a);
   const n = ws.linkedOfferIds(a.id).length;
   const open = ws.openCount("asset", a.id);
@@ -345,7 +364,8 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
               <span className={cx("w-7 flex-none justify-center @3xl:flex", canEdit && !selecting ? "flex" : "hidden")}>
                 {canEdit && !selecting && <IconBtn size="sm" label={`Edit ${a.name}`} onClick={edit}><Pencil aria-hidden /></IconBtn>}
               </span>
-              <span className="hidden w-7 flex-none justify-center @lg:flex">
+              {/* At every width: on a phone the menu is the only way to the thumbnail, archive and delete from the list. */}
+              <span className={cx("w-7 flex-none justify-center @3xl:flex", menu.length > 0 && !selecting ? "flex" : "hidden")}>
                 {menu.length > 0 && !selecting && <CardMenu label={`More for ${a.name}`} items={menu} triggerClassName={cx("inline-flex size-7 items-center justify-center rounded-lg text-mute-2 transition-colors hover:bg-hover hover:text-ink", FOCUS)} />}
               </span>
             </>

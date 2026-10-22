@@ -96,11 +96,13 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   const known = !editing && !!d.brandId && d.offerIds.length > 0;
   const brand = ws.brand(d.brandId);
 
+  // "Reuse before you rebuild" is advice for making something new, not for editing what already exists.
   const dupes = useMemo(() => {
+    if (editing) return [];
     const words = d.name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 3);
     if (!words.length) return [];
     return ws.d.assets.filter((a) => a.id !== draft.id && !a.archived && words.some((w) => a.name.toLowerCase().includes(w))).slice(0, 3);
-  }, [d.name, ws, draft.id]);
+  }, [d.name, ws, draft.id, editing]);
 
   /** Adds files to the queue, same name replacing same name, if the whole batch still fits the upload limits. */
   const addFiles = (list: FileList | File[] | null) => {
@@ -162,7 +164,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
     <>
       {!editing && <Btn onClick={() => setStep((s) => Math.max(0, s - 1) as Step)} disabled={step === 0} className="px-4 py-2">Back</Btn>}
       <span className="flex-1" />
-      <Btn variant="ghost" onClick={close}>Cancel</Btn>
+      <Btn onClick={close}>Cancel</Btn>
       {step > 0 && step < 3 && <Btn onClick={() => setStep((s) => Math.min(3, s + 1) as Step)} className="px-4 py-2">Next</Btn>}
       {step > 0 && <Btn type="submit" variant="primary" disabled={!valid || pending} className="px-4 py-2">{pending ? "Saving…" : "Save asset"}</Btn>}
     </>
@@ -213,10 +215,13 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-xl border border-dashed border-line-strong bg-surface p-3.5 text-left hover:border-mute-2">
-            <span className="block text-body font-semibold">No brand: put it in the Global Library</span>
-            <span className="mt-0.5 block text-body text-mute-2">Checklists, prompts, templates, SOPs, ad creatives</span>
-          </button>
+          {/* Only offered to people who may add to the library; for anyone else saving there would be refused at the end. */}
+          {ws.can("library") && (
+            <button type="button" onClick={() => { setD((x) => ({ ...x, brandId: null, offerIds: [], ctaId: "" })); setStep(3); }} className="mt-2.5 w-full rounded-xl border border-dashed border-line-strong bg-surface p-3.5 text-left hover:border-mute-2">
+              <span className="block text-body font-semibold">No brand: put it in the Global Library</span>
+              <span className="mt-0.5 block text-body text-mute-2">Checklists, prompts, templates, SOPs, ad creatives</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -322,12 +327,11 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                 <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
               </div>
               {!drive && !urlFirst && <Field label="Live URL or doc link"><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/page or a doc link" /></Field>}
-              {d.brandId && (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>
-                  <TagInput value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder="landing, evergreen" />
-                </div>
-              )}
+              {/* CTAs belong to a brand; tags do not, so Global Library items keep theirs editable too. */}
+              <div className={cx("grid gap-3", d.brandId && "sm:grid-cols-2")}>
+                {d.brandId && <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>}
+                <TagInput value={d.tags} onChange={(v) => set("tags", v)} text={tagText} onText={setTagText} pool={tagsInUse} placeholder={d.brandId ? "landing, evergreen" : "launch, qa"} />
+              </div>
               {withCopy && !drive && (
                 <div>
                   <div className="label">Copy</div>
@@ -376,17 +380,22 @@ export function CloneModal({ srcId, brandId, name, offerIds }: { srcId: string; 
   const { ws, close, openAsset, setNudge } = useApp();
   const [run, pending] = useAction();
   const src = ws.asset(srcId);
+  // Only people who may change the Global Library can clone into it; anyone else picks a brand.
+  const toLibrary = ws.can("library");
   const [d, setD] = useState({ name, brandId, offerIds, keepFiles: true, keepCopy: true });
+  const ready = !!d.name.trim() && (!!d.brandId || toLibrary);
   const save = async () => {
+    if (!ready) return;
     const r = await run(cloneAsset, { srcId, ...d });
     if (r.ok) { close(); setNudge(null); if (r.id) openAsset(r.id); }
   };
+  const brands = ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name + (b.parentId ? ` (sub-brand of ${ws.brand(b.parentId)?.name})` : "") }));
   return (
-    <Modal title="Clone and adapt" sub={`A real copy of ${src?.name}, with a reference back to the original.`} width={560} onSubmit={save} footer={<Footer saveLabel="Create clone" pending={pending} disabled={!d.name.trim()} />}>
+    <Modal title="Clone and adapt" sub={`A real copy of ${src?.name}, with a reference back to the original.`} width={560} onSubmit={save} footer={<Footer saveLabel="Create clone" pending={pending} disabled={!ready} />}>
       <Field label="New name" required><input required className="field text-lead" value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} /></Field>
-      <Field label="Target brand">
+      <Field label="Target brand" required={!toLibrary}>
         <Select value={d.brandId ?? ""} onChange={(v) => setD({ ...d, brandId: v || null, offerIds: [] })}
-          options={[{ value: "", label: "Global Library — no brand" }, ...ws.d.brands.filter((b) => !b.archived).map((b) => ({ value: b.id, label: b.name + (b.parentId ? ` (sub-brand of ${ws.brand(b.parentId)?.name})` : "") }))]} />
+          options={[...(toLibrary ? [{ value: "", label: "Global Library (no brand)" }] : d.brandId ? [] : [{ value: "", label: "Pick a brand" }]), ...brands]} />
       </Field>
       {d.brandId && (
         <div>
@@ -428,10 +437,13 @@ export function LinkModal({ offerId }: { offerId: string }) {
     return !t || `${a.name} ${a.short} ${a.type} ${a.tags.join(" ")}`.toLowerCase().includes(t);
   });
   const color = ws.brand(o.brandId)?.primary ?? "#5E6C66";
+  // Linking changes the asset, so contributors link only their own (the server refuses the rest).
+  const mineOnly = rows.some((a) => !ws.canChange(a));
   return (
     <Modal title={`Link an asset to ${o.name}`} sub="Linking does not copy anything. The asset stays where it is and appears in one more offer." width={600} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-2.5 px-4 pt-4 sm:px-6">
       <input className="field text-body" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search the library" aria-label="Search the library" />
       {choosable && <Pills tone="dark" label="Show" value={scope} onChange={setScope} options={[{ value: "unlinked", label: "Not yet linked" }, { value: "linked", label: "Already linked" }, { value: "all", label: "Everything" }]} />}
+      {mineOnly && <p className="m-0 text-meta text-mute-2">You can link the assets you own. To link someone else&apos;s, ask its owner or an editor.</p>}
       <div data-scroll className="-mx-2 max-h-[340px] overflow-y-auto">
         {rows.slice(0, 60).map((a) => {
           const on = linked.has(a.id);
@@ -443,10 +455,14 @@ export function LinkModal({ offerId }: { offerId: string }) {
                 <span className="block truncate text-body font-medium">{a.name}</span>
                 <span className="block text-body text-mute-2">{a.type} · {other ? `already in ${other} offer${other > 1 ? "s" : ""}` : "not linked anywhere"}</span>
               </span>
-              <Btn size="sm" disabled={pending} variant={on ? "secondary" : "primary"} className="px-3 font-semibold"
-                onClick={async () => { const r = await run(toggleLink, a.id, offerId); if (r.ok && !on) { setNudge({ assetId: a.id, offerId }); close(); } }}>
-                {on ? "Unlink" : "Link"}
-              </Btn>
+              {ws.canChange(a) ? (
+                <Btn size="sm" disabled={pending} variant={on ? "secondary" : "primary"} className="px-3 font-semibold"
+                  onClick={async () => { const r = await run(toggleLink, a.id, offerId); if (r.ok && !on) { setNudge({ assetId: a.id, offerId }); close(); } }}>
+                  {on ? "Unlink" : "Link"}
+                </Btn>
+              ) : (
+                <span className="flex-none text-small text-mute-2">{on ? "Linked" : `Owned by ${ws.first(a.ownerId)}`}</span>
+              )}
             </div>
           );
         })}
@@ -469,14 +485,17 @@ export function LinkAssetModal({ assetId }: { assetId: string }) {
     <Modal title="Which offers use this?" sub={`${a.name} stays a single asset. Linking just adds it to another offer.`} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="max-h-[360px] gap-2 overflow-y-auto px-5 pt-3.5">
       {pool.map((o) => {
         const on = linked.has(o.id);
+        // Same words as everywhere else: the state in the row, and Link or Unlink on the button.
         return (
-          <div key={o.id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-3">
-            <span className="flex-1 text-body font-medium">{o.name}</span>
+          <div key={o.id} className={cx("flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border px-3 py-3", on ? "border-accent/40 bg-soft" : "border-line")}>
+            <span className="min-w-0 flex-1 basis-40">
+              <span className="block text-body font-medium">{o.name}</span>
+              {on && <span className="block text-small font-medium text-accent">Linked</span>}
+            </span>
             <Chip color={ws.segColor(o.segment, o.brandId)} size="xs">{o.segment}</Chip>
-            <button type="button" disabled={pending} aria-pressed={on} onClick={() => run(toggleLink, assetId, o.id)}
-              className={cx("flex-none rounded-lg border px-3 py-1 text-meta font-semibold", on ? "border-accent bg-soft text-accent" : "border-line bg-surface text-mute-1 hover:border-mute-2")}>
-              {on ? "Linked" : "Link"}
-            </button>
+            <Btn size="sm" disabled={pending} variant={on ? "secondary" : "primary"} aria-label={`${on ? "Unlink from" : "Link to"} ${o.name}`} onClick={() => run(toggleLink, assetId, o.id)} className="px-3 font-semibold">
+              {on ? "Unlink" : "Link"}
+            </Btn>
           </div>
         );
       })}

@@ -16,7 +16,7 @@ export function BulkReviewModal({ ids, onDone }: Props) {
   const people = ws.d.users.filter((u) => can(u, "review"));
   return (
     <Modal title="Who should review these?" sub={`${plural(ids.length, "asset")} selected. Anything they own themselves is skipped.`} width={440}
-      footer={<Btn variant="ghost" onClick={close}>Cancel</Btn>} bodyClass="gap-0 px-3 pb-3.5 pt-2">
+      footer={<Btn onClick={close}>Cancel</Btn>} bodyClass="gap-0 px-3 pb-3.5 pt-2">
       {people.map((u) => (
         <button key={u.id} type="button" disabled={pending} onClick={async () => { if (await go(ids, "review", { reviewerId: u.id })) close(); }}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-hover disabled:opacity-60">

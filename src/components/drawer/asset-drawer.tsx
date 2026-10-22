@@ -172,7 +172,8 @@ function Drawer({ a }: { a: Asset }) {
   // Everything that is not the everyday action sits in one menu.
   const more: CardMenuItem[] = [
     ...(canThumb ? [{ kind: "item" as const, label: "Change thumbnail", icon: <ImagePlus aria-hidden size={16} className="text-mute-2" />, onSelect: () => setPicking(true) }] : []),
-    ...(canEdit ? [{ kind: "item" as const, label: "Clone", icon: <CopyPlus aria-hidden size={16} className="text-mute-2" />, onSelect: () => open({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] }) }] : []),
+    // A clone is new work owned by whoever makes it, so anyone who can create work may clone (a library master into a brand, say).
+    ...(ws.can("edit") ? [{ kind: "item" as const, label: "Clone", icon: <CopyPlus aria-hidden size={16} className="text-mute-2" />, onSelect: () => open({ kind: "clone", srcId: a.id, brandId: a.brandId, name: a.name + " (copy)", offerIds: [] }) }] : []),
     ...(canEdit && a.brandId ? [{ kind: "item" as const, label: "Link to offers", icon: <Link2 aria-hidden size={16} className="text-mute-2" />, onSelect: () => open({ kind: "linkAsset", assetId: a.id }) }] : []),
     ...(ws.can("archive") ? [{ kind: "item" as const, label: a.archived ? "Restore" : "Archive", icon: a.archived ? <ArchiveRestore aria-hidden size={16} className="text-mute-2" /> : <Archive aria-hidden size={16} className="text-mute-2" />, onSelect: () => void run(setArchived, "asset", a.id, !a.archived) }] : []),
     ...(ws.can("del") ? [{ kind: "item" as const, label: "Delete", icon: <Trash2 aria-hidden size={16} />, danger: true, onSelect: () => open({ kind: "confirm", item: "asset", id: a.id, label: a.name }) }] : []),
@@ -184,22 +185,28 @@ function Drawer({ a }: { a: Asset }) {
     <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label={a.name}>
       <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.28)]" onClick={closeAsset} />
       <div data-scroll className="absolute inset-y-0 right-0 w-[600px] max-w-full animate-slide overflow-y-auto border-l border-line bg-surface shadow-pop">
-        {/* One row: close, what this is, and what you can do with it. */}
-        <div ref={head} className="sticky top-0 z-[3] flex items-center gap-2 border-b border-line bg-surface px-3 py-3 sm:px-4">
-          <IconBtn label="Close" onClick={closeAsset}><X aria-hidden /></IconBtn>
-          <h2 title={a.name} className="m-0 line-clamp-2 min-w-0 flex-1 text-body font-semibold leading-snug text-ink [overflow-wrap:anywhere]">{a.name}</h2>
-          <div className="flex flex-none items-center gap-1.5">
-            <StarButton kind="asset" id={a.id} name={a.name} />
-            {link && (
-              <>
-                <LinkBtn variant="primary" href={link.href} target="_blank" rel="noreferrer" title={link.href}><ExternalLink aria-hidden size={15} /><span className="sr-only sm:not-sr-only">Open</span></LinkBtn>
-                <Btn size="sm" onClick={() => void copy(link.href)}><Copy aria-hidden size={14} /><span className="sr-only sm:not-sr-only">Copy link</span></Btn>
-              </>
-            )}
-            {file && <LinkBtn variant="primary" href={file.href} download title={file.title}><Download aria-hidden size={15} /><span className="sr-only sm:not-sr-only">Download</span></LinkBtn>}
-            {canEdit && <Btn size="sm" onClick={editDraft}><Pencil aria-hidden size={14} /><span className="sr-only sm:not-sr-only">Edit</span></Btn>}
-            <CardMenu label="More asset actions" items={more} triggerClassName={TOP_MORE} />
-          </div>
+        {/*
+          Close, what this is, and what you can do with it: one row where there is room. On a phone the
+          worded actions take a second row under the name (star and "…" stay beside it), so they keep
+          their words instead of shrinking to icons.
+        */}
+        <div ref={head} className="sticky top-0 z-[3] flex flex-wrap items-center gap-x-1.5 gap-y-2 border-b border-line bg-surface px-3 py-3 sm:flex-nowrap sm:px-4">
+          <IconBtn label="Close" onClick={closeAsset} className="mr-0.5"><X aria-hidden /></IconBtn>
+          <h2 title={a.name} className="m-0 mr-0.5 line-clamp-2 min-w-0 flex-1 text-body font-semibold leading-snug text-ink [overflow-wrap:anywhere]">{a.name}</h2>
+          <StarButton kind="asset" id={a.id} name={a.name} />
+          {(link || file || canEdit) && (
+            <div className="flex flex-none flex-wrap items-center gap-1.5 max-sm:order-last max-sm:basis-full max-sm:pl-10">
+              {link && (
+                <>
+                  <LinkBtn variant="primary" href={link.href} target="_blank" rel="noreferrer" title={link.href}><ExternalLink aria-hidden size={15} />Open</LinkBtn>
+                  <Btn size="sm" onClick={() => void copy(link.href)}><Copy aria-hidden size={14} />Copy link</Btn>
+                </>
+              )}
+              {file && <LinkBtn variant="primary" href={file.href} download title={file.title}><Download aria-hidden size={15} />Download</LinkBtn>}
+              {canEdit && <Btn size="sm" onClick={editDraft}><Pencil aria-hidden size={14} />Edit</Btn>}
+            </div>
+          )}
+          <CardMenu label="More asset actions" items={more} triggerClassName={TOP_MORE} />
         </div>
 
         <div className="px-4 pb-10 pt-4 sm:px-6 sm:pt-5">
@@ -253,7 +260,14 @@ function Drawer({ a }: { a: Asset }) {
             <dd className="m-0 min-w-0"><ReviewLine kind="asset" item={a} /></dd>
           </dl>
           {a.changeNote && a.review === "Changes requested" && <ChangeNote className="mb-4">{a.changeNote}</ChangeNote>}
-          {a.archived && <ArchivedNote className="mb-4">Archived. Offers that link to it still show it, greyed out.</ArchivedNote>}
+          {a.archived && (
+            <ArchivedNote className="mb-4">
+              <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="min-w-0 flex-1 basis-48">Archived. Offers that link to it still show it, greyed out.</span>
+                {ws.can("archive") && <Btn size="sm" onClick={() => void run(setArchived, "asset", a.id, false)}><ArchiveRestore aria-hidden size={14} />Restore</Btn>}
+              </span>
+            </ArchivedNote>
+          )}
 
           <AttachedFiles a={a} onProof={proof.images.length ? () => setTab("proof") : undefined} onEdit={canEdit ? editDraft : undefined} onPreview={showFile} />
 
@@ -265,10 +279,10 @@ function Drawer({ a }: { a: Asset }) {
             {tab === "overview" && <Overview a={a} />}
             {tab === "list" && <Checklist a={a} />}
             {tab === "prompt" && <PromptTab a={a} />}
-            {tab === "copy" && <CopyTab a={a} onEdit={editDraft} />}
+            {tab === "copy" && <CopyTab a={a} onEdit={canEdit ? editDraft : undefined} />}
             {tab === "proof" && (canProof ? <ProofView key={proofAt.n} a={a} fileKey={proofAt.fileKey} pinId={proofAt.pinId} /> : <Overview a={a} />)}
             {tab === "discussion" && <Thread kind="asset" id={a.id} />}
-            {tab === "history" && <History a={a} />}
+            {tab === "history" && <History a={a} canRestore={canEdit} />}
           </div>
         </div>
       </div>
@@ -317,7 +331,7 @@ const SECTION = "m-0 mb-2 text-small font-medium text-mute-2";
 
 function Overview({ a }: { a: Asset }) {
   const { ws, open, openAsset } = useApp();
-  const [run] = useAction();
+  const [run, pending] = useAction();
   const offers = ws.linkedOffers(a.id);
   const src = a.clonedFromId ? ws.asset(a.clonedFromId) : null;
   const b = ws.brand(a.brandId);
@@ -338,8 +352,7 @@ function Overview({ a }: { a: Asset }) {
                   <span aria-hidden className="size-2 rounded-full" style={{ background: ws.segColor(o.segment, o.brandId) }} />{o.segment}
                 </span>
                 {ws.canChange(a) && (
-                  <button type="button" onClick={() => run(toggleLink, a.id, o.id)} aria-label={`Unlink from ${o.name}`}
-                    className="inline-flex h-7 flex-none items-center rounded-lg px-2 text-small text-mute-2 transition-colors hover:bg-hover hover:text-danger">Unlink</button>
+                  <Btn size="sm" disabled={pending} onClick={() => run(toggleLink, a.id, o.id)} aria-label={`Unlink from ${o.name}`} className="h-7 px-2.5">Unlink</Btn>
                 )}
               </li>
             ))}
@@ -410,6 +423,8 @@ function Checklist({ a }: { a: Asset }) {
   const done = items.filter((i) => i.done).length;
   const pct = items.length ? Math.round((done / items.length) * 100) : 0;
   const canTick = ws.can("comment");
+  // Changing the checks themselves is editing the asset: its owner (for contributors), and the library's own permission for a master.
+  const canEdit = ws.canChange(a) && (!!a.brandId || ws.can("library"));
   return (
     <div>
       <div className="mb-3.5 flex items-center gap-3">
@@ -431,18 +446,19 @@ function Checklist({ a }: { a: Asset }) {
             </button>
             <span className="flex-none font-mono text-meta text-mute-2">{String(idx + 1).padStart(2, "0")}</span>
             <span className={cx("flex-1 text-body text-pretty", it.done ? "text-mute-2 line-through" : "text-ink-2")}>{it.text}</span>
-            {ws.can("edit") && (
-              <span className="flex flex-none gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                <button type="button" aria-label="Move up" disabled={idx === 0} onClick={() => run(moveItem, a.id, idx, -1)} className="px-1 text-meta text-line-strong hover:text-ink disabled:opacity-30">↑</button>
-                <button type="button" aria-label="Move down" disabled={idx === items.length - 1} onClick={() => run(moveItem, a.id, idx, 1)} className="px-1 text-meta text-line-strong hover:text-ink disabled:opacity-30">↓</button>
-                <button type="button" aria-label="Remove check" onClick={() => run(removeItem, a.id, idx)} className="px-1 text-body text-line-strong hover:text-danger">✕</button>
+            {canEdit && (
+              // Shown on hover or focus, and always on touch screens, which have no hover.
+              <span className="flex flex-none gap-0.5 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100">
+                <button type="button" aria-label="Move up" title="Move up" disabled={idx === 0} onClick={() => run(moveItem, a.id, idx, -1)} className="px-1 text-meta text-mute-2 hover:text-ink disabled:opacity-30">↑</button>
+                <button type="button" aria-label="Move down" title="Move down" disabled={idx === items.length - 1} onClick={() => run(moveItem, a.id, idx, 1)} className="px-1 text-meta text-mute-2 hover:text-ink disabled:opacity-30">↓</button>
+                <button type="button" aria-label="Remove check" title="Remove check" onClick={() => run(removeItem, a.id, idx)} className="px-1 text-body text-mute-2 hover:text-danger">✕</button>
               </span>
             )}
           </div>
         ))}
         {!items.length && <div className="p-7 text-center text-body text-mute-2">No checks yet.</div>}
       </div>
-      {ws.can("edit") && (
+      {canEdit && (
         <form className="mt-2.5 flex gap-2" onSubmit={async (e) => { e.preventDefault(); const r = await run(addItem, a.id, text); if (r.ok) setText(""); }}>
           <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Add a check" aria-label="Add a check" className="field flex-1 text-body" />
           <Btn type="submit" size="lg" className="font-semibold">Add</Btn>
@@ -458,9 +474,16 @@ function Checklist({ a }: { a: Asset }) {
 }
 
 function useCopied() {
+  const { toast } = useApp();
   const [copied, setCopied] = useState<string | null>(null);
-  const copy = (text: string, key: string) => {
-    void navigator.clipboard?.writeText(text).catch(() => {});
+  // "Copied" only once it really is; otherwise say so, rather than a button that seems to work and did nothing.
+  const copy = async (text: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      toast("That could not be copied. Select the text and copy it instead.", "error");
+      return;
+    }
     setCopied(key);
     setTimeout(() => setCopied((k) => (k === key ? null : k)), 1600);
   };
@@ -482,7 +505,7 @@ function PromptTab({ a }: { a: Asset }) {
         <pre className="m-0 whitespace-pre-wrap break-words font-[family-name:var(--font-code)] text-body leading-[1.75] text-ink-2">{a.prompt || "No prompt written yet."}</pre>
       </div>
       <Hint className="mt-3.5">
-        {ws.can("edit")
+        {ws.canChange(a) && (!!a.brandId || ws.can("library"))
           ? "Square brackets are the bits you swap per job. This is the finalised version: if you improve it, edit it here rather than keeping a better one in your notes."
           : "Square brackets are the bits you swap per job. Copy it and fill them in; this is the finalised version the team agreed on."}
       </Hint>
@@ -490,7 +513,7 @@ function PromptTab({ a }: { a: Asset }) {
   );
 }
 
-function CopyTab({ a, onEdit }: { a: Asset; onEdit: () => void }) {
+function CopyTab({ a, onEdit }: { a: Asset; onEdit?: () => void }) {
   const { ws } = useApp();
   const [copied, copy] = useCopied();
   const c = a.copy;
@@ -500,7 +523,7 @@ function CopyTab({ a, onEdit }: { a: Asset; onEdit: () => void }) {
       <div className="rounded-xl border border-dashed border-line-strong p-9 text-center">
         <div className="mb-1 text-lead font-semibold">No copy written yet</div>
         <div className="mb-4 text-body text-mute-2">Headline, body and CTA live here so nobody has to open a design file to read them.</div>
-        {ws.can("edit") && (
+        {onEdit && (
           <div className="flex flex-wrap justify-center gap-2">
             <Btn onClick={onEdit}><Pencil aria-hidden size={15} />Write the copy</Btn>
             {a.brandId && ws.d.aiEnabled && <AiDraftButton assetId={a.id} />}
@@ -529,7 +552,7 @@ function CopyTab({ a, onEdit }: { a: Asset; onEdit: () => void }) {
       </div>
       <div className="mt-3 flex items-center gap-3 text-body text-mute-3">
         <span className="flex-1">{wordCount(all)} words · reads in about {Math.max(1, Math.round(wordCount(all) / 3.5))} seconds</span>
-        {ws.can("edit") && a.brandId && ws.d.aiEnabled && <AiDraftButton assetId={a.id} label="Suggest a rewrite" />}
+        {onEdit && a.brandId && ws.d.aiEnabled && <AiDraftButton assetId={a.id} label="Suggest a rewrite" />}
       </div>
     </div>
   );
@@ -568,9 +591,11 @@ function FileGlyph({ f }: { f: FileRef }) {
  */
 function AttachedFiles({ a, onProof, onEdit, onPreview }: { a: Asset; onProof?: () => void; onEdit?: () => void; onPreview: (f: FileRef) => void }) {
   const { ws, toast } = useApp();
-  const [run] = useAction();
+  const [run, removePending] = useAction();
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
+  // The file waiting on "Remove it from this asset?".
+  const [removing, setRemoving] = useState<string | null>(null);
   // One file input serves "Upload files" and every "Replace": this is the stored file being replaced while the picker is open.
   const replaceFor = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -627,6 +652,13 @@ function AttachedFiles({ a, onProof, onEdit, onPreview }: { a: Asset; onProof?: 
     } finally {
       setSwapping(null);
     }
+  };
+
+  /** Takes a file off the asset. The server saves the version before, so History can put it back. */
+  const remove = async (name: string) => {
+    const r = await run(removeFile, a.id, name);
+    setRemoving(null);
+    if (r.ok) toast(`Removed ${name}. To put it back, restore the version before in History.`);
   };
 
   const pick = (key: string | null) => {
@@ -707,12 +739,22 @@ function AttachedFiles({ a, onProof, onEdit, onPreview }: { a: Asset; onProof?: 
                   </button>
                 )}
                 {canEdit && (
-                  <button type="button" aria-label={`Remove ${f.name}`} title={`Remove ${f.name}`} onClick={() => run(removeFile, a.id, f.name)}
-                    className="flex size-7 flex-none items-center justify-center rounded-lg text-mute-2 opacity-0 transition hover:bg-hover hover:text-danger group-hover:opacity-100 focus:opacity-100 [@media(hover:none)]:opacity-100">
-                    <X aria-hidden size={15} />
-                  </button>
+                  <IconBtn size="sm" label={`Remove ${f.name}`} aria-expanded={removing === f.name} disabled={removePending} onClick={() => setRemoving(removing === f.name ? null : f.name)} className="hover:text-danger">
+                    <X aria-hidden />
+                  </IconBtn>
                 )}
               </div>
+              {removing === f.name && (
+                <div role="group" aria-label={`Remove ${f.name}`} onKeyDown={(e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); setRemoving(null); } }}
+                  className="ml-12 mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-wash px-3 py-2.5">
+                  <p className="m-0 min-w-0 flex-1 basis-48 text-meta text-ink-3 text-pretty">Remove it from this asset? History keeps the version with it, so it can be put back.</p>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Btn size="sm" variant="ghost" disabled={removePending} onClick={() => setRemoving(null)}>Cancel</Btn>
+                    {/* It appears because the person just asked to remove this file, so focus goes straight to it. */}
+                    <Btn size="sm" variant="danger" autoFocus disabled={removePending} onClick={() => void remove(f.name)}>{removePending ? "Removing…" : "Remove"}</Btn>
+                  </span>
+                </div>
+              )}
               {/* Lined up with the file name: glyph 36px plus the 12px gap. */}
               {f.key && <FileHistory assetId={a.id} fileKey={f.key} className="mt-1 pl-12" />}
             </li>
@@ -745,8 +787,8 @@ function AttachedFiles({ a, onProof, onEdit, onPreview }: { a: Asset; onProof?: 
 
 type VersionRow = Awaited<ReturnType<typeof listVersions>>[number];
 
-function History({ a }: { a: Asset }) {
-  const { ws } = useApp();
+function History({ a, canRestore }: { a: Asset; canRestore: boolean }) {
+  const { ws, toast } = useApp();
   const [run, pending] = useAction();
   const [versions, setVersions] = useState<VersionRow[] | null>(null);
   useEffect(() => {
@@ -786,7 +828,7 @@ function History({ a }: { a: Asset }) {
                 <span className="block truncate text-body text-ink-3">{v.headline || v.name}</span>
                 <span className="block text-small text-mute-2">Replaced {ws.ago(v.createdAt)}{v.userId ? ` by ${ws.first(v.userId)}` : ""}</span>
               </span>
-              {ws.canChange(a) && <Btn size="sm" disabled={pending} onClick={() => run(restoreVersion, a.id, v.id)}>Restore</Btn>}
+              {canRestore && <Btn size="sm" disabled={pending} onClick={async () => { if ((await run(restoreVersion, a.id, v.id)).ok) toast(`Restored v${v.version}. The version it replaced is kept here too.`); }}>Restore</Btn>}
             </div>
           ))}
         </div>

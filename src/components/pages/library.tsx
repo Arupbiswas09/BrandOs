@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Plus, Search, Upload } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Plus, Search, Upload } from "lucide-react";
 import type { Asset } from "@/db/schema";
+import { assetGet } from "@/lib/asset-download";
 import { ASSET_TYPES } from "@/lib/constants";
 import { archivedOnly, live, plural } from "@/lib/ws";
 import { useApp } from "@/components/app/provider";
@@ -11,6 +12,7 @@ import { AssetCard } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { ArchExpander, Btn, Card, CodeTile, Empty, Page, PageHead, Tick, cx } from "@/components/ui";
 import { DropHint, useFileDrop } from "@/components/app/file-drop";
+import { LinkBtn } from "@/components/link-button";
 import { BulkUpload } from "@/components/features/files/bulk-upload";
 
 /** What the Global Library holds. Each is a filter pill, an entry in the "Add to library" menu and an empty state. */
@@ -137,21 +139,35 @@ function KindList({ k, items, row }: { k: Kind; items: Asset[]; row: (a: Asset) 
   );
 }
 
-/** One library item on one line: its code, its name and what it is for. */
+/**
+ * One library item on one line: its code, its name and what it is for, with
+ * Download or Open beside it when it has a file or a link, as on a brand's
+ * asset rows and the library's own picture cards.
+ */
 function LibraryRow({ a, selecting, selected, onToggle, onOpen }: { a: Asset; selecting: boolean; selected: boolean; onToggle: () => void; onOpen: () => void }) {
   const { ws } = useApp();
   const meta = a.type === "Checklist" ? plural((a.items ?? []).length, "check") : a.type === "Prompt" ? a.promptFor : "";
+  const get = selecting ? null : assetGet(a);
   return (
-    <button type="button" onClick={selecting ? onToggle : onOpen} {...(selecting && { role: "checkbox", "aria-checked": selected })}
-      className={cx("focus-inset flex min-h-14 w-full items-center gap-3 border-t border-divider px-4 py-2 text-left transition-colors duration-150 first:border-t-0 hover:bg-hover", selected && "bg-soft", a.archived && "opacity-60")}>
-      {selecting && <Tick on={selected} />}
-      <CodeTile code={ws.codeOf(a)} color={ws.colorOf(a)} size={36} />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-body font-medium text-ink">{a.name}{a.archived && <span className="font-normal text-mute-2"> (archived)</span>}</span>
-        {a.short && <span className="block truncate text-meta text-mute-2">{a.short}</span>}
-      </span>
-      {meta && <span className="hidden flex-none text-meta text-mute-2 sm:block">{meta}</span>}
-    </button>
+    <div className={cx("flex min-h-14 items-center gap-2 border-t border-divider transition-colors duration-150 first:border-t-0 hover:bg-hover", get && "pr-3", selected && "bg-soft", a.archived && "opacity-60")}>
+      <button type="button" onClick={selecting ? onToggle : onOpen} {...(selecting && { role: "checkbox", "aria-checked": selected })}
+        className="focus-inset flex min-w-0 flex-1 items-center gap-3 self-stretch px-4 py-2 text-left">
+        {selecting && <Tick on={selected} />}
+        <CodeTile code={ws.codeOf(a)} color={ws.colorOf(a)} size={36} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-body font-medium text-ink">{a.name}{a.archived && <span className="font-normal text-mute-2"> (archived)</span>}</span>
+          {a.short && <span className="block truncate text-meta text-mute-2">{a.short}</span>}
+        </span>
+        {meta && <span className="hidden flex-none text-meta text-mute-2 sm:block">{meta}</span>}
+      </button>
+      {get && (
+        <LinkBtn href={get.href} title={get.title} aria-label={get.kind === "link" ? `Open link to ${a.name}` : get.kind === "zip" ? `Download all of ${a.name}` : `Download ${a.name}`}
+          {...(get.kind === "link" ? { target: "_blank", rel: "noreferrer" } : { download: "" })}>
+          {get.kind === "link" ? <ExternalLink aria-hidden size={15} /> : <Download aria-hidden size={15} />}
+          <span className="max-sm:sr-only">{get.kind === "link" ? "Open" : get.kind === "zip" ? "Download all" : "Download"}</span>
+        </LinkBtn>
+      )}
+    </div>
   );
 }
 

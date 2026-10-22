@@ -135,17 +135,20 @@ export function OfferAssets({ o }: { o: Offer }) {
   const folderTile = <span className="flex h-full w-full items-center justify-center" style={{ background: hexA(tint, 0.1), color: readable(tint, 0.1) }}><Folder aria-hidden size={26} strokeWidth={1.6} /></span>;
   const pickingFolder = folders.find((f) => f.id === picking);
 
+  const newAsset = () => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 });
+  const linkExisting = () => open({ kind: "link", offerId: o.id });
   const actions = canEdit && (
     <div className="ml-auto flex flex-wrap justify-end gap-2">
       {/* One menu for the ways of adding, instead of a row of buttons; Upload files stays out because it opens a panel here. */}
       <MoreMenu label="Add to this offer" text="Add" icon={<Plus aria-hidden size={15} />} items={[
-        { label: "New asset", icon: <Plus aria-hidden size={16} className="text-mute-3" />, onSelect: () => open({ kind: "asset", draft: { brandId: o.brandId, status: "Draft", offerIds: [o.id] }, step: 0 }) },
-        { label: "Link existing asset", icon: <Link2 aria-hidden size={16} className="text-mute-3" />, onSelect: () => open({ kind: "link", offerId: o.id }) },
+        { label: "New asset", icon: <Plus aria-hidden size={16} className="text-mute-3" />, onSelect: newAsset },
+        { label: "Link existing asset", icon: <Link2 aria-hidden size={16} className="text-mute-3" />, onSelect: linkExisting },
         { label: "New folder", icon: <FolderPlus aria-hidden size={16} className="text-mute-3" />, onSelect: () => { setAt(null); setNaming(true); } },
       ]} />
       {canUpload && (
+        // In words on every screen: an upload arrow alone does not say what it does.
         <Btn ref={uploadBtn} size="sm" aria-expanded={adding} aria-controls={uploadId} onClick={() => (adding ? closeUpload() : openUpload())}>
-          <Upload aria-hidden size={15} /><span className="max-sm:sr-only">Upload files</span>
+          <Upload aria-hidden size={15} />Upload files
         </Btn>
       )}
     </div>
@@ -156,7 +159,7 @@ export function OfferAssets({ o }: { o: Offer }) {
     <div {...fileDrop} className={cx("@container rounded-xl", filesOver && !adding && "outline-2 outline-offset-4 outline-accent outline-dashed")}>
       <div className="mb-3 flex min-h-8 flex-wrap items-center gap-x-4 gap-y-2">
         {current ? (
-          <nav aria-label="Folders" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+          <nav aria-label="Folders" className="flex min-w-0 flex-1 basis-60 flex-wrap items-center gap-x-2 gap-y-1">
             <button type="button" onClick={() => setAt(null)} {...dropOn("root", null)}
               className={cx("-ml-1.5 inline-flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-body font-medium text-mute-2 transition-colors hover:text-ink", FOCUS, over === "root" && "bg-soft text-ink ring-2 ring-accent")}>
               <ArrowLeft aria-hidden size={15} />All assets
@@ -166,11 +169,12 @@ export function OfferAssets({ o }: { o: Offer }) {
               <NameForm label={`New name for ${current.name}`} initial={current.name} submit="Save" pending={pending} compact className="min-w-[240px] flex-1 flex-nowrap"
                 onCancel={() => setRenaming(null)} onSave={async (name) => { const r = await run(renameFolder, current.id, name); if (r.ok) setRenaming(null); }} />
             ) : (
-              <>
+              // Name, count and the folder's own menu stay together, so the menu never wraps away from the name on a phone.
+              <span className="flex min-w-0 items-center gap-2">
                 <span aria-current="page" className="min-w-0 truncate text-body font-semibold text-ink">{current.name}</span>
                 <span className="text-meta tabular-nums text-mute-2">{shown.length}</span>
                 {canEdit && <CardMenu label={`Folder actions for ${current.name}`} items={folderMenu(current)} triggerClassName={QUIET} />}
-              </>
+              </span>
             )}
           </nav>
         ) : folders.length > 0 && (
@@ -202,7 +206,7 @@ export function OfferAssets({ o }: { o: Offer }) {
 
       {current ? (
         shown.length > 0 ? (
-          <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} />)}</div>
+          <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} offerId={o.id} />)}</div>
         ) : (
           <Empty compact body={canEdit ? "Nothing in this folder yet. Drag a card onto the folder, or use Move to folder in a card's menu." : "Nothing in this folder yet."} />
         )
@@ -223,10 +227,18 @@ export function OfferAssets({ o }: { o: Offer }) {
               {shown.length > 0 && <h3 className={cx(HEAD, "mb-3")}>{plural(shown.length, "asset")}</h3>}
             </>
           )}
-          {shown.length > 0 && <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} />)}</div>}
+          {shown.length > 0 && <div className={GRID}>{shown.map((a) => <AssetCard key={a.id} a={a} move={moveFor(a)} offerId={o.id} />)}</div>}
         </>
       ) : (
-        <Empty title="No assets in this offer yet" body={canEdit ? "Something in the library probably already fits: link it before you build a new one." : "Nothing is linked to this offer yet."} />
+        <Empty title="No assets in this offer yet" body={canEdit ? "Something in the library probably already fits: link it before you build a new one." : "Nothing is linked to this offer yet."}>
+          {/* The ways forward the words point at, here rather than only inside the Add menu. */}
+          {canEdit && (
+            <>
+              <Btn onClick={linkExisting}><Link2 aria-hidden size={15} />Link existing asset</Btn>
+              <Btn onClick={newAsset}><Plus aria-hidden size={15} />New asset</Btn>
+            </>
+          )}
+        </Empty>
       )}
 
       {pickingFolder && (
