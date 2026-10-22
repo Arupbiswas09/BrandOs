@@ -8,6 +8,7 @@ import { getDb, schema as s } from "@/db";
 import type { DB } from "@/db";
 import { seed } from "@/db/seed";
 import { NEVER_DELETED_NOTE, can, canChange, cleanOverrides, neverDeleted, type Perm } from "@/lib/access";
+import { canDeleteCta, mayOwn } from "@/lib/owners";
 import { DEFAULT_GOALS, ASSET_TYPES, freshBrandPair, offerTypesOf } from "@/lib/constants";
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
@@ -419,6 +420,18 @@ function dueFrom(v: string | null | undefined): Date | null | undefined {
   return d;
 }
 
+/**
+ * The person a piece of work on this brand is handed to: their role creates
+ * work and they can see the brand. Never trusts the browser's list.
+ */
+function ownerFor(all: All, brandId: string, ownerId: string) {
+  const u = all.users.find((x) => x.id === ownerId);
+  need(u && mayOwn(u, all.brands.find((b) => b.id === brandId), all.groups), "Only people who create work and can see this brand can own it.");
+  return u!;
+}
+
+const nameOf = (all: All, userId: string | null | undefined) => all.users.find((u) => u.id === userId)?.name ?? "Unassigned";
+
 export async function saveOffer(input: z.input<typeof offerDraft>) {
   let id = input.id;
   return run(async () => {
@@ -434,22 +447,45 @@ export async function saveOffer(input: z.input<typeof offerDraft>) {
       proof: d.proof, segment: d.segment, goals: d.goals, offerType: d.offerType, status: d.status,
       primaryCtaId: d.primaryCtaId || null, secondaryCtaId: d.secondaryCtaId || null,
       ...(d.tags && { tags: d.tags }),
-      ...(d.ownerId && { ownerId: d.ownerId }),
       ...(d.dueAt !== undefined && { dueAt: dueFrom(d.dueAt) }),
     };
     if (d.id) {
       need(vis.offer(d.id));
-      own(me, all.offers.find((o) => o.id === d.id));
-      if (me.access === "Contributor") delete (values as { ownerId?: string }).ownerId;
-      await db.update(s.offers).set({ ...values, updatedAt: new Date() }).where(eq(s.offers.id, d.id));
+      const was = all.offers.find((o) => o.id === d.id)!;
+      own(me, was);
+      // A new owner (from the offer page, or sent directly) goes through the same check as Workflow → Owner.
+      const to = d.ownerId && d.ownerId !== was.ownerId ? ownerFor(all, d.brandId, d.ownerId) : null;
+      await db.update(s.offers).set({ ...values, ...(to && { ownerId: to.id }), updatedAt: new Date() }).where(eq(s.offers.id, d.id));
       await log(db, me.id, "updated", "offer", d.id, d.name, "Details");
+      if (to) await log(db, me.id, "changed owner", "offer", d.id, d.name, `${nameOf(all, was.ownerId)} → ${to.name}`);
     } else {
       id = newId("of");
-      await db.insert(s.offers).values({ id, ...values, ownerId: me.access === "Contributor" ? me.id : d.ownerId || me.id });
+      // Contributors own what they create; everyone else may hand a new offer to someone who could own it.
+      const ownerId = me.access === "Contributor" || !d.ownerId || d.ownerId === me.id ? me.id : ownerFor(all, d.brandId, d.ownerId).id;
+      await db.insert(s.offers).values({ id, ...values, ownerId });
       await draftNewOfferFunnel(db, id);
       await log(db, me.id, "created", "offer", id, d.name);
     }
     return ok(id);
+  });
+}
+
+/**
+ * Hands an offer to someone else, from the offer page's Workflow box. Anyone
+ * who can change the offer may do it (a contributor only while it is theirs);
+ * the new owner must create work and see the brand. Ownership is what lets a
+ * contributor edit, so their rights move with it.
+ */
+export async function setOfferOwner(offerId: string, ownerId: string) {
+  return run(async () => {
+    const { me, vis, db, all } = await context("edit");
+    need(vis.offer(offerId));
+    const o = all.offers.find((x) => x.id === offerId)!;
+    own(me, o);
+    const to = ownerFor(all, o.brandId, z.string().min(1).parse(ownerId));
+    if (to.id === o.ownerId) return;
+    await db.update(s.offers).set({ ownerId: to.id, updatedAt: new Date() }).where(eq(s.offers.id, offerId));
+    await log(db, me.id, "changed owner", "offer", offerId, o.name, `${nameOf(all, o.ownerId)} → ${to.name}`);
   });
 }
 
@@ -670,18 +706,19 @@ const ctaDraft = z.object({
 export async function saveCta(input: z.input<typeof ctaDraft>) {
   let id = input.id;
   return run(async () => {
-    const { me, vis, db } = await context("edit");
+    const { me, vis, db, all } = await context("edit");
     const d = ctaDraft.parse(input);
     need(vis.brand(d.brandId));
     const values = { brandId: d.brandId, text: d.text, url: d.url, bg: d.bg, fg: d.fg || onColor(d.bg), style: d.style };
     if (d.id) {
       need(vis.cta(d.id));
-      own(me, { ownerId: null });
+      // Contributors change the CTAs they made. Older CTAs have no owner, so only editors and up change those.
+      own(me, all.ctas.find((c) => c.id === d.id));
       await db.update(s.ctas).set({ ...values, updatedAt: new Date() }).where(eq(s.ctas.id, d.id));
       await log(db, me.id, "updated", "cta", d.id, d.text);
     } else {
       id = newId("ct");
-      await db.insert(s.ctas).values({ id, ...values });
+      await db.insert(s.ctas).values({ id, ...values, ownerId: me.id });
       await log(db, me.id, "created", "cta", id, d.text);
     }
     return ok(id);
@@ -943,12 +980,19 @@ export async function setArchived(kind: "client" | "brand" | "service" | "offer"
 /**
  * Deletes an asset, a CTA or a person. Clients, brands, sub-brands, services
  * and offers are never deleted, whoever asks: they are archived instead.
+ * Admins delete any CTA; whoever made a CTA may delete their own (canDeleteCta).
  */
 export async function deleteItem(kind: Kind, id: string) {
   return run(async () => {
     if (neverDeleted(kind)) throw new Denied(NEVER_DELETED_NOTE);
     if (kind !== "asset" && kind !== "cta" && kind !== "person") throw new Denied("That cannot be deleted.");
-    const { me, vis, db, all } = await context(kind === "person" ? "access" : "del");
+    const { me, vis, db, all } = await context(kind === "person" ? "access" : kind === "cta" ? undefined : "del");
+    if (kind === "cta") {
+      need(vis.cta(id));
+      if (!canDeleteCta(me, all.ctas.find((x) => x.id === id))) {
+        throw new Denied(can(me, "edit") ? "Only admins and the person who made a CTA can delete it." : "Your role does not allow that. Ask an admin if you need it.");
+      }
+    }
     await db.transaction(async (tx) => {
       // Everything about to go is copied into the recycle bin first.
       const exists = { asset: all.assets, cta: all.ctas, person: all.users }[kind].some((x) => x.id === id);

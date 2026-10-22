@@ -8,7 +8,8 @@ import type { Asset, Cta, Offer } from "@/db/schema";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
 import { plural } from "@/lib/ws";
-import { setArchived, setDue, setStatus } from "@/app/actions";
+import { setArchived, setDue, setOfferOwner, setStatus } from "@/app/actions";
+import { ownerChoices } from "@/lib/owners";
 import { toDateInput } from "@/lib/time";
 import { fmtDate } from "@/lib/format";
 import { isGoogleDrive } from "@/lib/link-health";
@@ -17,7 +18,7 @@ import { useAction, useApp } from "@/components/app/provider";
 import { assetDownload, assetLink } from "@/components/cards";
 import { OfferAssets } from "@/components/folders/offer-assets";
 import { CommentText, Thread } from "@/components/discussion";
-import { ArchivedNote, Avatar, Btn, ChangeNote, Page, cx } from "@/components/ui";
+import { ArchivedNote, Avatar, Btn, ChangeNote, Page, Select, cx } from "@/components/ui";
 import { EntityHeader, FOCUS, IconTile, PanelTabs, tabPanel } from "@/components/polish";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
 import { FunnelBoard } from "@/components/funnel/funnel-board";
@@ -374,10 +375,20 @@ function Positioning({ o }: { o: Offer }) {
 }
 
 function Workflow({ o }: { o: Offer }) {
-  const { ws } = useApp();
+  const { ws, toast } = useApp();
   const [run] = useAction();
   const canEdit = ws.canChange(o);
   const owner = ws.user(o.ownerId);
+  // Only people who could own work here: their role creates work and they can see this brand.
+  const choices = ownerChoices(ws.d.users, ws.brand(o.brandId), ws.d.groups);
+  const ownerOptions = [
+    ...(choices.some((u) => u.id === o.ownerId) ? [] : [{ value: o.ownerId ?? "", label: o.ownerId ? `${owner.name} (cannot own work here now)` : "Unassigned" }]),
+    ...choices.map((u) => ({ value: u.id, label: u.name })),
+  ];
+  const changeOwner = async (to: string) => {
+    if (!to || to === o.ownerId) return;
+    if ((await run(setOfferOwner, o.id, to)).ok) toast(`${ws.user(to).name} owns this offer now`);
+  };
   // "Archived" as a status puts nothing away, so it is not offered here: Archive in the … menu does that.
   // An offer that already has the status keeps it in the list.
   const statuses = Object.fromEntries(Object.entries(OFFER_STATUS).filter(([k]) => k !== "Archived" || o.status === "Archived")) as typeof OFFER_STATUS;
@@ -399,7 +410,12 @@ function Workflow({ o }: { o: Offer }) {
         <dt className="text-mute-2">Owner</dt>
         <dd className="m-0 flex min-w-0 items-center gap-1.5 text-ink-3">
           <Avatar initials={owner.initials} size={20} />
-          <span className="min-w-0 truncate">{owner.name}</span>
+          {canEdit ? (
+            <Select aria-label="Owner" value={o.ownerId ?? ""} onChange={(v) => void changeOwner(v)} options={ownerOptions}
+              className="h-8 w-auto min-w-0 max-w-full py-0 pl-2.5 pr-8 text-meta" />
+          ) : (
+            <span className="min-w-0 truncate">{owner.name}</span>
+          )}
         </dd>
       </dl>
     </section>

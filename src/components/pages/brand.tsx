@@ -589,8 +589,8 @@ function Ctas({ b }: { b: Brand }) {
                 {used.length > 0 && <div className="mt-0.5 text-meta text-mute-2">{used.slice(0, 3).join(" · ")}{used.length > 3 ? ` · +${used.length - 3} more` : ""}</div>}
               </div>
               <div className="flex gap-2 border-t border-divider pt-3">
-                {ws.canChange({ ownerId: null }) && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
-                {ws.can("del") && <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "cta", id: c.id, label: c.text })}>Delete</Btn>}
+                {ws.canChange(c) && <Btn size="sm" onClick={() => open({ kind: "cta", draft: c })}>Edit</Btn>}
+                {(ws.can("del") || (ws.canChange(c) && c.ownerId === ws.me.id)) && <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "cta", id: c.id, label: c.text })}>Delete</Btn>}
                 <span className="flex-1" />
                 <span className="self-center text-meta text-mute-2">{c.style}</span>
               </div>

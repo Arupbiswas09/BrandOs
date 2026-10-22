@@ -133,6 +133,10 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
   const { ws, close } = useApp();
   const [run, pending] = useAction();
   const b = ws.brand(draft.brandId);
+  // The CTA as saved now, for who made it: contributors change only their own, and older CTAs have no owner.
+  const saved = draft.id ? ws.cta(draft.id) : null;
+  const locked = !!draft.id && !ws.canChange(saved);
+  const maker = saved?.ownerId ? ws.user(saved.ownerId) : null;
   const [d, setD] = useState({
     text: draft.text ?? "", url: draft.url ?? "", style: (draft.style as "solid" | "outline" | "ghost") ?? "solid",
     bg: draft.bg && draft.bg !== "transparent" ? draft.bg : b?.primary ?? "#2D4A5C",
@@ -146,7 +150,14 @@ export function CtaModal({ draft }: { draft: Partial<Cta> & { brandId: string } 
   };
   const swatches = [b?.primary, b?.secondary, ...(b?.colours.map((c) => c.hex) ?? []), "#101614", "#FFFFFF"].filter((x, i, a): x is string => !!x && a.indexOf(x) === i).slice(0, 8);
   return (
-    <Modal title={draft.id ? "Edit CTA" : "New CTA"} width={480} onSubmit={save} footer={<Footer saveLabel="Save CTA" pending={pending} disabled={!d.text.trim()} />}>
+    <Modal title={draft.id ? "Edit CTA" : "New CTA"} width={480} onSubmit={save}
+      footer={<Footer saveLabel="Save CTA" pending={pending} disabled={locked || !d.text.trim()}
+        left={maker && <span className="min-w-0 truncate text-meta text-mute-3">Made by {maker.name}</span>} />}>
+      {locked && (
+        <p className="m-0 text-meta text-mute-2">
+          {ws.can("edit") ? `You can change only the CTAs you made. Ask ${maker ? `${ws.first(maker.id)} or an editor` : "an editor"} to change this one.` : "Your role cannot change CTAs."}
+        </p>
+      )}
       <div className="flex items-center justify-center rounded-xl bg-wash-2 p-6">
         <span className="inline-block rounded-lg px-4 py-2 text-lead font-semibold" style={preview}>{d.text || "Button text"}</span>
       </div>
