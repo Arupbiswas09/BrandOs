@@ -123,8 +123,12 @@ export async function buildWorkspace(
   const assetIds = new Set(assets.map((a) => a.id));
   const comments = all.comments.filter((c) => (c.kind === "asset" ? assetIds.has(c.itemId) : offerIds.has(c.itemId)));
 
+  // Changes to the team, to what people can see and do, and to workspace settings (upload limits)
+  // are logged as "person". Only people who manage the team see them; everyone sees the work.
+  const managesTeam = can(all.users.find((u) => u.id === meId), "access");
   const activity = guest ? [] : all.activity.filter((a) => {
     switch (a.type) {
+      case "person": return managesTeam;
       case "asset": return assetIds.has(a.itemId);
       case "offer": return offerIds.has(a.itemId);
       case "brand": return vis.brand(a.itemId);

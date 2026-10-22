@@ -1,0 +1,1 @@
+ALTER TABLE "ctas" ADD COLUMN "owner_id" text;

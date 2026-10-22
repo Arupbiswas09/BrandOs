@@ -304,6 +304,8 @@ export const ctas = pgTable("ctas", {
   fg: text("fg").notNull().default("#FFFFFF"),
   style: text("style").notNull().default("solid"),
   url: text("url").notNull().default(""),
+  /** Who made it: contributors change and delete only their own. Null for CTAs made before owners were kept (editors and up change those). */
+  ownerId: text("owner_id"),
   ...stamps,
 });
 

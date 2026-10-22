@@ -64,6 +64,7 @@ sources of truth:
 | Question | One place |
 |---|---|
 | Who may do what | `access.ts` (`PERMISSIONS`, `can`, `canChange`) |
+| Who may own an offer, who may delete a CTA | `owners.ts` (`mayOwn`, `ownerChoices`, `canDeleteCta`) |
 | What an asset type is and its role in a funnel | `constants.ts` (`ASSET_TYPES`, `roleOf`) |
 | A service's numbers (offers, lead magnets, landing pages, funnels, automations, attention) | `ws.ts` (`serviceStats`) |
 | How a service's funnels group by entry point | `ws.ts` (`funnelGroups`) |
