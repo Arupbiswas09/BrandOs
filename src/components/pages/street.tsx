@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { ArrowRight, BookOpen, CheckCircle2, ChevronRight, Circle, Plus, X } from "lucide-react";
 import { useDayPart, useStored } from "@/lib/stored";
 import { hexA, onColor, readable } from "@/lib/color";
@@ -35,6 +35,37 @@ const TONE: Record<Tone, string> = {
 
 type Row = { key: string; label: string; sub: string; badge: string; tone: Tone; waited: string; stuck: boolean; lead: ReactNode; go: () => void };
 
+/**
+ * The "Get set up" steps for admins, and whether this browser has hidden them.
+ * The card's × hides them; "Show setup steps" where the card was, or the switch
+ * in Settings → Profile, brings them back. All three use the same stored
+ * choice. `offered` is false once every step is done (or for anyone who is
+ * not an admin), and then there is nothing to show or bring back.
+ */
+export function useSetup() {
+  const { ws, open } = useApp();
+  const router = useRouter();
+  const [hide, setHide] = useStored<"0" | "1">("bos:hide-setup", "0", ["0", "1"]);
+  const clients = live(ws.d.clients);
+  const brands = live(ws.d.brands);
+  // A step that needs a brand first starts by adding one, so no step is a button that does nothing.
+  const addBrand = () => (clients[0] ? open({ kind: "brand", draft: { clientId: clients[0].id } }) : open({ kind: "client" }));
+  const steps = [
+    { done: clients.length > 0, label: "Add your first client", hint: "The organisation you work for.", go: () => open({ kind: "client" }) },
+    { done: brands.length > 0, label: "Add a brand", hint: "Each client has one or more brands.", go: addBrand },
+    { done: brands.some((b) => b.colours.length > 0 && b.fonts.length > 0), label: "Fill in a Brand Kit", hint: "Colours, fonts, logo and voice.", go: () => (brands[0] ? router.push(href.brand(brands[0].id, "kit")) : addBrand()) },
+    { done: ws.d.offers.length > 0, label: "Create an offer", hint: "A campaign or package to sell.", go: () => (brands[0] ? router.push(href.brand(brands[0].id, "offers")) : addBrand()) },
+    { done: ws.d.users.length > 1, label: "Invite a teammate", hint: "Choose what they can see and do.", go: () => router.push("/team") },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  return {
+    steps, done,
+    offered: ws.can("access") && done < steps.length,
+    hidden: hide === "1",
+    setHidden: (on: boolean) => setHide(on ? "1" : "0"),
+  };
+}
+
 /*
  * The dashboard opens on the list itself: what is waiting on you, then where
  * you left off. No stat tiles and no due dates (ClickUp and Asana own time);
@@ -45,12 +76,12 @@ export function Street() {
   const { ws, openAsset, open, setInbox } = useApp();
   const router = useRouter();
   const me = ws.me;
-  const [hideSetup, setHideSetup] = useStored<"0" | "1">("bos:hide-setup", "0", ["0", "1"]);
+  const setup = useSetup();
   const greeting = `${useDayPart()}, ${me.name.split(" ")[0]}.`;
   const now = ws.d.now;
 
   const queue = useMemo(() => ws.queue(), [ws]);
-  // Exactly the inbox's "On you", in the same order: the sidebar's count and this list never disagree.
+  // Exactly your queue's "On you", in the same order: the sidebar's count and this list never disagree.
   const onYou = useOnYou();
   const others = queue.filter((q) => q.who !== me.id).length;
 
@@ -98,17 +129,16 @@ export function Street() {
   }).filter(Boolean).slice(0, 5) as { key: string; title: string; sub: string; code: string; color: string; go: () => void }[];
 
   // A short "getting started" list for admins, after the lists rather than before them.
-  // A step that needs a brand first starts by adding one, so no step is a button that does nothing.
-  const addBrand = () => (clients[0] ? open({ kind: "brand", draft: { clientId: clients[0].id } }) : open({ kind: "client" }));
-  const steps = [
-    { done: clients.length > 0, label: "Add your first client", hint: "The organisation you work for.", go: () => open({ kind: "client" }) },
-    { done: brands.length > 0, label: "Add a brand", hint: "Each client has one or more brands.", go: addBrand },
-    { done: brands.some((b) => b.colours.length > 0 && b.fonts.length > 0), label: "Fill in a Brand Kit", hint: "Colours, fonts, logo and voice.", go: () => (brands[0] ? router.push(href.brand(brands[0].id, "kit")) : addBrand()) },
-    { done: ws.d.offers.length > 0, label: "Create an offer", hint: "A campaign or package to sell.", go: () => (brands[0] ? router.push(href.brand(brands[0].id, "offers")) : addBrand()) },
-    { done: ws.d.users.length > 1, label: "Invite a teammate", hint: "Choose what they can see and do.", go: () => router.push("/team") },
-  ];
-  const doneSteps = steps.filter((s) => s.done).length;
-  const showSetup = ws.can("access") && hideSetup === "0" && doneSteps < steps.length;
+  // Hiding it moves focus to the way back, and bringing it back moves focus to its ×, so focus is never lost.
+  const showRef = useRef<HTMLButtonElement>(null);
+  const hideRef = useRef<HTMLButtonElement>(null);
+  const refocus = useRef<"show" | "hide" | null>(null);
+  const setHidden = (on: boolean) => { refocus.current = on ? "show" : "hide"; setup.setHidden(on); };
+  useEffect(() => {
+    const to = refocus.current === "show" ? showRef.current : refocus.current === "hide" ? hideRef.current : null;
+    refocus.current = null;
+    to?.focus();
+  }, [setup.hidden]);
 
   const activity = ws.d.activity.slice(0, 4);
   const openActivity = (a: (typeof activity)[number]) => {
@@ -153,7 +183,7 @@ export function Street() {
             <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog"
               className="flex h-10 w-full items-center gap-1.5 border-t border-divider px-4 text-left text-meta transition-colors duration-150 hover:bg-wash">
               <span className="min-w-0 flex-1 truncate text-mute-2">{others > 0 && `${others} with other people`}</span>
-              <span className="flex flex-none items-center gap-1 font-medium text-accent">{rows.length > LIMIT ? `See all ${rows.length}` : "Open your queue"}<ArrowRight aria-hidden className="size-4" /></span>
+              <span className="flex flex-none items-center gap-1 font-medium text-accent">{rows.length > LIMIT ? `See all ${rows.length} in your queue` : "Open your queue"}<ArrowRight aria-hidden className="size-4" /></span>
             </button>
           )}
         </Panel>
@@ -209,9 +239,9 @@ export function Street() {
             )}
           </Panel>
 
-          {showSetup && (
-            <Panel title="Get set up" action={<span className="flex items-center gap-2"><span className="text-small text-mute-2">{doneSteps} of {steps.length} done</span><IconBtn label="Hide the setup guide" size="sm" className="-mr-1.5" onClick={() => setHideSetup("1")}><X aria-hidden /></IconBtn></span>}>
-              {steps.map((s) => (
+          {setup.offered && !setup.hidden && (
+            <Panel title="Get set up" action={<span className="flex items-center gap-2"><span className="text-small text-mute-2">{setup.done} of {setup.steps.length} done</span><IconBtn ref={hideRef} label="Hide the setup steps" size="sm" className="-mr-1.5" onClick={() => setHidden(true)}><X aria-hidden /></IconBtn></span>}>
+              {setup.steps.map((s) => (
                 <RowButton key={s.label} onClick={s.go} disabled={s.done}>
                   {s.done ? <CheckCircle2 aria-hidden className="size-4 flex-none text-ok" /> : <Circle aria-hidden className="size-4 flex-none text-mute-3" />}
                   <span className="min-w-0 flex-1">
@@ -221,6 +251,12 @@ export function Street() {
                 </RowButton>
               ))}
             </Panel>
+          )}
+          {/* Hidden, the card leaves a quiet way back where it was (Settings → Profile has the same switch). */}
+          {setup.offered && setup.hidden && (
+            <div className="-mt-2 flex xl:-mt-3">
+              <Btn ref={showRef} variant="ghost" size="sm" className="-ml-3" onClick={() => setHidden(false)}>Show setup steps</Btn>
+            </div>
           )}
         </div>
 

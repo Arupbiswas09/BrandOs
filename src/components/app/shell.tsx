@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import {
   BookOpen, CalendarDays, ChevronDown, ChevronRight, Download, Inbox as InboxIcon, Keyboard, LayoutDashboard, LogOut, Menu, Palette as PaletteIcon, Plus,
   PanelLeftClose, PanelLeftOpen, RotateCcw, Settings, ShieldCheck, Trash2, Users, X,
 } from "lucide-react";
 import { useStored } from "@/lib/stored";
 import { BRAND_TABS, href, parsePath } from "@/lib/routes";
-import { live } from "@/lib/ws";
+import { archivedOnly, live, plural } from "@/lib/ws";
 import { onColor } from "@/lib/color";
 import { resetDemo, signOut, switchUser } from "@/app/actions";
 import { useAction, useApp } from "./provider";
@@ -59,9 +59,9 @@ export function usePalette(): [Palette, (p: Palette) => void] {
 }
 
 /**
- * How many things are on you: the inbox's "On you", item for item. Shown in
+ * How many things are on you: your queue's "On you", item for item. Shown in
  * exactly one place per screen size: the sidebar's "Your queue" on desktop,
- * the bottom bar's Inbox on phones and tablets.
+ * the bottom bar's Queue on phones and tablets.
  */
 function useWaiting() {
   return useOnYou().length;
@@ -196,7 +196,7 @@ function NavItem({ href: to, icon, label, name, active, mini, badge, onClick, di
 /**
  * "Your queue": what is on you. The label never changes; the count shows only
  * when something is waiting, tinted with the accent (never red). It opens
- * the inbox. On desktop this is the one place the count appears.
+ * the queue panel. On desktop this is the one place the count appears.
  */
 function QueueNav({ mini, drawer, tip }: { mini: boolean; drawer?: boolean; tip: TipBind }) {
   const { inbox, setInbox, setNav } = useApp();
@@ -297,6 +297,7 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
               ))}
             </div>
           ))}
+          {!mini && <ArchivedClients />}
           {ws.can("structure") && <NavItem mini={mini} tip={tip} icon={<Plus />} label="Add client" onClick={() => open({ kind: "client" })} />}
         </div>
       </nav>
@@ -308,6 +309,45 @@ function SidebarBody({ mini, drawer }: { mini: boolean; drawer?: boolean }) {
       </div>
       {tipNode}
     </aside>
+  );
+}
+
+/**
+ * Archived clients, under the live ones: a quiet "2 archived clients" that
+ * opens to list them, so they are found without searching. The snapshot only
+ * holds clients this person may see, so nobody sees one they could not open.
+ * Folded by default; whether it is open is remembered in this browser, like
+ * the sidebar's width.
+ */
+function ArchivedClients() {
+  const { ws } = useApp();
+  const p = parsePath(usePathname());
+  const [shown, setShown] = useStored<"0" | "1">("bos.nav-archived", "0", ["0", "1"]);
+  const id = useId();
+  const archived = archivedOnly(ws.d.clients);
+  if (!archived.length) return null;
+  const open = shown === "1";
+  return (
+    <>
+      <button type="button" aria-expanded={open} aria-controls={open ? id : undefined} onClick={() => setShown(open ? "0" : "1")}
+        className="group/nav flex h-8 w-full items-center gap-2.5 rounded-lg px-2.5 text-left text-small font-medium text-mute-3 transition-colors duration-150 hover:bg-hover hover:text-ink">
+        <ChevronRight aria-hidden className={cx("size-4 flex-none transition-transform duration-150 motion-reduce:transition-none", open && "rotate-90")} />
+        <span className="min-w-0 flex-1 truncate">{plural(archived.length, "archived client")}</span>
+      </button>
+      {open && (
+        <div id={id} role="group" aria-label="Archived clients" className="flex flex-col gap-px">
+          {archived.map((c) => {
+            const here = p.view === "client" && p.id === c.id;
+            return (
+              <Link key={c.id} href={href.client(c.id)} aria-current={here ? "page" : undefined} title={c.name} className={itemCls(here)} style={{ paddingLeft: 22 }}>
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                <span className={cx("flex-none text-micro font-medium", here ? "text-hl-ink" : "text-mute-3")}>Archived</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -332,12 +372,13 @@ function MobileNav() {
         <Link href="/calendar" className={item(p.view === "calendar")} aria-current={p.view === "calendar" ? "page" : undefined}>
           <span className={pill(p.view === "calendar")}><CalendarDays aria-hidden /></span>Launches
         </Link>
-        <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog" className={item(inbox)}>
+        {/* "Your queue" in the sidebar; "Queue" here, where four labels share a phone's width. */}
+        <button type="button" onClick={() => setInbox(true)} aria-haspopup="dialog" aria-label={waiting > 0 ? `Queue, ${waiting} waiting` : "Queue"} className={item(inbox)}>
           <span className={pill(inbox)}>
             <InboxIcon aria-hidden />
             {waiting > 0 && <span aria-hidden className="absolute -top-1 right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-micro font-semibold leading-none tabular-nums text-on-accent ring-2 ring-surface theme-fade">{waiting}</span>}
           </span>
-          Inbox{waiting > 0 && <span className="sr-only">, {waiting} waiting</span>}
+          Queue
         </button>
         <button type="button" onClick={() => setNav(true)} aria-expanded={nav} aria-haspopup="dialog" className={item(nav)}>
           <span className={pill(nav)}><Menu aria-hidden /></span>Menu

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { forwardRef, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
+import { forwardRef, useEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
 import { hexA, onColor, readable } from "@/lib/color";
 
 export function cx(...c: (string | false | null | undefined)[]) {
@@ -82,18 +82,88 @@ export function FilterBar({ q, onQ, placeholder, selects, onClear, className }: 
   );
 }
 
-/** Underline tabs, as in the kit's page headers. */
+/** How wide the fade is at an edge with more tabs behind it, and how far clear of it the selected tab is kept. */
+const TAB_FADE = 40;
+
+/** Which edges of a sideways scroller have more behind them. */
+type More = "start" | "end" | "both" | undefined;
+
+function moreOf(el: HTMLElement): More {
+  const start = el.scrollLeft > 1;
+  const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+  return start && end ? "both" : start ? "start" : end ? "end" : undefined;
+}
+
+/** The fade fades the tabs themselves, so it suits any background behind them (white, a brand tint, a dialog). */
+const MASK: Record<Exclude<More, undefined>, string> = {
+  start: `linear-gradient(to right, transparent, #000 ${TAB_FADE}px)`,
+  end: `linear-gradient(to right, #000 calc(100% - ${TAB_FADE}px), transparent)`,
+  both: `linear-gradient(to right, transparent, #000 ${TAB_FADE}px, #000 calc(100% - ${TAB_FADE}px), transparent)`,
+};
+
+/** Scrolls `tab` sideways into `box`, clear of the fades, without moving the page. */
+function reveal(box: HTMLElement, tab: HTMLElement, smooth: boolean) {
+  const b = box.getBoundingClientRect();
+  const r = tab.getBoundingClientRect();
+  const start = r.left - b.left + box.scrollLeft;
+  const end = start + r.width;
+  let to = box.scrollLeft;
+  if (start - TAB_FADE < to) to = start - TAB_FADE;
+  else if (end + TAB_FADE > to + box.clientWidth) to = end + TAB_FADE - box.clientWidth;
+  to = Math.max(0, Math.min(to, box.scrollWidth - box.clientWidth));
+  if (Math.abs(to - box.scrollLeft) < 1) return;
+  const still = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  box.scrollTo({ left: to, behavior: smooth && !still ? "smooth" : "auto" });
+}
+
+/**
+ * Underline tabs, as in the kit's page headers. When they do not fit (six
+ * tabs on a phone) they scroll sideways: the edge with more behind it fades
+ * out, and the selected tab is always scrolled into view.
+ */
 export function Tabs({ items, className }: { items: { key: string; label: ReactNode; href?: string; active: boolean; onClick?: () => void }[]; className?: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState<More>();
+  const keys = items.map((t) => t.key).join("\u0001");
+  const selected = items.find((t) => t.active)?.key;
+  const seen = useRef(false);
+
+  // Which edges fade: on scroll, and whenever the box or a tab changes size (a phone turning, fonts arriving).
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const update = () => setMore(moreOf(el));
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = typeof ResizeObserver === "function" ? new ResizeObserver(update) : null;
+    if (ro) { ro.observe(el); Array.from(el.children).forEach((c) => ro.observe(c)); }
+    return () => { el.removeEventListener("scroll", update); ro?.disconnect(); };
+  }, [keys]);
+
+  // The selected tab is never left off the edge: straight away on arrival, smoothly after that.
+  useEffect(() => {
+    const el = box.current;
+    const tab = el?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (el && tab) reveal(el, tab, seen.current);
+    seen.current = true;
+  }, [selected, keys]);
+
+  const mask = more ? MASK[more] : undefined;
   return (
-    <div role="tablist" className={cx("mt-5 flex flex-none gap-1 overflow-x-auto", className)}>
-      {items.map((t) => {
-        const cls = cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-md border-b-2 px-3 pb-3 pt-1.5 text-body font-medium transition-colors duration-150", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink");
-        return t.href ? (
-          <Link key={t.key} href={t.href} role="tab" aria-selected={t.active} className={cls} scroll={false}>{t.label}</Link>
-        ) : (
-          <button key={t.key} type="button" role="tab" aria-selected={t.active} className={cls} onClick={t.onClick}>{t.label}</button>
-        );
-      })}
+    // The default gap above gives way to a caller's own (the kit dialog's sticky tabs ask for mt-0).
+    <div className={cx(!/(^|\s)mt-/.test(className ?? "") && "mt-5", "flex-none", className)}>
+      <div ref={box} role="tablist" data-more={more} className="flex gap-1 overflow-x-auto" style={mask ? { maskImage: mask, WebkitMaskImage: mask } : undefined}
+        // A tab reached with the keyboard comes out from under the fade too.
+        onFocus={(e) => { if (box.current && e.target !== box.current) reveal(box.current, e.target as HTMLElement, true); }}>
+        {items.map((t) => {
+          const cls = cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-md border-b-2 px-3 pb-3 pt-1.5 text-body font-medium transition-colors duration-150", t.active ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink");
+          return t.href ? (
+            <Link key={t.key} href={t.href} role="tab" aria-selected={t.active} className={cls} scroll={false}>{t.label}</Link>
+          ) : (
+            <button key={t.key} type="button" role="tab" aria-selected={t.active} className={cls} onClick={t.onClick}>{t.label}</button>
+          );
+        })}
+      </div>
     </div>
   );
 }
