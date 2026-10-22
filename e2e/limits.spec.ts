@@ -46,7 +46,8 @@ test("an admin blocks one permission for one person", async ({ page }) => {
   await dialog.getByText(/Exceptions and limits for Ines/).click();
   await dialog.getByRole("radiogroup", { name: "Upload files" }).getByRole("radio", { name: "Block" }).click();
   await dialog.getByRole("button", { name: "Save access" }).click();
-  await expect(row.getByText("1 exception")).toBeVisible();
+  // The tag shows on phones too, so only the one on screen counts.
+  await expect(row.getByText("1 exception").filter({ visible: true })).toBeVisible();
 
   await signIn(page, "Ines Batz");
   const res = await upload(page, "note.png", "image/png", 1024);

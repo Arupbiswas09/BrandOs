@@ -1299,12 +1299,18 @@ export async function deleteComment(commentId: string) {
 
 /* ================================================================ recycle bin */
 
+/** Removed people and groups: bringing them back or deleting them for good is managing the team, so admins only. */
+const TEAM_KINDS = ["person", "group"];
 
 export async function restoreFromTrash(entryId: string) {
   return run(async () => {
-    const { me, db } = await context("del");
+    const { me, db, all } = await context("del");
     const [e] = await db.select().from(s.trash).where(eq(s.trash.id, entryId));
     need(e, "That is no longer in the bin.");
+    if (TEAM_KINDS.includes(e!.kind)) need(can(me, "access"), "Only admins can bring back people and groups.");
+    // A restored person keeps their email. If someone else has it now, the restore would quietly do nothing.
+    const email = e!.kind === "person" ? (e!.rows.users?.[0]?.email as string | null | undefined) : null;
+    if (email && all.users.some((u) => u.email === email)) throw new Denied(`Someone on the team already uses ${email}. Change their email first, then restore ${e!.label}.`);
     await db.transaction(async (tx) => {
       await restoreSnapshot(tx, e!.rows, e!.kind === "group" ? e!.itemId : undefined);
       await tx.delete(s.trash).where(eq(s.trash.id, entryId));
@@ -1324,7 +1330,10 @@ export async function deleteForever(entryId: string | "all") {
     const found = entryId === "all" ? await db.select().from(s.trash) : await db.select().from(s.trash).where(eq(s.trash.id, entryId));
     need(found.length || entryId === "all", "That is no longer in the bin.");
     if (entryId !== "all" && neverDeleted(found[0]!.kind)) throw new Denied("Clients, brands, services and offers are never deleted for good. Restore it instead.");
-    const list = found.filter((e) => !neverDeleted(e.kind));
+    const team = can(me, "access");
+    if (entryId !== "all" && !team && TEAM_KINDS.includes(found[0]!.kind)) throw new Denied("Only admins can delete people and groups for good.");
+    // Emptying the bin without team access passes over removed people and groups too.
+    const list = found.filter((e) => !neverDeleted(e.kind) && (team || !TEAM_KINDS.includes(e.kind)));
     await db.transaction(async (tx) => {
       for (const e of list) {
         await tx.delete(s.trash).where(eq(s.trash.id, e.id));

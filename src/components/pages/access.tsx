@@ -77,13 +77,14 @@ export function RoleMatrix() {
 
 /** For each client: who can see it and what their role lets them do there. */
 export function AccessMap() {
-  const { ws } = useApp();
+  const { ws, open } = useApp();
+  const canAccess = ws.can("access");
   const clients = live(ws.d.clients);
   const brands = ws.d.brands;
   const people = ws.d.users.map((u) => ({ u, scope: scopeOf(u, ws.d.groups) }));
   return (
     <>
-      <p className="mb-4 mt-0 max-w-[70ch] text-body text-mute-2">Everyone who can open each client, and what they can do there. Change it with <b className="font-semibold text-ink">Edit access</b> on the People tab.</p>
+      <p className="mb-4 mt-0 max-w-[70ch] text-body text-mute-2">Everyone who can open each client, and what they can do there. {canAccess && <>Select someone&apos;s role to change it, or use <b className="font-semibold text-ink">Edit access</b> on the People tab.</>}</p>
       <div className="grid gap-4 md:grid-cols-2">
         {clients.map((c) => {
           const cb = brands.filter((b) => b.clientId === c.id);
@@ -105,7 +106,10 @@ export function AccessMap() {
                       <span className="block truncate text-meta font-medium">{u.name}</span>
                       <span className="block truncate text-small text-mute-3">{scope.all ? "Every client" : partial ? `Only ${only}` : "The whole client"}</span>
                     </span>
-                    <RoleChip role={u.access} />
+                    {/* As on the People tab, the role tag opens Edit access, so the change is one step from here. */}
+                    {canAccess
+                      ? <button type="button" onClick={() => open({ kind: "person", draft: u })} title={`Change ${u.name}'s role or what they see`} aria-label={`Change role for ${u.name}: ${u.access === "Client" ? NO_ACCESS_LABEL : u.access}`} className="flex-none rounded-full transition-[filter] duration-150 hover:brightness-95"><RoleChip role={u.access} /></button>
+                      : <RoleChip role={u.access} />}
                   </div>
                 );
               })}

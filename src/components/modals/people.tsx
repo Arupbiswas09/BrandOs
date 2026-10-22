@@ -6,15 +6,36 @@ import { NO_ACCESS_LABEL, OVERRIDABLE, PERM_INFO, ROLES, can, cleanOverrides, ro
 import { cellFor } from "@/components/pages/access";
 import { ACCESS_COLOR, ACCESS_NOTE, ROLE_OPTIONS } from "@/lib/constants";
 import type { PublicUser } from "@/lib/types";
+import { plural } from "@/lib/ws";
 import { requestChanges, saveGroup, savePerson, sendForReview } from "@/app/actions";
+import { createInvite } from "@/app/auth-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Avatar, Btn, Field, Select, Tick, cx } from "@/components/ui";
 import { Footer, Modal } from "./frame";
 import type { ItemKind } from "./types";
 
+/**
+ * Password sign-in only: a one-time link for someone to set their password.
+ * Emailed when email is set up and they have an address, otherwise copied for you to send.
+ * `added` names someone who was just added, so the message says both things.
+ */
+export async function sendInvite(userId: string, toast: ReturnType<typeof useApp>["toast"], added?: string) {
+  const r = await createInvite(userId);
+  if (!r.ok) return toast(r.error, "error");
+  if (r.emailed) return toast(added ? `${added} is added and their invite is emailed. The link works once, for a week.` : "Emailed. The link works once, for a week.");
+  const url = window.location.origin + r.path;
+  try {
+    await navigator.clipboard.writeText(url);
+    toast(added ? `${added} is added. Their invite link is copied: send it to them. It works once, for a week.` : "Link copied. Send it to them; it works once, for a week.");
+  } catch {
+    window.prompt("Copy this link and send it to them. It works once, for a week.", url);
+  }
+}
+
 export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
-  const { ws, close } = useApp();
+  const { ws, close, toast } = useApp();
   const [run, pending] = useAction();
+  const demo = ws.d.authMode === "demo";
   const [d, setD] = useState({
     name: draft?.name ?? "",
     email: draft?.email ?? "",
@@ -30,7 +51,15 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
   });
   const toggle = (k: "clientIds" | "groupIds" | "brandIds", v: string) =>
     setD((x) => ({ ...x, allClients: false, [k]: x[k].includes(v) ? x[k].filter((y) => y !== v) : [...x[k], v] }));
-  const save = async () => { const r = await run(savePerson, { id: draft?.id, ...d, permOverrides: cleanOverrides(d.access, d.permOverrides) }); if (r.ok) close(); };
+  const save = async () => {
+    const r = await run(savePerson, { id: draft?.id, ...d, permOverrides: cleanOverrides(d.access, d.permOverrides) });
+    if (!r.ok) return;
+    close();
+    // With real sign-in, inviting someone sends their invite too, so nobody is left "Not joined" with the link hidden in a menu.
+    if (!draft?.id && !demo && r.id) await sendInvite(r.id, toast, d.name.trim());
+  };
+  // Opened once when there is something in it; after that it stays as you leave it, even when you undo the last exception.
+  const [extrasOpen] = useState(() => Object.keys(d.permOverrides).length > 0 || d.uploadLimitMb != null || d.storageQuotaMb != null);
   const effective = { access: d.access, permOverrides: cleanOverrides(d.access, d.permOverrides) };
   const roles = ROLE_OPTIONS.includes(d.role) ? ROLE_OPTIONS : [...ROLE_OPTIONS, d.role];
   // The old Client role is not offered. Someone who still has it has no access until a role is picked here.
@@ -47,6 +76,13 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
       <Field label="Email" hint={<span className="font-normal text-mute-4">used to sign in</span>}>
         <input type="email" className="field" value={d.email} onChange={(e) => setD({ ...d, email: e.target.value })} placeholder="marta@agency.com" />
       </Field>
+      {!draft?.id && !demo && (
+        <p className="-mt-2 mb-0 text-small text-mute-2">
+          {ws.d.notify.mail && d.email.trim()
+            ? "When you add them, BrandOS emails them a link to set their password and join."
+            : "When you add them, BrandOS copies a link for you to send them. They use it to set their password and join."}
+        </p>
+      )}
       <div>
         <div className="label">Role: what they can do<span aria-hidden className="ml-0.5 text-mute-3">*</span></div>
         {noAccess && (
@@ -82,7 +118,7 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
           </div>
         </div>}
       </div>
-      <details className="group rounded-xl border border-line" open={Object.keys(d.permOverrides).length > 0 || d.uploadLimitMb != null || d.storageQuotaMb != null}>
+      <details className="group rounded-xl border border-line" open={extrasOpen}>
         <summary className="flex cursor-pointer list-none items-center gap-2 px-3.5 py-3 [&::-webkit-details-marker]:hidden">
           <span className="flex-1">
             <span className="block text-body font-semibold">Exceptions and limits for {d.name.split(" ")[0] || "this person"}</span>
@@ -146,7 +182,7 @@ export function PersonModal({ draft }: { draft?: Partial<PublicUser> }) {
               const on = d.groupIds.includes(g.id);
               return (
                 <button key={g.id} type="button" aria-pressed={on} onClick={() => toggle("groupIds", g.id)} className={cx("rounded-full border px-3 py-1.5 text-body font-medium transition", on ? "border-accent bg-soft" : "border-line bg-surface")}>
-                  {g.name} <span className="text-mute-3">· {g.clientIds.length} clients</span>
+                  {g.name} <span className="text-mute-3">· {plural(g.clientIds.length, "client")}</span>
                 </button>
               );
             })}
@@ -236,7 +272,12 @@ export function SendReviewModal({ item, id }: { item: ItemKind; id: string }) {
           <span className="text-meta tabular-nums text-mute-3" title="Items already waiting on them">{ws.d.queueCounts[u.id] ?? 0} waiting</span>
         </button>
       ))}
-      {!people.length && <div className="p-6 text-center text-body text-mute-2">Nobody else can review yet. Give someone Reviewer access on the Team page.</div>}
+      {!people.length && (
+        <div className="p-6 text-center text-body text-mute-2">
+          {/* Only admins manage the team, so everyone else is told who to ask. */}
+          {ws.can("access") ? "Nobody else can review yet. Give someone Reviewer access on the Team page." : "Nobody else can review yet. Ask an admin to give someone Reviewer access."}
+        </div>
+      )}
     </Modal>
   );
 }

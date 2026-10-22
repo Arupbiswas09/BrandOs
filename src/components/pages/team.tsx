@@ -7,21 +7,25 @@ import { PERM_INFO } from "@/lib/access";
 import { plural } from "@/lib/ws";
 import type { PublicUser } from "@/lib/types";
 import { switchUser } from "@/app/actions";
-import { createInvite } from "@/app/auth-actions";
 import { resetTeammateTwoFactor, signOutTeammateEverywhere } from "@/app/security-actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { CardMenu, type CardMenuItem } from "@/components/card-menu";
+import { sendInvite } from "@/components/modals/people";
 import { Avatar, Btn, Card, Empty, Page, PageHead, cx } from "@/components/ui";
 import { useStored } from "@/lib/stored";
 import { AccessMap, RoleChip, RoleMatrix } from "./access";
 
 // Upload limits live in Settings (one editor, one place); People links there.
-const TEAM_TABS = [["people", "People"], ["roles", "Roles and permissions"], ["map", "Who sees what"], ["groups", "Groups"]] as const;
+const TEAM_TABS = [["people", "People", ""], ["roles", "Roles and permissions", "Roles"], ["map", "Who sees what", ""], ["groups", "Groups", ""]] as const;
 type TeamTab = (typeof TEAM_TABS)[number][0];
 const TEAM_KEYS = TEAM_TABS.map((t) => t[0]);
 
-/** Name · role · what they see · waiting · actions. The header row and every person share it. */
+/**
+ * Name · role · what they see · waiting · actions. The header row and every person share it.
+ * The demo's rows also carry "View as", so their actions column is wider and never covers the queue count.
+ */
 const COLS = "md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_64px_184px] md:items-center md:gap-4";
+const COLS_DEMO = "md:grid md:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_64px_232px] md:items-center md:gap-4";
 
 /** Whether the row has room for its own buttons (from 640px); below that, everything sits in the "…" menu. */
 function useWide() {
@@ -70,13 +74,14 @@ function TeamTabs({ active, onChange }: { active: TeamTab; onChange: (k: TeamTab
   };
   return (
     <div role="tablist" aria-label="Team" data-scroll className="mt-5 flex flex-none gap-1 overflow-x-auto">
-      {TEAM_TABS.map(([k, label], i) => {
+      {TEAM_TABS.map(([k, label, short], i) => {
         const on = k === active;
         return (
           <button key={k} ref={(el) => { refs.current[k] = el; }} type="button" role="tab" id={`team-tab-${k}`} aria-selected={on} aria-controls="team-panel" tabIndex={on ? 0 : -1}
-            onClick={() => onChange(k)} onKeyDown={(e) => onKey(e, i)}
-            className={cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-lg border-b-2 px-3 pb-3 pt-1.5 text-body font-medium transition-colors duration-150", on ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink")}>
-            {label}
+            aria-label={label} onClick={() => onChange(k)} onKeyDown={(e) => onKey(e, i)}
+            className={cx("focus-inset -mb-px flex-none whitespace-nowrap rounded-t-lg border-b-2 px-3 pb-3 pt-1.5 text-body font-medium transition-colors duration-150 max-sm:px-2.5", on ? "border-accent text-ink" : "border-transparent text-mute-3 hover:border-line-strong hover:text-ink")}>
+            {/* A shorter word on phones, so every tab fits and Groups is not hidden past the edge. */}
+            {short ? <><span className="sm:hidden">{short}</span><span className="max-sm:hidden">{label}</span></> : label}
           </button>
         );
       })}
@@ -86,10 +91,11 @@ function TeamTabs({ active, onChange }: { active: TeamTab; onChange: (k: TeamTab
 
 function People() {
   const { ws } = useApp();
+  const cols = ws.d.authMode === "demo" ? COLS_DEMO : COLS;
   return (
     <>
     <Card className="overflow-hidden">
-      <div aria-hidden className={cx("hidden border-b border-line bg-wash-2 px-4 py-2 text-small font-semibold text-mute-2", COLS)}>
+      <div aria-hidden className={cx("hidden border-b border-line bg-wash-2 px-4 py-2 text-small font-semibold text-mute-2", cols)}>
         <span>Name</span><span>Role</span><span>Sees</span><span className="text-right">Waiting</span><span />
       </div>
       <ul className="m-0 list-none p-0">
@@ -117,14 +123,12 @@ function PersonRow({ u }: { u: PublicUser }) {
   const waiting = ws.d.queueCounts[u.id] ?? 0;
   const exceptions = Object.keys(u.permOverrides ?? {});
 
-  const invite = async () => {
-    const r = await createInvite(u.id);
-    if (!r.ok) return toast(r.error, "error");
-    const url = window.location.origin + r.path;
-    if (r.emailed) { toast("Emailed. The link works once, for a week."); return; }
-    try { await navigator.clipboard.writeText(url); toast("Link copied. Send it to them; it works once, for a week."); }
-    catch { window.prompt("Copy this invite link", url); }
-  };
+  const invite = () => sendInvite(u.id, toast);
+  // With email set up and an address to send to, the link is emailed rather than copied; the menu says which.
+  const emails = ws.d.notify.mail && !!u.email;
+  const inviteLabel = u.hasPassword
+    ? (emails ? "Email a password reset link" : "Copy a password reset link")
+    : (emails ? "Email an invite link" : "Copy an invite link");
   const security = async (kind: "2fa" | "sessions") => {
     const ask = kind === "2fa"
       ? `Reset two-step verification for ${u.name}? They can sign in with just their password until they set it up again.`
@@ -141,15 +145,31 @@ function PersonRow({ u }: { u: PublicUser }) {
     ...(!wide && canViewAs ? [{ kind: "item" as const, label: "View as", onSelect: () => void run(switchUser, u.id) }] : []),
     // Edit access leads the menu on every screen: the menu is where people look for it.
     ...(canAccess ? [{ kind: "item" as const, label: "Edit access", icon: <ShieldCheck aria-hidden size={16} className="text-mute-2" />, onSelect: editAccess }] : []),
-    ...(!demo && canAccess && !isMe && !noAccess ? [{ kind: "item" as const, label: u.hasPassword ? "Copy a password reset link" : "Copy an invite link", onSelect: () => void invite() }] : []),
+    ...(!demo && canAccess && !isMe && !noAccess ? [{ kind: "item" as const, label: inviteLabel, onSelect: () => void invite() }] : []),
     ...(!demo && canAccess && !isMe && u.twoFactor ? [{ kind: "item" as const, label: "Reset two-step verification", onSelect: () => void security("2fa") }] : []),
     ...(!demo && canAccess && !isMe ? [{ kind: "item" as const, label: "Sign out everywhere", onSelect: () => void security("sessions") }] : []),
     ...(canAccess && !isMe ? [{ kind: "item" as const, label: "Remove from the team", danger: true, onSelect: () => open({ kind: "confirm", item: "person", id: u.id, label: u.name }) }] : []),
   ];
 
+  // The role tag opens Edit access too. Phones and desktops show the same tags, so "Not joined" and exceptions are never hidden.
+  const role = canAccess
+    ? <button type="button" onClick={editAccess} title={`Change ${u.name}'s role or what they see`} aria-label={`Change role for ${u.name}: ${u.access === "Client" ? "No access" : u.access}`} className="flex-none rounded-full transition-[filter] duration-150 hover:brightness-95"><RoleChip role={u.access} /></button>
+    : <RoleChip role={u.access} />;
+  const tags = (
+    <>
+      {exceptions.length > 0 && (
+        <span className="flex-none rounded-sm bg-warn/12 px-2 py-0.5 text-small font-semibold text-warn-ink" title={Object.entries(u.permOverrides).map(([p, v]) => `${v ? "Allowed" : "Blocked"}: ${PERM_INFO.find((x) => x.perm === p)?.label ?? p}`).join("\n")}>
+          {plural(exceptions.length, "exception")}
+        </span>
+      )}
+      {!demo && !noAccess && !u.hasPassword && <span className="flex-none rounded-sm bg-chip px-2 py-0.5 text-small text-mute-2">Not joined</span>}
+      {!demo && u.twoFactor && <span className="flex-none rounded-sm bg-ok/12 px-2 py-0.5 text-small font-medium text-ok" title="Two-step verification is on">2-step on</span>}
+    </>
+  );
+
   return (
-    <li className={cx("flex items-center gap-3 border-t border-divider px-4 py-2.5 first:border-t-0 md:py-2", COLS)}>
-      {/* Name and what they do; on phones their role, scope and queue sit underneath. */}
+    <li className={cx("flex items-center gap-3 border-t border-divider px-4 py-2.5 first:border-t-0 md:py-2", demo ? COLS_DEMO : COLS)}>
+      {/* Name and what they do; on phones their role, tags, scope and queue sit underneath. */}
       <span className="flex min-w-0 flex-1 items-center gap-3">
         <Avatar initials={u.initials} size={32} />
         <span className="min-w-0">
@@ -158,23 +178,16 @@ function PersonRow({ u }: { u: PublicUser }) {
             {isMe && <span className="flex-none text-small text-mute-3">You</span>}
           </span>
           <span className="block truncate text-small text-mute-3">{u.role}</span>
-          <span className="mt-1 flex min-w-0 items-center gap-2 text-small text-mute-2 md:hidden">
-            <RoleChip role={u.access} />
+          <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-small text-mute-2 md:hidden">
+            {role}
+            {tags}
             <span className="min-w-0 truncate">{ws.scopeLabel(u)}{waiting > 0 && ` · ${waiting} waiting`}</span>
           </span>
         </span>
       </span>
       <span className="hidden min-w-0 flex-wrap items-center gap-1.5 md:flex">
-        {canAccess
-          ? <button type="button" onClick={editAccess} title={`Change ${u.name}'s role or what they see`} aria-label={`Change role for ${u.name}: ${u.access === "Client" ? "No access" : u.access}`} className="rounded-full transition-[filter] duration-150 hover:brightness-95"><RoleChip role={u.access} /></button>
-          : <RoleChip role={u.access} />}
-        {exceptions.length > 0 && (
-          <span className="flex-none rounded-sm bg-warn/12 px-2 py-0.5 text-small font-semibold text-warn-ink" title={Object.entries(u.permOverrides).map(([p, v]) => `${v ? "Allowed" : "Blocked"}: ${PERM_INFO.find((x) => x.perm === p)?.label ?? p}`).join("\n")}>
-            {plural(exceptions.length, "exception")}
-          </span>
-        )}
-        {!demo && !noAccess && !u.hasPassword && <span className="flex-none rounded-sm bg-chip px-2 py-0.5 text-small text-mute-2">Not joined</span>}
-        {!demo && u.twoFactor && <span className="flex-none rounded-sm bg-ok/12 px-2 py-0.5 text-small font-medium text-ok" title="Two-step verification is on">2-step on</span>}
+        {role}
+        {tags}
       </span>
       <span className="hidden min-w-0 truncate text-meta text-mute-1 md:block">{ws.scopeLabel(u)}</span>
       <span className="hidden text-right text-meta tabular-nums text-mute-2 md:block">{waiting}<span className="sr-only"> waiting</span></span>
@@ -218,8 +231,9 @@ function Groups() {
                 <span className="flex-1" />
                 {canAccess && (
                   <>
-                    <Btn size="sm" variant="ghost" onClick={() => open({ kind: "group", draft: g })} aria-label={`Edit ${g.name}`}>Edit</Btn>
-                    <Btn size="sm" variant="ghost" className="hover:text-danger" onClick={() => open({ kind: "confirm", item: "group", id: g.id, label: g.name })} aria-label={`Delete ${g.name}`}>Delete</Btn>
+                    {/* Real buttons, as on CTA cards: grey text alone reads as a label, not something to press. */}
+                    <Btn size="sm" onClick={() => open({ kind: "group", draft: g })} aria-label={`Edit ${g.name}`}>Edit</Btn>
+                    <Btn size="sm" variant="danger" onClick={() => open({ kind: "confirm", item: "group", id: g.id, label: g.name })} aria-label={`Delete ${g.name}`}>Delete</Btn>
                   </>
                 )}
               </div>
@@ -229,7 +243,7 @@ function Groups() {
       </div>
       {!ws.d.groups.length && (
         <Empty title="No groups yet" body="Make a group for a pod or an account team, and everyone in it gets every client the group covers.">
-          {canAccess && <Btn variant="primary" onClick={() => open({ kind: "group" })}>Make a group</Btn>}
+          {canAccess && <Btn variant="primary" onClick={() => open({ kind: "group" })}><Plus aria-hidden className="size-4" />New group</Btn>}
         </Empty>
       )}
     </>

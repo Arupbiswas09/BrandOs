@@ -25,13 +25,18 @@ export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: b
     const r = await run(deleteForever, "all");
     if (r.ok) toast(kept ? "Emptied. Clients, brands, services and offers stay until someone restores them." : "The bin is empty");
   };
+  const forget = async (e: Entry) => {
+    if (!window.confirm(`Delete ${e.label} for good? This cannot be undone.`)) return;
+    const r = await run(deleteForever, e.id);
+    if (r.ok) toast(`${e.label} is deleted for good`);
+  };
   return (
     <Page className="max-w-[860px]">
       <PageHead eyebrow="Deleted things" title="Recycle bin"
         actions={allowed && removable > 0 && (
           <Btn variant="danger" disabled={pending} onClick={() => void empty()}><Trash2 aria-hidden className="h-4 w-4" />Empty the bin</Btn>
         )}
-        sub={<>Deleted assets, CTAs, people and groups wait here for {days} days. Restore puts one back exactly as it was, files and notes included. Clients, brands, services and offers are never deleted: they are archived instead.</>}
+        sub={<>Deleted {ws.can("access") ? "assets, CTAs, people and groups" : "assets and CTAs"} wait here for {days} days. Restore puts one back exactly as it was, files and notes included. Clients, brands, services and offers are never deleted: they are archived instead.</>}
       />
       {!allowed && <Empty title="Only admins can see the bin" body="Deleting and restoring is an admin job. Ask an admin if something went missing." />}
       {allowed && !entries.length && <Empty title="The bin is empty" body={`Nothing has been deleted in the last ${days} days.`} />}
@@ -52,7 +57,7 @@ export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: b
                 <Btn variant="primary" size="sm" disabled={pending} aria-label={`Restore ${e.label}`} onClick={async () => { const r = await run(restoreFromTrash, e.id); if (r.ok) toast(`${e.label} is back`); }}><RotateCcw aria-hidden className="h-3.5 w-3.5" />Restore</Btn>
                 {keep
                   ? <span className="px-1.5 py-1 text-small text-mute-3">Restore only</span>
-                  : <button type="button" disabled={pending} aria-label={`Delete ${e.label} forever`} onClick={() => { if (window.confirm(`Delete ${e.label} for good? This cannot be undone.`)) void run(deleteForever, e.id); }} className="rounded-md px-1.5 py-1 text-small font-medium text-danger hover:underline">Delete forever</button>}
+                  : <Btn variant="danger" size="sm" disabled={pending} aria-label={`Delete ${e.label} forever`} onClick={() => void forget(e)}>Delete forever</Btn>}
               </div>
             );
           })}
