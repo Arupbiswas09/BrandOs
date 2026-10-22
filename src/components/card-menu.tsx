@@ -94,6 +94,7 @@ export function CardMenu({ label, items, triggerClassName, icon, onOpenChange }:
         ref={button}
         type="button"
         aria-label={label}
+        title={label}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}

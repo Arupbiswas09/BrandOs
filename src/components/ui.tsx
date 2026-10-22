@@ -77,7 +77,7 @@ export function FilterBar({ q, onQ, placeholder, selects, onClear, className }: 
         <Select key={x.label} aria-label={x.label} value={x.value} onChange={x.onChange} options={x.options}
           className={cx("w-auto py-2 pr-8 text-body", x.value !== x.options[0]?.value && "border-accent font-semibold text-accent")} />
       ))}
-      {active && onClear && <button type="button" onClick={onClear} className="px-1.5 text-meta font-medium text-mute-2 hover:text-ink hover:underline">Clear</button>}
+      {active && onClear && <Btn size="sm" onClick={onClear}>Clear</Btn>}
     </div>
   );
 }

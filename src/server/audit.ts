@@ -70,7 +70,9 @@ export function auditWhere(q: AuditQuery): SQL | undefined {
   if (q.to) parts.push(lt(a.createdAt, new Date(new Date(`${q.to}T00:00:00Z`).getTime() + 86_400_000)));
   if (q.q) {
     const pat = `%${q.q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
-    parts.push(or(ilike(a.label, pat), ilike(a.field, pat), ilike(a.action, pat), ilike(a.type, pat)));
+    // Who did it counts too: a name or email finds that person's entries.
+    const who = sql`${a.userId} in (select ${s.users.id} from ${s.users} where ${s.users.name} ilike ${pat} or ${s.users.email} ilike ${pat})`;
+    parts.push(or(ilike(a.label, pat), ilike(a.field, pat), ilike(a.action, pat), ilike(a.type, pat), who));
   }
   const list = parts.filter((p): p is SQL => !!p);
   return list.length ? and(...list) : undefined;

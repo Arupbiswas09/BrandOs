@@ -51,7 +51,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
       <Form key={auditSearch(query)} action="/audit" className="mb-5 grid rounded-xl border border-line bg-surface p-4 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_0.8fr_0.8fr_auto] lg:items-end">
         {query.kind !== "all" && <input type="hidden" name="kind" value={query.kind} />}
         <Field label="Search">
-          <input name="q" type="search" defaultValue={query.q} placeholder="Item, email or detail…" className="field" />
+          <input name="q" type="search" defaultValue={query.q} placeholder="Person, item or detail…" className="field" />
         </Field>
         <Field label="Person">
           <select name="person" defaultValue={query.person} className="field">
