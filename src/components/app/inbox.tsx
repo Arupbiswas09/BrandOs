@@ -17,8 +17,8 @@ export type OnYou =
   | { type: "mention"; key: string; since: number; c: Note };
 
 /**
- * The one list of what is on me. The sidebar queue, the phone's Inbox, the dashboard's
- * "Waiting on you" and the inbox's "On you" all read it, so they never
+ * The one list of what is on me. The sidebar's "Your queue", the phone's Queue, the dashboard's
+ * "Waiting on you" and the queue panel's "On you" all read it, so they never
  * disagree. Whatever has waited longest comes first.
  */
 export function onYou(ws: WS, unread: readonly string[] = ws.d.unreadMentions): OnYou[] {
@@ -38,6 +38,10 @@ export function noteWhere(ws: WS, c: Note): string {
   return (c.kind === "asset" ? ws.asset(c.itemId)?.name : ws.offer(c.itemId)?.name) ?? "a note";
 }
 
+/**
+ * "Your queue": the panel the sidebar, the phone's bottom bar (Queue), search
+ * and the I key open. The code still calls it the inbox; people never see that word.
+ */
 export function Inbox() {
   const { inbox, setInbox } = useApp();
   if (!inbox) return null;
@@ -79,7 +83,7 @@ function Panel({ onClose }: { onClose: () => void }) {
     return () => prev?.focus?.();
   }, []);
 
-  // Opening the inbox counts as reading the mentions in it.
+  // Opening your queue counts as reading the mentions in it.
   useEffect(() => {
     const ids = [...unread];
     if (!ids.length) return;
@@ -110,14 +114,14 @@ function Panel({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Inbox">
+    <div className="fixed inset-0 z-[70]" role="dialog" aria-modal="true" aria-label="Your queue">
       <div className="absolute inset-0 animate-fade bg-[rgba(16,22,20,.28)]" onClick={onClose} />
       <div data-scroll className="absolute inset-y-0 right-0 flex w-[440px] max-w-full animate-slide flex-col overflow-y-auto border-l border-line bg-wash shadow-pop">
         <div className="safe-top sticky top-0 z-[2] border-b border-line bg-surface">
           <div className="flex items-center gap-3 px-5 py-4">
             <span aria-hidden className="flex size-8 flex-none items-center justify-center rounded-lg bg-soft text-accent"><InboxIcon className="size-4" /></span>
             <span className="min-w-0 flex-1">
-              <span className="block text-lead font-semibold leading-tight tracking-[-0.012em]">Inbox</span>
+              <span className="block text-lead font-semibold leading-tight tracking-[-0.012em]">Your queue</span>
               <span className="block text-meta text-mute-2">
                 {mine.length ? `${mine.length} ${mine.length === 1 ? "thing needs" : "things need"} you` : "Nothing needs you"}
               </span>

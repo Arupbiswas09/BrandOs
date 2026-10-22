@@ -11,10 +11,14 @@ test.describe("desktop", () => {
     const nav = page.getByRole("navigation", { name: "Main" });
     await expect(nav.getByRole("button", { name: /^Your queue, \d+ waiting$/ })).toBeVisible();
     // No bell in the header, and the dashboard's list carries no count of its own.
-    await expect(page.locator("header").getByRole("button", { name: /Inbox|waiting/ })).toHaveCount(0);
+    await expect(page.locator("header").getByRole("button", { name: /Inbox|queue|waiting/i })).toHaveCount(0);
     await expect(page.getByText(/\d+ on you/)).toHaveCount(0);
     await nav.getByRole("button", { name: /^Your queue/ }).click();
-    await expect(page.getByRole("dialog", { name: "Inbox" })).toBeVisible();
+    // One name for it: what the sidebar says is what the panel is called.
+    const panel = page.getByRole("dialog", { name: "Your queue" });
+    await expect(panel).toBeVisible();
+    await expect(panel.getByText("Your queue", { exact: true })).toBeVisible();
+    await expect(page.getByText("Inbox", { exact: true })).toHaveCount(0);
   });
 
   test("the user menu keeps to the account: colours live in Settings", async ({ page }) => {

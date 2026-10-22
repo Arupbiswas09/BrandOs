@@ -17,6 +17,7 @@ import { Sections, SectionsHead, SectionTitle, type SectionItem } from "@/compon
 import { PasswordInput } from "@/components/password-input";
 import { Btn, Card, Field, Hint, Page, Select, Warn, cx } from "@/components/ui";
 import { UploadLimits } from "./limits";
+import { useSetup } from "./street";
 import { SessionsCard, TwoFactorCard, TwoFactorNudge, type SecurityInfo } from "./security";
 
 type Sec = "profile" | "appearance" | "notifications" | "security" | "calendar" | "workspace" | "uploads";
@@ -71,7 +72,7 @@ export function Settings({ security }: { security: SecurityInfo | null }) {
         )}
         {active === "workspace" && (
           <>
-            <SectionTitle title="Slack and export" sub="Settings for the whole workspace. Only admins see these." />
+            <SectionTitle title="Slack and export" sub="Settings for the whole workspace, shown only to people who may use them." />
             {admin && <SlackCard />}
             {canExport && <ExportCard />}
           </>
@@ -159,8 +160,31 @@ function Profile({ nudge, onSecurity }: { nudge: boolean; onSecurity: () => void
         <Row title="Keyboard shortcuts" control={<Btn onClick={() => open({ kind: "shortcuts" })}>Show shortcuts</Btn>}>
           The everyday things, one key away. Press ? anywhere to see them.
         </Row>
+        <SetupRow />
       </Card>
     </>
+  );
+}
+
+/**
+ * The way back to the Dashboard's "Get set up" card once its × has hidden it,
+ * using the same stored choice. Only there while the card has steps left to show.
+ */
+function SetupRow() {
+  const setup = useSetup();
+  if (!setup.offered) return null;
+  const on = !setup.hidden;
+  const label = "Show the setup steps on the Dashboard";
+  return (
+    <Row title={label}
+      control={
+        <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={() => setup.setHidden(on)}
+          className={cx("relative h-6 w-11 flex-none rounded-full transition-colors duration-150", on ? "bg-accent" : "bg-line-strong")}>
+          <span aria-hidden className={cx("absolute left-0.5 top-0.5 size-5 rounded-full bg-surface shadow-card transition-transform duration-200 ease-snap motion-reduce:transition-none", on && "translate-x-5")} />
+        </button>
+      }>
+      The Get set up card walks through what a new workspace needs: {setup.done} of {setup.steps.length} done. Remembered in this browser.
+    </Row>
   );
 }
 
@@ -370,7 +394,7 @@ function NotificationsCard() {
     <Card className="overflow-hidden">
       <Row title="In the app"
         control={perm === "default" ? <Btn onClick={ask}>Turn on desktop notifications</Btn> : perm === "granted" ? <State on>On</State> : null}>
-        <p className="m-0">Your queue in the sidebar, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you.</p>
+        <p className="m-0">Your queue, the app icon and the tab title count what needs you: work sent to you for review or changes, and notes that @mention you.</p>
         <p className="m-0 mt-1.5">
           {perm === "granted" ? "Desktop notifications are on for this browser, so you hear about new work when BrandOS is in the background."
             : perm === "denied" ? "Desktop notifications are blocked. Allow them for this site in your browser settings."
