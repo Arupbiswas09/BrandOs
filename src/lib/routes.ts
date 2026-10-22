@@ -21,6 +21,8 @@ export const href = {
   team: () => "/team",
   client: (id: string) => `/clients/${id}`,
   brand: (id: string, tab: BrandTab = "home") => (tab === "home" ? `/brands/${id}` : `/brands/${id}/${tab}`),
+  /** A brand's Offers showing only those written for one segment (the Offers view reads `?segment=`). */
+  segmentOffers: (id: string, segment: string) => `/brands/${id}/offers?segment=${encodeURIComponent(segment)}`,
   service: (id: string) => `/services/${id}`,
   offer: (id: string) => `/offers/${id}`,
 };

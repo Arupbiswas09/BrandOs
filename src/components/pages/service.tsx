@@ -9,7 +9,7 @@ import { assetStand, offerStand, roleOf, type Stand } from "@/lib/constants";
 import { fmtDateTime } from "@/lib/format";
 import { href } from "@/lib/routes";
 import { useStored } from "@/lib/stored";
-import { plural, type FunnelGroup, type ServiceStats, type WS } from "@/lib/ws";
+import { live, plural, type FunnelGroup, type ServiceStats, type WS } from "@/lib/ws";
 import { setArchived } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { AssetRow, AssetRows, Dot, GroupedRows, ListGroup, OfferRow, SegmentTag, StateWord, reviewSummary } from "@/components/cards";
@@ -440,11 +440,23 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer, view, onView }: {
 
   // One group per segment, in the Brand Kit's order; offers whose segment has gone come last.
   const all = [
-    ...groups.map((g, i) => ({ key: `segment-${i}`, title: <><Dot color={ws.segColor(g.name, brandId)} small />{g.name}</>, list: g.list, gone: false })),
-    ...(orphans.length ? [{ key: "segment-gone", title: <>Segment no longer in the Brand Kit</>, list: orphans, gone: true }] : []),
+    ...groups.map((g, i) => ({ key: `segment-${i}`, name: g.name as string | null, title: <><Dot color={ws.segColor(g.name, brandId)} small />{g.name}</>, list: g.list, gone: false })),
+    ...(orphans.length ? [{ key: "segment-gone", name: null, title: <>Segment no longer in the Brand Kit</>, list: orphans, gone: true }] : []),
   ];
   // The switch only shows with two or more offers to arrange; one offer is a row.
   const cards = view === "grid" && offers.length > 1;
+  // When the brand's other services speak to a segment too, its heading links to all of them in the brand's Offers.
+  const brandOffers = live(ws.offersOf(brandId));
+  const beyond = (g: (typeof all)[number]) => {
+    if (!g.name) return null;
+    const n = brandOffers.filter((o) => o.segment === g.name).length;
+    if (n <= g.list.length) return null;
+    return (
+      <Link href={href.segmentOffers(brandId, g.name)} className="flex-none rounded-sm px-1 text-small text-mute-2 hover:text-ink hover:underline">
+        <span className="sr-only">{g.name} offers: </span>All {n} in this brand
+      </Link>
+    );
+  };
 
   const heading = (g: (typeof all)[number]) => (
     <h3 id={`${g.key}-h`} className="m-0 flex min-w-0 items-center gap-2 text-meta font-semibold text-ink">
@@ -452,6 +464,7 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer, view, onView }: {
       <span className="flex-none font-normal tabular-nums text-mute-2">· {plural(g.list.length, "offer")}</span>
     </h3>
   );
+  const headingRow = (g: (typeof all)[number]) => <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">{heading(g)}{beyond(g)}</div>;
   const grid = (g: (typeof all)[number]) => (
     <ul aria-labelledby={`${g.key}-h`} className="m-0 grid list-none gap-3 p-0 @xl:grid-cols-2 @4xl:grid-cols-3">
       {g.list.map((o) => <li key={o.id} className="flex min-w-0 flex-col"><SegmentOfferCard o={o} /></li>)}
@@ -462,7 +475,7 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer, view, onView }: {
     <>
       {/* The switch keeps its place whichever view is on; in cards the first segment's heading shares its line. */}
       <div className="mb-2 flex min-h-10 items-center justify-between gap-x-4 gap-y-2">
-        {cards ? heading(all[0]) : <p className="m-0 text-meta text-mute-2">By segment: the same service, argued for each audience.</p>}
+        {cards ? headingRow(all[0]) : <p className="m-0 text-meta text-mute-2">By segment: the same service, argued for each audience.</p>}
         {offers.length > 1 && <ViewToggle value={view} onChange={onView} gridLabel="Cards" />}
       </div>
       {cards ? (
@@ -470,7 +483,7 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer, view, onView }: {
           {grid(all[0])}
           {all.slice(1).map((g) => (
             <section key={g.key} aria-labelledby={`${g.key}-h`} className="flex flex-col gap-2">
-              {heading(g)}
+              {headingRow(g)}
               {grid(g)}
             </section>
           ))}
@@ -478,7 +491,7 @@ function OffersBySegment({ offers, brandId, canEdit, newOffer, view, onView }: {
       ) : (
         <GroupedRows>
           {all.map((g) => (
-            <ListGroup key={g.key} as="h3" id={g.key} title={g.title} count={g.list.length} noun={["offer", "offers"]}>
+            <ListGroup key={g.key} as="h3" id={g.key} title={g.title} count={g.list.length} noun={["offer", "offers"]} aside={beyond(g)}>
               {g.list.map((o) => <OfferRow key={o.id} o={o} segment={g.gone} />)}
             </ListGroup>
           ))}

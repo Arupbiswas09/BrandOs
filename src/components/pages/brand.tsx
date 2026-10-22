@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Asset, Brand, Offer } from "@/db/schema";
-import { Archive, ArchiveRestore, ChevronRight, FolderOpen, Layers, Megaphone, Pencil, Plus, Upload } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronRight, FolderOpen, Layers, Megaphone, Pencil, Plus, Upload, X } from "lucide-react";
 import { onColor } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, OFFER_STATUS, TONE, offerTypesOf } from "@/lib/constants";
 import { href, type BrandTab } from "@/lib/routes";
@@ -14,7 +14,7 @@ import { useAction, useApp } from "@/components/app/provider";
 import { AssetCard, AssetRow, AssetRows, Dot, GroupedRows, ListGroup, OfferCard, OfferRow, OfferRows, SegmentTag } from "@/components/cards";
 import { BulkBar, SelectToggle, canBulk, useSelection } from "@/components/bulk";
 import { CtaButton } from "@/components/drawer/asset-drawer";
-import { ArchExpander, ArchivedNote, Btn, Card, Empty, FilterBar, H2, Mark, Page, SectionHead, cx } from "@/components/ui";
+import { ArchExpander, ArchivedNote, Btn, Card, Empty, FilterBar, H2, Mark, PILL, Page, SectionHead, cx } from "@/components/ui";
 import { FOCUS, IconTile, LIFT } from "@/components/polish";
 import { ViewToggle, useView } from "@/components/view-toggle";
 import { NotHere, useVisit } from "./common";
@@ -321,21 +321,51 @@ function CardGroup({ id, title, count, noun, link, folded, onFold, children }: {
 function Offers({ b }: { b: Brand }) {
   const { ws, open } = useApp();
   const router = useRouter();
-  const [seg, setSeg] = useState("All");
+  const params = useSearchParams();
   const [stat, setStat] = useState("All");
   const [q, setQ] = useState("");
   const [stored, setView] = useView("offers");
   const [folded, setFolded] = useState<Set<string>>(() => new Set());
   const all = ws.offersOf(b.id);
+
+  // The segment lives in the address (?segment=Church), so a link can open the list on one segment.
+  // A name in the Brand Kit or on an offer is known (in any case); anything else is said to be unknown.
+  const asked = params.get("segment")?.trim() ?? "";
+  const known = [...b.segments.map((s) => s.name), ...all.map((o) => o.segment)];
+  const match = asked ? known.find((n) => n.toLowerCase() === asked.toLowerCase()) : undefined;
+  const seg = asked ? (match ?? asked) : "All";
+  const unknown = !!asked && !match;
+  const row = useRef<HTMLDivElement>(null);
+  const refocus = useRef<"chip" | "select" | null>(null);
+  const setSeg = (v: string) => {
+    const next = new URLSearchParams(params.toString());
+    if (v === "All") next.delete("segment"); else next.set("segment", v);
+    const qs = next.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}${window.location.hash}`);
+  };
+  // Choosing a segment turns the Segment menu into its chip and clearing the chip turns it back, so focus follows to whichever is there now.
+  useEffect(() => {
+    const want = refocus.current;
+    refocus.current = null;
+    const el = row.current;
+    if (!want || !el) return;
+    const to = want === "chip"
+      ? el.querySelector<HTMLElement>("[data-segment-chip]")
+      : el.querySelector<HTMLElement>('select[aria-label="Segment"]') ?? el.querySelector<HTMLElement>('input[type="search"]');
+    to?.focus();
+  }, [seg]);
+  const clearSeg = () => { refocus.current = "select"; setSeg("All"); };
+
   const t = q.toLowerCase();
   const filtered = all.filter((o) => (seg === "All" || o.segment === seg) && (stat === "All" || o.status === stat) && (!t || `${o.name} ${o.short} ${o.positioning} ${o.tags.join(" ")}`.toLowerCase().includes(t)));
   const shown = live(filtered);
   const segsPresent = ["All", ...b.segments.map((s) => s.name).filter((n) => all.some((o) => o.segment === n))];
   const statusesPresent = Object.keys(OFFER_STATUS).filter((st) => all.some((o) => o.status === st));
   const liveAll = live(all);
+  const inSeg = seg === "All" ? liveAll : liveAll.filter((o) => o.segment === seg);
   // The switch only shows with two or more to arrange; with one, it is a row.
   const view = liveAll.length > 1 ? stored : "list";
-  const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: seg !== "All" ? seg : "All segments", status: "Ideation" } });
+  const newOffer = () => open({ kind: "offer", draft: { brandId: b.id, segment: seg !== "All" && !unknown ? seg : "All segments", status: "Ideation" } });
   const fold = (k: string) => setFolded((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
 
   // By service, in the brand's order; offers of an archived service keep their group; standalone offers come last.
@@ -356,16 +386,29 @@ function Offers({ b }: { b: Brand }) {
       <SectionHead as="h1" eyebrow="Campaigns and packages" title="Offers" actions={ws.can("edit") && <><ImportLink brandId={b.id} kind="offers" /><Btn variant="primary" size="lg" onClick={newOffer}>+ New offer</Btn></>}
         sub={<>Each offer holds one piece of positioning and everything that supports it.</>}
       />
-      <div className="mb-5 flex flex-wrap items-center gap-2 [&>[role=search]]:mb-0">
-        {/* Filters only earn their place when there is something to choose between, and fit on one row. */}
+      <div ref={row} className="mb-5 flex flex-wrap items-center gap-2 [&>[role=search]]:mb-0">
+        {/* Filters only earn their place when there is something to choose between, and fit on one row.
+            A chosen segment shows as its own chip in place of the Segment menu, so it reads at a glance and clears in one press. */}
         <FilterBar
           q={q} onQ={liveAll.length > 1 ? setQ : undefined} placeholder="Filter offers"
           onClear={() => { setQ(""); setSeg("All"); setStat("All"); }}
           selects={[
-            { label: "Segment", value: seg, onChange: setSeg, options: segsPresent.map((s) => ({ value: s, label: s === "All" ? `Every segment (${liveAll.length})` : `${s} (${liveAll.filter((o) => o.segment === s).length})` })) },
+            ...(seg === "All" ? [{
+              label: "Segment", value: seg, onChange: (v: string) => { refocus.current = "chip"; setSeg(v); },
+              options: segsPresent.map((s) => ({ value: s, label: s === "All" ? `Every segment (${liveAll.length})` : `${s} (${liveAll.filter((o) => o.segment === s).length})` })),
+            }] : []),
             { label: "Status", value: stat, onChange: setStat, options: ["All", ...statusesPresent].map((s) => ({ value: s, label: s === "All" ? "Any status" : s })) },
           ]}
         />
+        {seg !== "All" && (
+          <button type="button" data-segment-chip onClick={clearSeg} title="Show every segment" aria-label={`Segment: ${seg}, clear this filter`}
+            className={cx(PILL, "max-w-full gap-1.5 border border-accent bg-surface text-accent transition-colors duration-150 hover:bg-soft", FOCUS)}>
+            {!unknown && <Dot color={ws.segColor(seg, b.id)} small />}
+            <span className="text-ink-3">Segment:</span>
+            <span className="min-w-0 truncate font-semibold">{seg}</span>
+            <X aria-hidden size={13} className="-mr-0.5 flex-none" />
+          </button>
+        )}
         <span className="flex-1" />
         {liveAll.length > 1 && <ViewToggle value={view} onChange={setView} gridLabel="Cards" />}
       </div>
@@ -387,11 +430,20 @@ function Offers({ b }: { b: Brand }) {
         </div>
       ))}
       <ArchExpander items={archivedOnly(filtered)} noun="offer" onOpen={(o) => router.push(href.offer(o.id))} />
-      {!shown.length && (
+      {!shown.length && (unknown ? (
+        <Empty title="No segment by that name" body={`This brand has no segment called “${seg}”, so there are no offers to show for it.`}>
+          <Btn size="lg" onClick={clearSeg}>Show every segment</Btn>
+        </Empty>
+      ) : seg !== "All" && !inSeg.length ? (
+        <Empty title={`Nothing for ${seg} yet`} body={`No offer in this brand is written for ${seg} yet.`}>
+          <Btn size="lg" onClick={clearSeg}>Show every segment</Btn>
+          {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>Create an offer for {seg}</Btn>}
+        </Empty>
+      ) : (
         <Empty title={all.length === 0 ? "No offers yet" : "No offers here"} body={all.length === 0 ? "An offer is a campaign or package that holds the positioning and every asset that supports it." : "Nothing matches those filters."}>
           {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newOffer}>{all.length ? "Create an offer" : "Create the first offer"}</Btn>}
         </Empty>
-      )}
+      ))}
     </>
   );
 }
@@ -546,7 +598,7 @@ function Strategy({ b }: { b: Brand }) {
           <H2 right={ws.can("kit") && <Btn size="sm" onClick={editSegments}><Pencil aria-hidden size={15} />Edit segments</Btn>}>Segments</H2>
           <div className="mb-4 flex flex-wrap gap-2">
             {b.segments.map((sg) => (
-              <Link key={sg.name} href={href.brand(b.id, "offers")} className={cx("flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-2.5 hover:border-line-strong", FOCUS)}>
+              <Link key={sg.name} href={href.segmentOffers(b.id, sg.name)} className={cx("flex items-center gap-2.5 rounded-xl border border-line bg-surface px-4 py-2.5 hover:border-line-strong", FOCUS)}>
                 <Dot color={sg.color} small />
                 <span className="text-body font-semibold">{sg.name}</span>
                 <span className="text-meta">{count(offers.filter((o) => o.segment === sg.name).length)}</span>
