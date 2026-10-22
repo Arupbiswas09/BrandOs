@@ -130,11 +130,21 @@ export function fileKeys(snap: Snapshot): string[] {
     ...(snap.assets ?? []).flatMap((a) => ((a.files as { key?: string }[] | undefined) ?? []).map((f) => f.key)),
     ...(snap.assets ?? []).map((a) => (a.thumbnail as { key?: string } | null | undefined)?.key),
     ...(snap.fileVersions ?? []).map((v) => (v.file as { key?: string } | undefined)?.key),
+    // Files removed from an asset stay in its history, so History can put them back.
+    ...(snap.assetVersions ?? []).flatMap((v) => historyKeys(v.data as Record<string, unknown> | undefined)),
   ];
   return [...new Set(keys.filter((k): k is string => !!k))];
 }
 
-/** Keys from `keys` that no live asset, file version or folder still uses (clones can share a stored file). */
+/** The stored files an asset's saved version points at. */
+function historyKeys(data: Record<string, unknown> | null | undefined): string[] {
+  if (!data) return [];
+  const files = Array.isArray(data.files) ? (data.files as { key?: string }[]) : [];
+  const thumb = data.thumbnail as { key?: string } | null | undefined;
+  return [...files.map((f) => f?.key), thumb?.key].filter((k): k is string => !!k);
+}
+
+/** Keys from `keys` that no live asset, file version, asset history or folder still uses (clones can share a stored file). */
 export async function unreferenced(db: DB, keys: string[]): Promise<string[]> {
   if (!keys.length) return [];
   const want = new Set(keys);
@@ -145,6 +155,8 @@ export async function unreferenced(db: DB, keys: string[]): Promise<string[]> {
   }
   for (const v of await db.select({ file: s.fileVersions.file }).from(s.fileVersions)) if (v.file?.key && want.has(v.file.key)) used.add(v.file.key);
   for (const f of await db.select({ thumbnail: s.assetFolders.thumbnail }).from(s.assetFolders)) if (f.thumbnail?.key && want.has(f.thumbnail.key)) used.add(f.thumbnail.key);
+  // A live asset's history may still need the file to restore it.
+  for (const v of await db.select({ data: s.assetVersions.data }).from(s.assetVersions)) for (const k of historyKeys(v.data)) if (want.has(k)) used.add(k);
   return keys.filter((k) => !used.has(k));
 }
 
