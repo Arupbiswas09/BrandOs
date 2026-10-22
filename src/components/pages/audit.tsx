@@ -51,7 +51,7 @@ export function AuditLog({ allowed, rows, people, total, query }: {
       <Form key={auditSearch(query)} action="/audit" className="mb-5 grid rounded-xl border border-line bg-surface p-4 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1.2fr_1fr_0.8fr_0.8fr_auto] lg:items-end">
         {query.kind !== "all" && <input type="hidden" name="kind" value={query.kind} />}
         <Field label="Search">
-          <input name="q" type="search" defaultValue={query.q} placeholder="Email, name, detail…" className="field" />
+          <input name="q" type="search" defaultValue={query.q} placeholder="Item, email or detail…" className="field" />
         </Field>
         <Field label="Person">
           <select name="person" defaultValue={query.person} className="field">
@@ -67,7 +67,8 @@ export function AuditLog({ allowed, rows, people, total, query }: {
         </Field>
         <div className="flex gap-2">
           <Btn type="submit" variant="primary">Filter</Btn>
-          {filtered && <Link href="/audit" className="inline-flex items-center rounded-lg px-3 py-2 text-body text-mute-2 hover:text-ink">Clear</Link>}
+          {/* Looks like the secondary button it is, not like grey text. */}
+          {filtered && <Link href="/audit" className="inline-flex h-9 items-center whitespace-nowrap rounded-lg border border-line bg-surface px-3.5 text-body font-medium text-ink-3 transition-colors hover:border-line-strong hover:bg-wash">Clear</Link>}
         </div>
       </Form>
 
@@ -86,11 +87,12 @@ export function AuditLog({ allowed, rows, people, total, query }: {
                     <LocalTime at={r.at} className="block font-mono text-micro" />
                   </span>
                   <span className="min-w-[220px] flex-1">
-                    <span className="flex items-center gap-2 text-body">
+                    {/* Wraps on narrow screens rather than cutting off what was changed. */}
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-body">
                       <Avatar initials={initials(r.who)} size={22} />
                       <span className="font-semibold">{r.who}</span>
                       <span className={cx(failed ? "font-semibold text-danger" : "text-ink-3")}>{r.action}</span>
-                      <span className="min-w-0 truncate font-medium text-ink">{r.label}</span>
+                      <span className="min-w-0 break-words font-medium text-ink">{r.label}</span>
                     </span>
                     {r.field && <span className="mt-0.5 block pl-7 text-meta text-mute-2">{r.field}</span>}
                   </span>
