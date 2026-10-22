@@ -163,7 +163,12 @@ export function OfferModal({ draft }: { draft: Partial<Offer> & { brandId: strin
               </button>
             );
           })}
-          {!(b?.goals ?? []).length && <span className="text-body text-mute-3">This brand has no goals yet. Add them on its Strategy tab.</span>}
+          {/* Goals are set up by managers and admins; everyone else is told who can add them. */}
+          {!(b?.goals ?? []).length && (
+            <span className="text-body text-mute-3">
+              {ws.can("structure") || ws.can("kit") ? "This brand has no goals yet. Add them on its Strategy tab." : "This brand has no goals yet. A manager or admin adds them on its Strategy tab."}
+            </span>
+          )}
         </div>
       </div>
 

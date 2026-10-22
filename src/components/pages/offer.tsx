@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Megaphone, Pencil, Split, Undo2 } from "lucide-react";
+import { Archive, ArchiveRestore, ChevronDown, Clock, Copy, Download, ExternalLink, Layers, Megaphone, Pencil, Plus, Split, Undo2 } from "lucide-react";
 import type { Asset, Cta, Offer } from "@/db/schema";
 import { OFFER_STATUS } from "@/lib/constants";
 import { href } from "@/lib/routes";
@@ -156,7 +156,17 @@ function OfferView({ o }: { o: Offer }) {
         }
       />
 
-      {o.archived && <ArchivedNote className="-mt-2 mb-6">Archived. Its assets are still in the library; only this offer is closed.</ArchivedNote>}
+      {o.archived && (
+        <ArchivedNote className="-mt-2 mb-6">
+          {/* Restore sits where people read that it is archived, not only in the … menu. */}
+          <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <span>Archived. Its assets are still in the library; only this offer is closed.</span>
+            {ws.can("archive") && (
+              <Btn size="sm" onClick={() => void run(setArchived, "offer", o.id, false)}><ArchiveRestore aria-hidden size={15} />Restore</Btn>
+            )}
+          </span>
+        </ArchivedNote>
+      )}
 
       <div className={cx("grid gap-6 xl:gap-8", !wide && "xl:grid-cols-[minmax(0,1fr)_360px]")}>
         {/* First in the reading order, so on narrower screens the links sit above the tabs. The funnel board and the results table take the whole width. */}
@@ -219,9 +229,6 @@ function keyLinksOf(assets: Asset[]) {
   return assets.filter((a) => !a.archived && (!!assetLink(a) || KEY_TYPES.includes(a.type))).sort((x, y) => rank(x) - rank(y));
 }
 
-/** Waiting on someone: the review line then stays in view even when the details are folded away. */
-const waiting = (o: Offer) => o.review === "In review" || o.review === "Changes requested";
-
 function Summary({ o, assets, className }: { o: Offer; assets: Asset[]; className?: string }) {
   const [more, setMore] = useState(false);
   return (
@@ -235,14 +242,13 @@ function Summary({ o, assets, className }: { o: Offer; assets: Asset[]; classNam
       )}
     >
       <KeyLinks o={o} assets={assets} />
-      {waiting(o) && (
-        <section aria-labelledby="review-h" className="border-t border-divider px-4 py-3">
-          <h2 id="review-h" className={HEAD}>Review</h2>
-          <ReviewLine kind="offer" item={o} className="mt-1.5" />
-          {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mt-3">{o.changeNote}</ChangeNote>}
-        </section>
-      )}
-      {/* Below 1280px only the links (and a review waiting on someone) show until someone asks for the rest. */}
+      {/* Always in view, so Send for review, Approve and Review again are there on every screen, not behind Show details. */}
+      <section aria-labelledby="review-h" className="border-t border-divider px-4 py-3">
+        <h2 id="review-h" className={HEAD}>Review</h2>
+        <ReviewLine kind="offer" item={o} className="mt-1.5" />
+        {o.changeNote && o.review === "Changes requested" && <ChangeNote className="mt-3">{o.changeNote}</ChangeNote>}
+      </section>
+      {/* Below 1280px only the links and the review show until someone asks for the rest. */}
       <div id="offer-details" className={cx(more ? "md:grid md:grid-cols-2" : "hidden", "xl:block")}>
         <Workflow o={o} />
         <Positioning o={o} />
@@ -289,12 +295,16 @@ const trackable = (href: string) => {
  * warning when the link stopped opening.
  */
 function KeyLink({ o, a }: { o: Offer; a: Asset }) {
-  const { ws, openAsset } = useApp();
+  const { ws, open, openAsset } = useApp();
   const copy = useCopyLink();
   const link = assetLink(a);
   const file = link ? null : assetDownload(a);
   const stored = (a.files ?? []).filter((f) => f.key).length;
   const where = link ? displayUrl(link.href) : file ? plural(stored, "file") : a.type === "Drive link" ? "No Drive link added yet" : "No link added yet";
+  // A page with no address yet: the way to add one is right here, in the same form the drawer's Edit opens.
+  const addLink = !link && !file && ws.canChange(a)
+    ? () => open({ kind: "asset", draft: { ...a, offerIds: ws.linkedOffers(a.id).map((x) => x.id), copy: a.copy ?? { headline: "", body: "", cta: "" } }, step: 3 })
+    : null;
   return (
     <li className="flex min-w-0 items-center gap-3 border-t border-divider py-1.5 first:border-t-0 sm:[&:nth-child(2)]:border-t-0 xl:[&:nth-child(2)]:border-t">
       <CodeBadge code={ws.codeOf(a)} color={ws.colorOf(a)} size={32} />
@@ -315,6 +325,11 @@ function KeyLink({ o, a }: { o: Offer; a: Asset }) {
             )}
             {file && <a href={file.href} download aria-label={`Download ${a.name}`} title={file.title} className={linkBtn("quiet")}><Download aria-hidden size={13} />Download</a>}
             <LinkStatus asset={a} variant="badge" className="ml-1.5" />
+          </div>
+        )}
+        {addLink && (
+          <div className="-ml-1.5 flex flex-wrap items-center gap-0.5">
+            <button type="button" onClick={addLink} aria-label={`Add link to ${a.name}`} className={linkBtn("quiet")}><Plus aria-hidden size={13} />Add link</button>
           </div>
         )}
       </div>
@@ -363,13 +378,16 @@ function Workflow({ o }: { o: Offer }) {
   const [run] = useAction();
   const canEdit = ws.canChange(o);
   const owner = ws.user(o.ownerId);
+  // "Archived" as a status puts nothing away, so it is not offered here: Archive in the … menu does that.
+  // An offer that already has the status keeps it in the list.
+  const statuses = Object.fromEntries(Object.entries(OFFER_STATUS).filter(([k]) => k !== "Archived" || o.status === "Archived")) as typeof OFFER_STATUS;
   return (
     <section aria-labelledby="workflow-h" className="border-t border-divider px-4 py-3.5">
       <h2 id="workflow-h" className={HEAD}>Workflow</h2>
       <dl className="m-0 mt-2 grid grid-cols-[80px_minmax(0,1fr)] items-baseline gap-x-3 gap-y-2 text-meta">
         <dt className="text-mute-2">Status</dt>
         <dd className="m-0 min-w-0">
-          <StatusSelect value={o.status} colors={OFFER_STATUS} readOnly={!canEdit} onChange={(s) => void run(setStatus, "offer", o.id, s)} />
+          <StatusSelect value={o.status} colors={statuses} readOnly={!canEdit} onChange={(s) => void run(setStatus, "offer", o.id, s)} />
         </dd>
         <dt className="text-mute-2">Launch</dt>
         <dd className="m-0 min-w-0 text-ink-3">
@@ -378,12 +396,6 @@ function Workflow({ o }: { o: Offer }) {
               onChange={(e) => void run(setDue, "offer", o.id, e.target.value || null)} className="field h-8 w-auto max-w-full px-2.5 py-0 text-meta" />
           ) : o.dueAt ? fmtDate(o.dueAt) : <span className="text-mute-2">Not scheduled</span>}
         </dd>
-        {!waiting(o) && (
-          <>
-            <dt className="text-mute-2">Review</dt>
-            <dd className="m-0 min-w-0"><ReviewLine kind="offer" item={o} /></dd>
-          </>
-        )}
         <dt className="text-mute-2">Owner</dt>
         <dd className="m-0 flex min-w-0 items-center gap-1.5 text-ink-3">
           <Avatar initials={owner.initials} size={20} />
@@ -411,7 +423,8 @@ function OfferDiscussion({ o }: { o: Offer }) {
                 <>
                   <Avatar initials={ws.user(m.userId).initials} size={22} mono className="mt-px" />
                   <span className="min-w-0 flex-1">
-                    <CommentText c={m} />
+                    {/* The whole row is the link, so tags inside it are plain text. */}
+                    <CommentText c={m} plain />
                     <span className="mt-0.5 block text-small text-mute-2">{ws.first(m.userId)} · on {where ?? "somewhere else"} · {ws.ago(m.createdAt)}</span>
                   </span>
                 </>

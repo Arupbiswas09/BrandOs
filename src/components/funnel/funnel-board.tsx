@@ -380,7 +380,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
     <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-5 gap-y-1">
       <p className="m-0 max-w-[72ch] text-meta text-mute-2 text-pretty">
         {editable
-          ? "The whole path for this offer on one board. Drag boxes to arrange; select one to write in it, link it to a file, or draw an arrow from it."
+          ? "The whole path for this offer on one board. Drag boxes to arrange; select one to write in it, link it to a file, or draw an arrow from it. Select an arrow to label, reverse or delete it."
           : "The whole path for this offer on one board. The ↗ on a linked box opens the file."}
       </p>
       {n > 0 && <span className="text-meta tabular-nums text-mute-2">{plural(n, "box", "boxes")} · {plural(m, "arrow")}</span>}
@@ -430,7 +430,7 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
               <div role="status" className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-soft px-3 py-1.5 text-meta text-ink-2">
                 <Spline aria-hidden size={15} className="flex-none text-hl-ink" />
                 <span className="min-w-0 flex-1">Click the box this leads to. <span className="kbd">Esc</span> cancels.</span>
-                <Btn size="sm" variant="ghost" onClick={() => { const src = drawFrom; setDrawFrom(null); focusBox(src); }}>Cancel</Btn>
+                <Btn size="sm" onClick={() => { const src = drawFrom; setDrawFrom(null); focusBox(src); }}>Cancel</Btn>
               </div>
             ) : (
               <>
@@ -551,7 +551,8 @@ export function FunnelBoard({ offer }: { offer: Offer }) {
                   onClick={() => { setDrawFrom(null); setSel({ kind: "arrow", id: a.id }); }}
                   className={cx(
                     lab ? cx(chip, "max-w-[180px] truncate") : "absolute z-[4] h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-surface",
-                    on ? "border-accent text-ink" : lab ? "border-line text-mute-1 hover:border-line-strong" : "border-[#7B8798] opacity-0 hover:opacity-100 focus-visible:opacity-100",
+                    // An unlabelled arrow's handle shows on hover and focus; on touch screens, with no hover, it always shows.
+                    on ? "border-accent text-ink" : lab ? "border-line text-mute-1 hover:border-line-strong" : "border-[#7B8798] opacity-0 hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100",
                   )}
                   style={{ left: l.mx, top: l.my }}
                 >

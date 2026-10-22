@@ -1,23 +1,22 @@
 "use client";
 
 import { useContext, useId, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ChevronRight, MapPin } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronRight, MapPin, Pencil, RotateCcw, Trash2 } from "lucide-react";
 import type { Comment } from "@/db/schema";
 import { href } from "@/lib/routes";
 import { deleteComment, editComment, postComment, toggleResolve } from "@/app/actions";
 import { useAction, useApp } from "./app/provider";
-import { Avatar, Btn, cx } from "./ui";
+import { Avatar, Btn, IconBtn, cx } from "./ui";
 import { PinLink, isPinned, pinsOn, type PinnedComment } from "./proof-link";
 
-type Seg = { text: string; chip?: "ref" | "at"; go?: () => void };
+type Seg = { text: string; chip?: "ref" | "at"; to?: string };
 
 function useSegments() {
   const { ws } = useApp();
-  const router = useRouter();
   return (c: Comment): Seg[] => {
-    const marks: { find: string; kind: "ref" | "at"; go?: () => void }[] = [];
-    c.refs.forEach((id) => { const o = ws.offer(id); if (o) marks.push({ find: "#" + o.name, kind: "ref", go: () => router.push(href.offer(id)) }); });
+    const marks: { find: string; kind: "ref" | "at"; to?: string }[] = [];
+    c.refs.forEach((id) => { const o = ws.offer(id); if (o) marks.push({ find: "#" + o.name, kind: "ref", to: href.offer(id) }); });
     c.mentions.forEach((id) => { const u = ws.user(id); if (u.id) marks.push({ find: "@" + u.name, kind: "at" }); });
     marks.sort((a, b) => b.find.length - a.find.length);
     let parts: Seg[] = [{ text: c.text }];
@@ -28,7 +27,7 @@ function useSegments() {
         const bits = p.text.split(m.find);
         bits.forEach((bit, i) => {
           if (bit) out.push({ text: bit });
-          if (i < bits.length - 1) out.push({ text: m.find, chip: m.kind, go: m.go });
+          if (i < bits.length - 1) out.push({ text: m.find, chip: m.kind, to: m.to });
         });
       }
       parts = out;
@@ -37,20 +36,21 @@ function useSegments() {
   };
 }
 
-export function CommentText({ c }: { c: Comment }) {
+/**
+ * A note's text with its #offer tags and @mentions. A tag is a real link (so
+ * the keyboard reaches it too); `plain` keeps it as text, for a note shown
+ * inside a row that is itself a link or button.
+ */
+export function CommentText({ c, plain }: { c: Comment; plain?: boolean }) {
   const segs = useSegments()(c);
+  const chip = "mx-px inline rounded-sm px-1.5 py-px text-body font-semibold";
   return (
     <span className="block whitespace-pre-wrap text-body text-ink-2 text-pretty">
       {segs.map((s, i) =>
-        s.chip ? (
-          <span
-            key={i}
-            onClick={s.go}
-            role={s.go ? "link" : undefined}
-            className={cx("mx-px inline rounded-sm px-1.5 py-px text-body font-semibold", s.chip === "ref" ? "cursor-pointer bg-soft text-accent hover:underline" : "bg-avatar text-ink-3")}
-          >
-            {s.text}
-          </span>
+        s.chip === "ref" && s.to && !plain ? (
+          <Link key={i} href={s.to} onClick={(e) => e.stopPropagation()} className={cx(chip, "bg-soft text-accent hover:underline")}>{s.text}</Link>
+        ) : s.chip ? (
+          <span key={i} className={cx(chip, s.chip === "ref" ? "bg-soft text-accent" : "bg-avatar text-ink-3")}>{s.text}</span>
         ) : (
           <span key={i}>{s.text}</span>
         ),
@@ -59,16 +59,55 @@ export function CommentText({ c }: { c: Comment }) {
   );
 }
 
-const NOTE_BASE = "inline-flex h-6 items-center rounded-lg px-1.5 text-small text-mute-2 transition-colors hover:bg-hover";
-const NOTE_BTN = `${NOTE_BASE} hover:text-ink`;
+/**
+ * What can be done with a note, the same in the discussion and the proof
+ * view: Resolve or Reopen for anyone who comments, Edit for its author, and
+ * Delete for its author or an admin. `n` is the pin number in the proof view.
+ */
+export function NoteActions({ c, n, onEdit }: { c: Comment; n?: number; onEdit?: () => void }) {
+  const { ws } = useApp();
+  const [run, pending] = useAction();
+  // Every one of these is refused on the server without the right to comment.
+  if (!ws.can("comment")) return null;
+  const mine = c.userId === ws.me.id;
+  const which = n ? ` ${n}` : "";
+  const verb = c.resolved ? "Reopen" : "Resolve";
+  return (
+    <span className="flex flex-none items-center gap-1">
+      {mine && onEdit && <IconBtn size="sm" label={`Edit note${which}`} onClick={onEdit}><Pencil aria-hidden /></IconBtn>}
+      {(mine || ws.can("del")) && (
+        <IconBtn size="sm" label={`Delete note${which}`} disabled={pending} className="hover:text-danger"
+          onClick={() => { if (window.confirm(n ? `Delete note ${n}?` : "Delete this note?")) void run(deleteComment, c.id); }}>
+          <Trash2 aria-hidden />
+        </IconBtn>
+      )}
+      <Btn size="sm" disabled={pending} aria-label={n ? `${verb} note ${n}` : undefined} onClick={() => void run(toggleResolve, c.id)}>
+        {c.resolved ? <RotateCcw aria-hidden size={14} /> : <Check aria-hidden size={14} />}{verb}
+      </Btn>
+    </span>
+  );
+}
+
+/** Editing a note in place: its own text box, Save and Cancel (Esc), ⌘↵ saves. */
+export function NoteEditor({ c, label = "Edit note", onDone }: { c: Comment; label?: string; onDone: () => void }) {
+  const [run, pending] = useAction();
+  const [text, setText] = useState(c.text);
+  const save = async () => { const r = await run(editComment, c.id, text); if (r.ok) onDone(); };
+  return (
+    <div>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label={label} className="field leading-[1.55]"
+        onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save(); } if (e.key === "Escape") { e.stopPropagation(); onDone(); } }} autoFocus />
+      <div className="mt-2 flex justify-end gap-2">
+        <Btn size="sm" onClick={onDone}>Cancel</Btn>
+        <Btn size="sm" variant="primary" disabled={pending || !text.trim()} onClick={save}>Save</Btn>
+      </div>
+    </div>
+  );
+}
 
 function Note({ c }: { c: Comment }) {
   const { ws } = useApp();
-  const [run, pending] = useAction();
   const [editing, setEditing] = useState(false);
-  const [text, setText] = useState(c.text);
-  const mine = c.userId === ws.me.id;
-  const save = async () => { const r = await run(editComment, c.id, text); if (r.ok) setEditing(false); };
   return (
     <div className={cx("rounded-xl border px-4 py-3", c.resolved ? "border-line bg-wash" : c.isChange ? "border-change/30 bg-change/5" : "border-line bg-surface")}>
       <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -79,26 +118,9 @@ function Note({ c }: { c: Comment }) {
         {isPinned(c) && <PinChip c={c} />}
         <span className="flex-1" />
         <span className="text-small text-mute-2">{ws.ago(c.createdAt)}{c.editedAt ? " · edited" : ""}</span>
-        {mine && !editing && <button type="button" onClick={() => { setText(c.text); setEditing(true); }} className={NOTE_BTN}>Edit</button>}
-        {(mine || ws.can("del")) && !editing && (
-          <button type="button" disabled={pending} onClick={() => { if (window.confirm("Delete this note?")) void run(deleteComment, c.id); }} className={`${NOTE_BASE} hover:text-danger`}>Delete</button>
-        )}
-        {ws.can("comment") && !editing && (
-          <button type="button" onClick={() => run(toggleResolve, c.id)} className={NOTE_BTN}>{c.resolved ? "Reopen" : "Resolve"}</button>
-        )}
+        {!editing && <NoteActions c={c} onEdit={() => setEditing(true)} />}
       </div>
-      {editing ? (
-        <div>
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label="Edit note" className="field leading-[1.55]"
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void save(); } if (e.key === "Escape") { e.stopPropagation(); setEditing(false); } }} autoFocus />
-          <div className="mt-2 flex justify-end gap-2">
-            <Btn size="sm" onClick={() => setEditing(false)}>Cancel</Btn>
-            <Btn size="sm" variant="primary" disabled={pending || !text.trim()} onClick={save}>Save</Btn>
-          </div>
-        </div>
-      ) : (
-        <CommentText c={c} />
-      )}
+      {editing ? <NoteEditor c={c} onDone={() => setEditing(false)} /> : <CommentText c={c} />}
     </div>
   );
 }
@@ -142,7 +164,10 @@ export function Thread({ kind, id }: { kind: "offer" | "asset"; id: string }) {
       )}
       {open.map((c) => <Note key={c.id} c={c} />)}
       {!list.length && (
-        <div className="rounded-xl border border-dashed border-line-strong px-6 py-5 text-center text-body text-mute-2">No notes yet. Write down the thing you would otherwise say in a meeting.</div>
+        <div className="rounded-xl border border-dashed border-line-strong px-6 py-5 text-center text-body text-mute-2">
+          {/* Only people who can write a note are asked to. */}
+          {ws.can("comment") ? "No notes yet. Write down the thing you would otherwise say in a meeting." : "No notes yet."}
+        </div>
       )}
       {ws.can("comment") && <Composer kind={kind} id={id} />}
     </div>

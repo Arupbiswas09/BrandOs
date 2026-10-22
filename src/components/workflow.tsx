@@ -52,8 +52,9 @@ export function ReviewLine({ kind, item, className }: { kind: "asset" | "offer";
         <span aria-hidden className="size-2 flex-none rounded-full" style={{ background: REVIEW_COLOR[item.review] }} />
         <span className="min-w-0">{text}</span>
       </span>
+      {/* The next step for whoever made it, so a real button rather than a word in the line. */}
       {canChange && !inReview && (
-        <button type="button" disabled={pending} onClick={send} className={LINK}>{item.review === "Approved" ? "Review again" : "Send for review"}</button>
+        <Btn size="sm" disabled={pending} onClick={send}>{item.review === "Approved" ? "Review again" : "Send for review"}</Btn>
       )}
       {canChange && inReview && <button type="button" disabled={pending} onClick={send} className={LINK}>Reassign</button>}
       {canReview && (

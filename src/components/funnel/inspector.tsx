@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type CSSProperties } from "react";
-import { ArrowLeftRight, Spline, X } from "lucide-react";
+import { ArrowLeftRight, Spline, Trash2, X } from "lucide-react";
 import type { FunnelArrow, FunnelBox } from "@/db/schema";
 import { MAX_LABEL, MAX_TEXT } from "@/lib/funnel";
 import { Btn, Pills } from "@/components/ui";
@@ -77,7 +77,7 @@ export function BoxInspector({ box, r, groups, style, autoFocus, onText, onKind,
       />
       <div className="mt-3 flex items-center justify-between gap-2">
         <Btn variant="primary" size="sm" onClick={onDraw}><Spline aria-hidden size={14} />Draw arrow from here</Btn>
-        <button type="button" onClick={onDelete} className="rounded-md px-1.5 py-1 text-meta font-semibold text-danger hover:underline">Delete</button>
+        <Btn variant="danger" size="sm" aria-label="Delete box" onClick={onDelete}><Trash2 aria-hidden size={14} />Delete</Btn>
       </div>
     </div>
   );
@@ -114,7 +114,7 @@ export function ArrowInspector({ arrow, from, to, style, autoFocus, onLabel, onR
       />
       <div className="mt-3 flex items-center justify-between gap-2">
         <Btn size="sm" onClick={onReverse}><ArrowLeftRight aria-hidden size={14} />Reverse</Btn>
-        <button type="button" onClick={onDelete} className="rounded-md px-1.5 py-1 text-meta font-semibold text-danger hover:underline">Delete</button>
+        <Btn variant="danger" size="sm" aria-label="Delete arrow" onClick={onDelete}><Trash2 aria-hidden size={14} />Delete</Btn>
       </div>
     </div>
   );
