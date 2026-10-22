@@ -14,6 +14,7 @@ import { useInstall } from "@/components/app/pwa";
 import { usePalette, useTakeover } from "@/components/app/shell";
 import { PALETTES, PALETTE_KEYS } from "@/components/app/theme";
 import { Sections, SectionsHead, SectionTitle, type SectionItem } from "@/components/section-tabs";
+import { PasswordInput } from "@/components/password-input";
 import { Btn, Card, Field, Hint, Page, Select, Warn, cx } from "@/components/ui";
 import { UploadLimits } from "./limits";
 import { SessionsCard, TwoFactorCard, TwoFactorNudge, type SecurityInfo } from "./security";
@@ -109,11 +110,13 @@ function State({ on, children }: { on: boolean; children: ReactNode }) {
 /* ---------------------------------------------------------------- profile */
 
 function Profile({ nudge, onSecurity }: { nudge: boolean; onSecurity: () => void }) {
-  const { ws, open } = useApp();
+  const { ws, open, toast } = useApp();
   const me = ws.me;
   const [run, pending] = useAction();
   const [name, setName] = useState(me.name);
   const [role, setRole] = useState(me.role);
+  // Said out loud, like every other save in Settings: the button only greys out, which is easy to miss.
+  const save = async () => { const r = await run(updateProfile, { name, role }); if (r.ok) toast("Profile saved"); };
   const { canPrompt, standalone, ios, install } = useInstall();
   const roles = ROLE_OPTIONS.includes(role) ? ROLE_OPTIONS : [...ROLE_OPTIONS, role];
   const scope = ws.scopeLabel(me);
@@ -123,7 +126,7 @@ function Profile({ nudge, onSecurity }: { nudge: boolean; onSecurity: () => void
       <SectionTitle title="Profile" sub="How you appear to the team." />
       {nudge && <TwoFactorNudge onSetUp={onSecurity} />}
       <Card className="p-5">
-        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void run(updateProfile, { name, role }); }}>
+        <form className="flex flex-col gap-4" onSubmit={(e) => { e.preventDefault(); void save(); }}>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Name" required><input required className="field" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" /></Field>
             <Field label="What you do"><Select value={role} onChange={setRole} options={roles.map((r) => ({ value: r, label: r }))} /></Field>
@@ -248,9 +251,13 @@ function PasswordCard({ hasPassword }: { hasPassword: boolean }) {
           <h3 className="m-0 text-body font-semibold">Password</h3>
           {!hasPassword && <p className="m-0 mt-0.5 text-meta text-mute-2">You sign in with Google. Add a password too if you want another way in.</p>}
         </div>
+        {/* The same show/hide field as signing in, so a long password can be checked before it is saved. */}
         <div className="grid gap-4 sm:grid-cols-2">
-          {hasPassword && <Field label="Current password" required><input name="current" type="password" autoComplete="current-password" className="field" required /></Field>}
-          <Field label="New password" required><input name="next" type="password" autoComplete="new-password" minLength={10} className="field" required /></Field>
+          {hasPassword && <Field label="Current password" required><PasswordInput name="current" autoComplete="current-password" required /></Field>}
+          <Field label="New password" required>
+            <PasswordInput name="next" autoComplete="new-password" minLength={10} required />
+            <span className="mt-1.5 block text-small text-mute-3">At least ten characters.</span>
+          </Field>
         </div>
         {pw?.error && <div role="alert" className="text-body text-change-ink">{pw.error}</div>}
         {pw?.email === "saved" && <div role="status" className="text-body text-ok">Password saved. Your other devices were signed out.</div>}
@@ -305,8 +312,13 @@ function EmailPrefsCard() {
         <strong className="font-semibold text-ink-3">Instant</strong> sends it straight away;{" "}
         <strong className="font-semibold text-ink-3">Daily digest</strong> gathers it into one email each morning.
       </p>
+      {/* Email is switched on in the server's settings, not here, so an admin is told where rather than to ask an admin. */}
       {!mail && (
-        <Warn className="mb-4">Email is not set up on the server yet, so nothing is sent. An admin can switch it on. Your choices are kept for when it is.</Warn>
+        <Warn className="mb-4">
+          {ws.can("access")
+            ? "Email is not set up on the server yet, so nothing is sent. It is switched on where BrandOS is hosted, not here: ask whoever runs the server to add the email settings. Your choices are kept for when it is."
+            : "Email is not set up on the server yet, so nothing is sent. An admin can switch it on. Your choices are kept for when it is."}
+        </Warn>
       )}
       {mail && ws.can("access") && <TestEmail />}
       {mail && !digest && (
@@ -383,7 +395,7 @@ function SlackCard() {
       <Row title={<span className="inline-flex items-center gap-2">Slack <State on={on}>{on ? "On" : "Off"}</State></span>}
         control={on && <Btn disabled={pending} onClick={test}>Send test message</Btn>}>
         {on ? "Review requests, approvals and change requests are posted to your team's Slack channel, each with a link to the work."
-          : "Slack is not connected on the server yet. Once it is, review requests, approvals and change requests are posted to your team's channel."}
+          : "Slack is not connected on the server yet. It is connected where BrandOS is hosted, not here: ask whoever runs the server to add your channel's Slack webhook. Then review requests, approvals and change requests are posted to it."}
       </Row>
     </Card>
   );

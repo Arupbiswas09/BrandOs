@@ -98,11 +98,13 @@ export function Street() {
   }).filter(Boolean).slice(0, 5) as { key: string; title: string; sub: string; code: string; color: string; go: () => void }[];
 
   // A short "getting started" list for admins, after the lists rather than before them.
+  // A step that needs a brand first starts by adding one, so no step is a button that does nothing.
+  const addBrand = () => (clients[0] ? open({ kind: "brand", draft: { clientId: clients[0].id } }) : open({ kind: "client" }));
   const steps = [
     { done: clients.length > 0, label: "Add your first client", hint: "The organisation you work for.", go: () => open({ kind: "client" }) },
-    { done: brands.length > 0, label: "Add a brand", hint: "Each client has one or more brands.", go: () => (clients[0] ? open({ kind: "brand", draft: { clientId: clients[0].id } }) : open({ kind: "client" })) },
-    { done: brands.some((b) => b.colours.length > 0 && b.fonts.length > 0), label: "Fill in a Brand Kit", hint: "Colours, fonts, logo and voice.", go: () => brands[0] && router.push(href.brand(brands[0].id, "kit")) },
-    { done: ws.d.offers.length > 0, label: "Create an offer", hint: "A campaign or package to sell.", go: () => brands[0] && router.push(href.brand(brands[0].id, "offers")) },
+    { done: brands.length > 0, label: "Add a brand", hint: "Each client has one or more brands.", go: addBrand },
+    { done: brands.some((b) => b.colours.length > 0 && b.fonts.length > 0), label: "Fill in a Brand Kit", hint: "Colours, fonts, logo and voice.", go: () => (brands[0] ? router.push(href.brand(brands[0].id, "kit")) : addBrand()) },
+    { done: ws.d.offers.length > 0, label: "Create an offer", hint: "A campaign or package to sell.", go: () => (brands[0] ? router.push(href.brand(brands[0].id, "offers")) : addBrand()) },
     { done: ws.d.users.length > 1, label: "Invite a teammate", hint: "Choose what they can see and do.", go: () => router.push("/team") },
   ];
   const doneSteps = steps.filter((s) => s.done).length;
@@ -176,7 +178,7 @@ export function Street() {
           */}
           <BrokenLinksCard />
 
-          <Panel title="Clients" action={ws.can("structure") && <Btn size="sm" variant="ghost" className="-mr-2" onClick={() => open({ kind: "client" })}><Plus aria-hidden className="size-4" />Add client</Btn>}>
+          <Panel title="Clients" action={ws.can("structure") && <Btn size="sm" className="-mr-1.5" onClick={() => open({ kind: "client" })}><Plus aria-hidden className="size-4" />Add client</Btn>}>
             {clients.map((c) => {
               const bs = brands.filter((b) => b.clientId === c.id);
               const ids = new Set(bs.map((b) => b.id));

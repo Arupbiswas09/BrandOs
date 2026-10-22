@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { NEVER_DELETED_NOTE, neverDeleted } from "@/lib/access";
+import type { WS } from "@/lib/ws";
 import { deleteGroup, deleteItem } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
 import { Btn } from "@/components/ui";
@@ -16,8 +17,15 @@ const CONFIRM_BODY: Partial<Record<DeleteKind, string>> = {
   group: "The group goes. People in it lose whatever it gave them.",
 };
 
+/** Said once it is done: where it went and how to get it back, the same for every kind. */
+function doneNote(item: DeleteKind, label: string, canOpenBin: boolean): string {
+  const who = item === "person" ? "them" : "it";
+  const back = canOpenBin ? `You can restore ${who} from the Recycle bin for 30 days.` : `An admin can restore ${who} from the Recycle bin for 30 days.`;
+  return `${item === "person" ? `Removed ${label} from the team` : `Deleted ${label}`}. ${back}`;
+}
+
 export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: string; label: string; back?: string }) {
-  const { close, closeAsset, assetId } = useApp();
+  const { ws, close, closeAsset, assetId, toast } = useApp();
   const router = useRouter();
   const [run, pending] = useAction();
   const body = CONFIRM_BODY[item];
@@ -35,6 +43,8 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
     close();
     if (item === "asset" && assetId === id) closeAsset();
     if (back) router.push(back);
+    // The Recycle bin is the way back, so the person is told it is there.
+    toast(doneNote(item, label, ws.can("del")));
   };
   return (
     <Modal title={item === "person" ? `Remove ${label}?` : `Delete ${label}?`} width={420} onSubmit={go}
@@ -45,28 +55,30 @@ export function ConfirmModal({ item, id, label, back }: { item: DeleteKind; id: 
   );
 }
 
-const KEYS: [string, string][] = [
+/** Every key, and who it does something for: a key that does nothing for this person is not listed. */
+const KEYS: [string, string, ((ws: WS) => boolean)?][] = [
   ["⌘ K  or  /", "Search everything"],
   ["⌘ C", "Copy the link of the search result you are on"],
-  ["N", "Open the New menu"],
+  // The New menu is there only for people who can create something.
+  ["N", "Open the New menu", (ws) => ws.can("structure") || (ws.can("edit") && ws.d.brands.some((b) => !b.archived))],
   ["I", "Open your queue"],
   ["S", "Star or unstar this page"],
   ["[", "Fold or unfold the sidebar"],
   ["G then S", "Go to the Dashboard"],
   ["G then L", "Go to the Global Library"],
-  ["G then T", "Go to Team and access"],
+  ["G then T", "Go to Team and access", (ws) => ws.can("access")],
   ["G then C", "Go to Launches"],
   ["G then P", "Go to Settings"],
   ["Esc", "Close whatever is on top"],
-  ["⌘ ↵", "Post a note"],
+  ["⌘ ↵", "Post a note", (ws) => ws.can("comment")],
   ["?", "This list"],
 ];
 
 export function ShortcutsModal() {
-  const { close } = useApp();
+  const { ws, close } = useApp();
   return (
     <Modal title="Keyboard shortcuts" width={440} footer={<Btn variant="primary" onClick={close}>Done</Btn>} bodyClass="gap-0 py-2">
-      {KEYS.map(([k, v]) => (
+      {KEYS.filter(([, , who]) => !who || who(ws)).map(([k, v]) => (
         <div key={k} className="flex items-center gap-3 border-t border-divider py-2 first:border-t-0">
           <kbd className="w-[110px] flex-none font-mono text-meta font-semibold text-ink-3">{k}</kbd>
           <span className="text-body text-mute-1">{v}</span>

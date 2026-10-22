@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import Link from "next/link";
 import { FILE_KINDS, sizeLabel, type UploadPolicy } from "@/lib/upload-policy";
 import { saveUploadPolicy } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
@@ -80,7 +81,8 @@ function Editor({ initial, usage, onPerson }: {
       <Card className="grid gap-4 px-5 py-4 sm:grid-cols-3">
         <NumberSetting label="Files per upload" hint="How many files one upload can add." value={p.maxFiles} min={1} max={200} onChange={(v) => setP({ ...p, maxFiles: v ?? 1 })} />
         <NumberSetting label="Storage for the workspace" unit="GB" hint="Leave empty for no cap." value={p.workspaceQuotaGb} min={1} max={100000} optional onChange={(v) => setP({ ...p, workspaceQuotaGb: v })} />
-        <NumberSetting label="Storage per person" unit="MB" hint="Leave empty for no cap. You can set a different amount for one person." value={p.personQuotaMb} min={1} max={10000000} optional onChange={(v) => setP({ ...p, personQuotaMb: v })} />
+        <NumberSetting label="Storage per person" unit="MB" value={p.personQuotaMb} min={1} max={10000000} optional onChange={(v) => setP({ ...p, personQuotaMb: v })}
+          hint={<>Leave empty for no cap. For a different amount for one person, use <Link href="/team" className="font-medium text-accent hover:underline">Edit access</Link> on their row in Team and access.</>} />
       </Card>
 
       <div className="flex items-center gap-3">
@@ -113,7 +115,7 @@ function Editor({ initial, usage, onPerson }: {
 }
 
 function NumberSetting({ label, hint, unit, value, min, max, optional, onChange }: {
-  label: string; hint: string; unit?: string; value: number | null; min: number; max: number; optional?: boolean; onChange: (v: number | null) => void;
+  label: string; hint: ReactNode; unit?: string; value: number | null; min: number; max: number; optional?: boolean; onChange: (v: number | null) => void;
 }) {
   return (
     <label className="block">
