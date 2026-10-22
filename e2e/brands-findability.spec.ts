@@ -147,7 +147,7 @@ test("on a phone, a brand's Assets keeps Add asset on screen, and Import looks l
   await signIn(page);
   await page.goto("/brands/br1/assets");
   await settle(page);
-  const add = page.getByRole("button", { name: "+ Add asset" });
+  const add = page.getByRole("button", { name: "New asset", exact: true });
   const box = (await add.boundingBox())!;
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);

@@ -436,12 +436,12 @@ function Assets({ b, initialType }: { b: Brand; initialType?: string }) {
       <DropHint show={drop.over} where={b.name} />
       <SectionHead as="h1" eyebrow="Files and content" title="Assets"
         actions={(ws.can("edit") || canBulk(ws, false)) && (
-          // Capped to the screen on phones so the buttons wrap instead of pushing "Add asset" off the edge.
+          // Capped to the screen on phones so the buttons wrap instead of pushing "New asset" off the edge.
           <div className="flex flex-wrap gap-2 max-sm:max-w-[calc(100vw-2rem)]">
             {canBulk(ws, false) && camp.length > 0 && <SelectToggle s={sel} />}
             <ImportLink brandId={b.id} kind="assets" />
             {canUpload && <Btn size="lg" aria-expanded={adding} onClick={() => { if (!adding) setDropped((d) => ({ n: d.n + 1, files: [] })); setAdding(!adding); }}><Upload aria-hidden size={16} />Upload files</Btn>}
-            {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}>+ Add asset</Btn>}
+            {ws.can("edit") && <Btn variant="primary" size="lg" onClick={newAsset}><Plus aria-hidden size={16} />New asset</Btn>}
           </div>
         )}
         sub={<>{plural(liveCamp.length, "asset")} in this brand. Each one exists once, however many offers point at it.</>}

@@ -29,7 +29,7 @@ test("a brand's Assets tab: Upload files opens the panel in place, and a drop on
   const upload = page.getByRole("button", { name: "Upload files" });
   await expect(upload).toHaveAttribute("aria-expanded", "false");
   // One primary on the tab: adding a single asset. Uploading is secondary.
-  await expect(page.getByRole("button", { name: "+ Add asset" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "New asset", exact: true })).toBeVisible();
   await upload.click();
   await expect(upload).toHaveAttribute("aria-expanded", "true");
   await expect(panel(page).getByText("Each file becomes its own draft asset in Quokka For Good's assets, owned by you.")).toBeVisible();
