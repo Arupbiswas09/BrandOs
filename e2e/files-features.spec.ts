@@ -386,16 +386,15 @@ test("previews: image, PDF, text, video and links each show the right way, folde
   await expect(drawer.getByRole("button", { name: `Preview ${id}-fonts.zip` })).toHaveCount(0);
   await expect(drawer.getByRole("link", { name: `Download ${id}-fonts.zip` })).toBeVisible();
 
-  // Links: nothing third-party loads until asked.
+  // Links: nothing third-party loads until the preview is opened; then one click shows it. (The test stands in for the sites.)
+  await page.route(/^https:\/\/(www\.youtube-nocookie\.com|www\.figma\.com)\//, (r) => r.fulfill({ status: 200, contentType: "text/html", body: '<!doctype html><html lang="en"><head><title>Stand-in</title></head><body><p>Stand-in</p></body></html>' }));
   const yt = await linkAsset(page, `${id} teaser on YouTube`, "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42s");
   await page.goto(`${PAGE}?asset=${yt}`);
   await settle(page);
   const ytDrawer = page.getByRole("dialog", { name: `${id} teaser on YouTube` });
+  await expect(page.locator("iframe[src*='youtube'], iframe[src*='figma'], iframe[src*='vimeo'], iframe[src*='loom'], iframe[src*='google']")).toHaveCount(0);
   await ytDrawer.getByRole("button", { name: "Preview", exact: true }).click();
   const frame = ytDrawer.locator('figure[data-provider="YouTube"]');
-  await expect(frame).toBeVisible();
-  await expect(page.locator("iframe[src*='youtube'], iframe[src*='figma'], iframe[src*='vimeo'], iframe[src*='loom'], iframe[src*='google']")).toHaveCount(0);
-  await frame.getByRole("button", { name: "Load preview from youtube-nocookie.com" }).click();
   await expect(frame.locator("iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=42");
 
   const figma = await linkAsset(page, `${id} homepage design`, "https://www.figma.com/design/AbCdEf123456/Homepage?node-id=1-2");
@@ -403,7 +402,8 @@ test("previews: image, PDF, text, video and links each show the right way, folde
   await settle(page);
   const figmaDrawer = page.getByRole("dialog", { name: `${id} homepage design` });
   await figmaDrawer.getByRole("button", { name: "Preview", exact: true }).click();
-  await expect(figmaDrawer.locator('figure[data-provider="Figma"]')).toContainText("Nothing loads from figma.com until you ask.");
+  await expect(figmaDrawer.locator('figure[data-provider="Figma"] iframe')).toHaveAttribute("src", /^https:\/\/www\.figma\.com\/embed\?embed_host=brandos&url=/);
+  await expect(figmaDrawer.locator('figure[data-provider="Figma"]').getByRole("link", { name: "Open in Figma" })).toBeVisible();
 
   // A plain web page has no preview: the drawer's Open and Copy link already say where it goes.
   const plain = await linkAsset(page, `${id} audit page`, "https://quokkaforgood.org/audit?utm_source=brandos", "Landing page");

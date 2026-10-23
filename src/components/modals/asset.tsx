@@ -1,11 +1,12 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CloudUpload, Paperclip, X } from "lucide-react";
+import { CloudUpload, EyeOff, Paperclip, X } from "lucide-react";
 import type { Asset } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, ASSET_TYPES, CHANNELS, DELIVERY, roleOf, type AssetCategory } from "@/lib/constants";
+import { linkParts, linkPreview, webUrl } from "@/lib/embeds";
 import { addTags, tagPool } from "@/lib/tags";
 import { linkAddressIssue } from "@/lib/link-health";
 import { cloneAsset, saveAsset, toggleLink } from "@/app/actions";
@@ -13,6 +14,10 @@ import { checkBatch, sizeLabel } from "@/lib/upload-policy";
 import { useAction, useApp } from "@/components/app/provider";
 import { TagInput } from "@/components/tag-input";
 import { Btn, CheckRow, Chip, Field, Mark, Pills, Select, Tick, cx } from "@/components/ui";
+import { FOCUS } from "@/components/polish";
+import { linkBtn } from "@/components/link-button";
+import { LinkPreview } from "@/components/features/files/file-preview";
+import { SourceIcon } from "@/components/features/files/parts";
 import { Footer, Modal, MoreDetail } from "./frame";
 import type { AssetDraft } from "./types";
 
@@ -34,6 +39,53 @@ function namePlaceholder(type: string): string {
 }
 
 const plural = (n: number) => `${n} file${n === 1 ? "" : "s"}`;
+
+/** What was typed into a box, once typing has paused: a preview is not reloaded on every key. */
+function useSettled(value: string, ms = 450): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setSettled(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return settled;
+}
+
+/**
+ * Under a link field: what the link is, once it is one BrandOS can show. A
+ * video link (`play`) plays right here; a Google file, a Drive folder or a
+ * design is one click away, so the form stays short. A PDF on another site
+ * cannot be shown, and the line says so. Nothing for an ordinary page.
+ */
+function LinkFound({ url, play }: { url: string; play?: boolean }) {
+  const settled = useSettled(url.trim());
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  if (!settled || linkAddressIssue(settled)) return null;
+  const p = linkPreview(settled);
+  if (p?.type === "embed" && play) {
+    // A video kept in Drive is a Drive file: it plays at 16:9 like the rest.
+    return <LinkPreview url={settled} bare shape={p.embed.kind === "file" ? "video" : undefined} />;
+  }
+  if (!p) {
+    return play && webUrl(settled) ? <p className="m-0 text-small text-mute-2">No player for this site. The link still opens from the asset.</p> : null;
+  }
+  if (p.type === "pdf") {
+    return (
+      <p className="m-0 flex items-center gap-1.5 text-small text-mute-2">
+        <SourceIcon kind="pdf" size={13} />A PDF on {linkParts(new URL(p.href)).host}. It can&apos;t be shown inside BrandOS, so it opens in a new tab.
+      </p>
+    );
+  }
+  return (
+    <div>
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)} className={cx(linkBtn("quiet"), "-ml-1.5", FOCUS)}>
+        {open ? <EyeOff aria-hidden size={13} /> : <SourceIcon kind={p.embed.kind} size={13} />}
+        {open ? "Hide preview" : `Preview the ${p.embed.label}`}
+      </button>
+      {open && <div id={id} className="mt-2"><LinkPreview url={settled} bare /></div>}
+    </div>
+  );
+}
 
 /** The type step's groups: what the work is, and where it will live. */
 const GROUPS: { cat: AssetCategory; what: string; where?: string }[] = [
@@ -80,6 +132,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   // A Drive link is delivered as a link, so it starts as one.
   const setType = (type: string) => setD((x) => ({ ...x, type, delivery: type === "Drive link" && x.delivery === "None" ? "Doc link" : x.delivery }));
   const drive = d.type === "Drive link";
+  // A video usually lives on YouTube, Vimeo, Loom or Drive, and a document in Google Docs, Drive or a PDF: their link
+  // is asked for up front, with the player (or a one-click preview) under it.
+  const video = d.type === "Video";
+  const upFront = video ? { label: "Video link", hint: "YouTube, Vimeo, Loom or Drive", placeholder: "youtube.com/watch?v=…" }
+    : d.type === "Document" ? { label: "Doc link", hint: "Google Docs, Drive or a PDF", placeholder: "docs.google.com/document/d/…" }
+    : null;
   // A tag half typed in the box; saving adds it too.
   const [tagText, setTagText] = useState("");
   const tagsInUse = useMemo(() => tagPool(ws.d.assets), [ws.d.assets]);
@@ -90,7 +148,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
   const withCopy = role === "traffic" || role === "entry" || role === "after" || d.type === "Ad creative";
   const withDelivery = d.type === "Lead magnet" || d.type === "Document";
   const withSpecs = role === "traffic" || d.type === "Ad creative";
-  const filled = [d.short, d.ctaId, d.tags.length ? "t" : "", d.copy.headline || d.copy.body || d.copy.cta, d.notes, d.specs, d.audienceNotes, !urlFirst && !drive ? d.url : "", d.gated ? "g" : ""].filter(Boolean).length;
+  const filled = [d.short, d.ctaId, d.tags.length ? "t" : "", d.copy.headline || d.copy.body || d.copy.cta, d.notes, d.specs, d.audienceNotes, !urlFirst && !drive && !upFront ? d.url : "", d.gated ? "g" : ""].filter(Boolean).length;
   const moreHint = withCopy ? "copy, channel, CTA, tags, notes" : "channel, tags, notes";
   // Editing something that already has those details: open straight away so nothing is hidden.
   const [more, setMore] = useState(() => editing && filled > 0);
@@ -266,12 +324,28 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
           )}
           {/* A Drive link is the link itself, so it is asked for first and files are left out of the way. */}
           {drive && (
-            <Field label="Drive link" required error={urlError}>
-              <input required type="text" inputMode="url" className="field text-lead" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
-            </Field>
+            <div className="flex flex-col gap-2">
+              <Field label="Drive link" required error={urlError}>
+                <input required type="text" inputMode="url" className="field text-lead" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="drive.google.com/..." />
+              </Field>
+              <LinkFound url={d.url} />
+            </div>
           )}
           {/* Pages people land on are their address; ask for it up front. */}
-          {!drive && urlFirst && <Field label="Live URL" error={urlError}><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/free-audit" /></Field>}
+          {!drive && urlFirst && (
+            <div className="flex flex-col gap-2">
+              <Field label="Live URL" error={urlError}><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/free-audit" /></Field>
+              <LinkFound url={d.url} />
+            </div>
+          )}
+          {upFront && (
+            <div className="flex flex-col gap-2">
+              <Field label={upFront.label} error={urlError} hint={<span className="font-normal text-mute-3">{upFront.hint}</span>}>
+                <input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder={upFront.placeholder} />
+              </Field>
+              <LinkFound url={d.url} play={video} />
+            </div>
+          )}
           {canUpload && !drive && (
             <div>
               <div className="label">Files</div>
@@ -282,7 +356,7 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                 className={cx("flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-dashed px-3.5 py-3 transition-colors", drag ? "border-accent bg-soft" : "border-line-strong bg-wash-2")}
               >
                 <CloudUpload aria-hidden size={20} className="flex-none text-mute-3" />
-                <span className="min-w-[140px] flex-1 text-body text-mute-2">Drop files here, or choose them.</span>
+                <span className="min-w-[140px] flex-1 text-body text-mute-2">{video ? "Or drop the video file here, or choose it." : "Drop files here, or choose them."}</span>
                 <Btn size="sm" onClick={() => picker.current?.click()}>Choose files</Btn>
                 <input ref={picker} type="file" multiple hidden onChange={(e) => { addFiles(e.currentTarget.files); e.currentTarget.value = ""; }} />
               </div>
@@ -332,7 +406,12 @@ export function AssetModal({ draft, step: initialStep = 0 }: { draft: AssetDraft
                 <Field label="Type" required><Select value={d.type} onChange={setType} options={[...(d.type ? [] : [{ value: "", label: "Pick one" }]), ...Object.keys(ASSET_TYPES).map((x) => ({ value: x, label: x }))]} /></Field>
                 <Field label="Channel"><Select value={d.channel} onChange={(v) => set("channel", v)} options={CHANNELS.map((x) => ({ value: x, label: x }))} /></Field>
               </div>
-              {!drive && !urlFirst && <Field label="Live URL or doc link" error={urlError}><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/page or a doc link" /></Field>}
+              {!drive && !urlFirst && !upFront && (
+                <div className="flex flex-col gap-2">
+                  <Field label="Live URL or doc link" error={urlError}><input type="text" inputMode="url" className="field" value={d.url} onChange={(e) => set("url", e.target.value)} placeholder="yoursite.org/page or a doc link" /></Field>
+                  <LinkFound url={d.url} />
+                </div>
+              )}
               {/* CTAs belong to a brand; tags do not, so Global Library items keep theirs editable too. */}
               <div className={cx("grid gap-3", d.brandId && "sm:grid-cols-2")}>
                 {d.brandId && <Field label="CTA"><Select value={d.ctaId} onChange={(v) => set("ctaId", v)} options={[{ value: "", label: "None" }, ...ws.ctasOf(d.brandId).map((c) => ({ value: c.id, label: c.text }))]} /></Field>}
