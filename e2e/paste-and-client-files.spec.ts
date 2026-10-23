@@ -479,7 +479,8 @@ test("notes with pictures and a client's files meet WCAG AA, on desktop and phon
   await signIn(page);
   const problems: string[] = [];
   const check = async (name: string) => {
-    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+    // The video player inside a frame is YouTube's own page, which BrandOS cannot change; everything around it is checked.
+    const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).exclude("figure[data-provider] iframe").analyze();
     for (const v of r.violations) problems.push(`${name}: ${v.id} (${v.impact}) × ${v.nodes.length} — ${v.nodes.slice(0, 3).map((n) => n.target.join(" ")).join(" | ")}`);
   };
   for (const size of [{ width: 1440, height: 940 }, { width: 390, height: 844 }]) {
