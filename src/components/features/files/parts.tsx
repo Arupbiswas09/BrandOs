@@ -1,8 +1,9 @@
 "use client";
 
 import { createElement } from "react";
-import { File as FileIcon, FileArchive, FileAudio, FileImage, FileText, FileType, FileVideo, type LucideIcon } from "lucide-react";
+import { CirclePlay, ClipboardList, File as FileIcon, FileArchive, FileAudio, FileImage, FileText, FileType, FileVideo, Folder, PenTool, Presentation, Sheet, type LucideIcon } from "lucide-react";
 import type { FileRef } from "@/db/schema";
+import type { EmbedKind } from "@/lib/embeds";
 import { INLINE_IMAGE } from "@/lib/files";
 import { kindOf, type FileKind } from "@/lib/upload-policy";
 import { cx } from "@/components/ui";
@@ -28,4 +29,14 @@ export function FileGlyph({ f, size = 36, src }: { f: Pick<FileRef, "name" | "ty
     return <img src={img} alt="" loading={src ? "eager" : "lazy"} decoding="async" className={cx(box, "flex-none rounded-lg border border-line bg-wash object-cover")} />;
   }
   return <span aria-hidden className={cx(box, "flex flex-none items-center justify-center rounded-lg bg-chip text-mute-3")}><KindIcon name={f.name} size={size === 40 ? 18 : 16} /></span>;
+}
+
+const SOURCE: Record<EmbedKind | "pdf", LucideIcon> = {
+  doc: FileText, sheet: Sheet, slides: Presentation, form: ClipboardList, folder: Folder, file: FileIcon,
+  video: CirclePlay, playlist: CirclePlay, design: PenTool, pdf: FileText,
+};
+
+/** The icon for what a link is (a Google Doc, a Drive folder, a video, a PDF), from `linkSource`. Drawn here, never fetched from the site. */
+export function SourceIcon({ kind, size = 14, strokeWidth = 1.8, className }: { kind: EmbedKind | "pdf"; size?: number; strokeWidth?: number; className?: string }) {
+  return createElement(SOURCE[kind] ?? FileIcon, { size, strokeWidth, className, "aria-hidden": true });
 }

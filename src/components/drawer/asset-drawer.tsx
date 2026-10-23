@@ -11,7 +11,7 @@ import {
 import type { Asset, FileRef } from "@/db/schema";
 import { hexA, readable } from "@/lib/color";
 import { ASSET_STATUS, CHANNEL_COLOR } from "@/lib/constants";
-import { linkEmbed } from "@/lib/embeds";
+import { linkPreview, linkSource } from "@/lib/embeds";
 import { previewKind, primaryPreview } from "@/lib/files";
 import { href } from "@/lib/routes";
 import {
@@ -37,6 +37,7 @@ import { LinkStatus } from "@/components/features/links/link-status";
 import { PagePictureButton } from "@/components/features/links/page-picture-button";
 import { FileHistory } from "@/components/features/files/file-history";
 import { FilePreview, LinkPreview } from "@/components/features/files/file-preview";
+import { SourceIcon } from "@/components/features/files/parts";
 
 const IMAGE = /^image\/(png|jpe?g|gif|webp|avif)$/;
 
@@ -45,18 +46,31 @@ const LINK_CHECKER = "link-checker";
 
 /** A stored file the browser can show in place: a picture, PDF, video, audio or text. */
 const showable = (f: FileRef) => !!f.key && !!f.url && previewKind(f) !== "other";
+/** A file listed by its address elsewhere (a Drive file, a PDF on a website) that has a preview of its own. */
+const linkedFile = (f: FileRef) => !f.key && !!f.url && !!linkPreview(f.url);
+const previewable = (f: FileRef) => showable(f) || linkedFile(f);
+/** Which file a preview shows: stored files by their key, listed ones by their address. */
+const fileId = (f: FileRef) => f.key ?? f.url ?? f.name;
+
+/** Types whose link or file is the thing itself, so its preview is open as soon as the panel is. */
+const CONTENT_TYPES = ["Drive link", "Document", "Video"];
 
 /**
  * What the preview shows first, when there is something worth showing: a file
- * that can be shown in place, or a link that can be framed (Figma, Google,
- * YouTube, Vimeo, Loom). A plain web page is left out: the header already has
+ * that can be shown in place, a link that can be framed (Figma, Google,
+ * YouTube, Vimeo, Loom), or a PDF on another site (a card that opens it). A
+ * Drive link, document or video shows its link first, ahead of a picture
+ * uploaded beside it. A plain web page is left out: the header already has
  * Open and Copy link for it, and a card saying the same again adds nothing.
  */
 function previewOf(a: Asset): { kind: "file"; file: FileRef } | { kind: "link"; url: string } | null {
+  const link = linkPreview(a.url) ? { kind: "link" as const, url: a.url.trim() } : null;
+  if (link && CONTENT_TYPES.includes(a.type)) return link;
   const p = primaryPreview(a);
-  if (!p) return null;
-  if (p.kind === "file") return showable(p.file) ? p : null;
-  return linkEmbed(p.url) ? p : null;
+  if (p?.kind === "file" && showable(p.file)) return p;
+  if (link) return link;
+  const listed = (a.files ?? []).find(linkedFile);
+  return listed ? { kind: "file", file: listed } : null;
 }
 
 type Tab = "overview" | "list" | "prompt" | "copy" | "proof" | "discussion" | "history";
@@ -110,16 +124,18 @@ function Drawer({ a }: { a: Asset }) {
   const link = assetLink(a);
   const file = link ? null : assetDownload(a);
 
-  // The full preview stays folded away until someone asks, so the sections stay in reach.
+  // The full preview stays folded away until someone asks, so the sections stay in reach; for a Drive link,
+  // document or video it is the asset itself, so it is open from the start.
   const first = previewOf(a);
-  const [showing, setShowing] = useState(false);
+  const [showing, setShowing] = useState(() => !!first && CONTENT_TYPES.includes(a.type));
+  const source = linkSource(a.url);
   // A file chosen from the list; back to the first one when it is gone (replaced or removed).
   const [chosen, setChosen] = useState<string | null>(null);
-  const chosenFile = (a.files ?? []).find((f) => f.key === chosen && showable(f)) ?? null;
+  const chosenFile = (a.files ?? []).find((f) => fileId(f) === chosen && previewable(f)) ?? null;
   const previewId = useId();
   const previewBox = useRef<HTMLDivElement>(null);
   const showFile = (f: FileRef) => {
-    setChosen(f.key ?? null);
+    setChosen(fileId(f));
     setShowing(true);
     requestAnimationFrame(() => previewBox.current?.scrollIntoView({ block: "nearest" }));
   };
@@ -221,7 +237,10 @@ function Drawer({ a }: { a: Asset }) {
               <CodeTile code={ws.codeOf(a)} color={color} size={52} className={cx(thumb.busy && "opacity-50")} />
             )}
             <div className="min-w-0 flex-1">
-              <p className="m-0 text-small text-mute-2">{kind} · {a.type}</p>
+              <p className="m-0 flex flex-wrap items-center gap-x-1 text-small text-mute-2">
+                {kind} · {a.type}
+                {source && <><span aria-hidden>·</span><span className="inline-flex items-center gap-1"><SourceIcon kind={source.kind} size={13} />{source.label}</span></>}
+              </p>
               {a.short && <p className="m-0 mt-0.5 text-body text-ink-3 text-pretty">{a.short}</p>}
               <p className="m-0 mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-small text-mute-2">
                 {b ? (
@@ -245,9 +264,10 @@ function Drawer({ a }: { a: Asset }) {
 
           {first && showing && (
             <div ref={previewBox} id={previewId} className="mb-4 scroll-mt-20">
-              {chosenFile ? <FilePreview key={chosenFile.key} file={chosenFile} asset={a} />
-                : first.kind === "file" ? <FilePreview key={first.file.key} file={first.file} asset={a} />
-                : <LinkPreview url={first.url} title={a.name} />}
+              {chosenFile ? <FilePreview key={fileId(chosenFile)} file={chosenFile} asset={a} />
+                : first.kind === "file" ? <FilePreview key={fileId(first.file)} file={first.file} asset={a} />
+                // The asset's name is the panel's title already; the preview says what the link is. A video kept in Drive plays at 16:9.
+                : <LinkPreview url={first.url} shape={a.type === "Video" && source?.kind === "file" ? "video" : undefined} />}
             </div>
           )}
 
@@ -718,7 +738,7 @@ function AttachedFiles({ a, onProof, onEdit, onPreview }: { a: Asset; onProof?: 
               <div className="flex items-center gap-3">
                 <FileGlyph f={f} />
                 <span className="min-w-0 flex-1">
-                  {showable(f) ? (
+                  {previewable(f) ? (
                     <button type="button" onClick={() => onPreview(f)} aria-label={`Preview ${f.name}`} title={`Preview ${f.name}`}
                       className="block max-w-full truncate rounded-sm text-left text-body font-medium text-ink hover:underline">{f.name}</button>
                   ) : (

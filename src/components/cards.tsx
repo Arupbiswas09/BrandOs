@@ -17,7 +17,9 @@ import { CardMenu, type CardMenuItem } from "./card-menu";
 import { ThumbnailPicker } from "./thumbnail-picker";
 import { fmtDate } from "@/lib/format";
 import { isLinkBroken } from "@/lib/link-health";
+import { linkSource } from "@/lib/embeds";
 import { LinkStatus } from "./features/links/link-status";
+import { SourceIcon } from "./features/files/parts";
 import { PagePictureButton } from "./features/links/page-picture-button";
 import { ResultBadge } from "./features/results/result-badge";
 
@@ -87,12 +89,18 @@ export function assetDownload(a: Asset): { href: string; title: string } | null 
   return { href: `/api/assets/${a.id}/download`, title: `Download all ${stored.length} files as a zip` };
 }
 
-/** Where an asset that lives at a link (a Drive folder, a live page) opens, and what to call that. */
+/** Where an asset that lives at a link (a Drive folder, a live page) opens, and what to call that ("Open in Google Docs", "Open on YouTube"). */
 export function assetLink(a: Asset): { href: string; label: string } | null {
   const url = (a.url ?? "").trim();
   if (!url) return null;
   const href = /^https?:\/\//i.test(url) ? url : `https://${url.replace(/^\/+/, "")}`;
-  return { href, label: /^https?:\/\/(drive|docs)\.google\.com\//i.test(href) ? "Open in Drive" : "Open link" };
+  return { href, label: linkSource(href)?.open ?? (/^https?:\/\/(drive|docs)\.google\.com\//i.test(href) ? "Open in Drive" : "Open link") };
+}
+
+/** What an asset's link is, when it is more than a web page: a small icon and a word ("YouTube", "Google Doc"), drawn here, never fetched. */
+function Source({ s, className }: { s: NonNullable<ReturnType<typeof linkSource>>; className?: string }) {
+  // Inline text, so a line too short for it ends in an ellipsis like any other.
+  return <span className={cx("whitespace-nowrap", className)}><SourceIcon kind={s.kind} size={12} className="mr-1 inline-block align-[-1px]" />{s.label}</span>;
 }
 
 /** The card's corner button: download the files, or open the link for a Drive link or an asset that is only a link. */
@@ -178,6 +186,7 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
   const whole = ws.catOf(a) === "master";
   const preview = ws.previewOf(a);
   const primary = assetPrimary(a);
+  const source = linkSource(a.url);
   const code = ws.codeOf(a);
   const tile = <CodeTile code={code} color={color} height={84} className="w-full" style={{ height: "100%" }} />;
   const draggable = !selecting && !!move?.folders.length;
@@ -199,7 +208,9 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
         <>
           <span className="mt-1 block"><StatusLine a={a} /></span>
           <span className="mt-0.5 block truncate text-small text-mute-2">
-            <span aria-hidden>{a.type} · </span><span className={cx(n === 0 && "font-medium text-warn-text")}>{n === 0 ? "Not linked yet" : plural(n, "offer")}</span>
+            {/* Where the link goes (YouTube, a Google Doc, a PDF) says more than the type, which the tile's code already shows. */}
+            {source && !preview ? <><Source s={source} /> · </> : <span aria-hidden>{a.type} · </span>}
+            <span className={cx(n === 0 && "font-medium text-warn-text")}>{n === 0 ? "Not linked yet" : plural(n, "offer")}</span>
             {open > 0 && <> · {plural(open, "note")}</>}
           </span>
           {/* Plain spans, no button: the whole card is the button. */}
@@ -299,6 +310,7 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
   const n = ws.linkedOfferIds(a.id).length;
   const get = assetGet(a);
   const link = linkHref(a.url);
+  const source = linkSource(a.url);
   const servesText = serves?.length ? `For ${serves[0].name}${serves.length > 1 ? ` and ${serves.length - 1} more` : ""}` : "";
   const offersText = n === 0 ? "Not linked" : plural(n, "offer");
   const copy = async () => {
@@ -324,15 +336,18 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
           <span className="min-w-0 flex-1">
             <span className="flex min-w-0 items-center gap-2">
               <span className="min-w-0 truncate text-body font-medium text-ink" title={a.name}>{a.name}</span>
+              {/* Wide rows say what the link is beside the name; narrower ones in the line under it. */}
+              {source && <Source s={source} className="hidden flex-none text-small text-mute-2 @4xl:inline" />}
               <LinkStatus asset={a} variant="badge" className="flex-none" />
             </span>
             {servesText
               ? <span className="mt-0.5 hidden truncate text-small text-mute-2 @3xl:block">{servesText}</span>
-              : <span className="mt-0.5 hidden truncate text-small text-mute-2 @3xl:block @4xl:hidden">{a.type}</span>}
+              : <span className="mt-0.5 hidden truncate text-small text-mute-2 @3xl:block @4xl:hidden">{a.type}{source && <> · <Source s={source} /></>}</span>}
             <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-small text-mute-2 @3xl:hidden">
               <StateWord s={st} muted={st.tone !== "review" && st.tone !== "change"} className="flex-none" />
               <span aria-hidden>·</span>
-              <span className="truncate">{servesText || `${offersText} · ${a.type}`}</span>
+              {/* The tile shows the type's code, so where the link goes takes the type's place here. */}
+              <span className="truncate">{servesText || <>{offersText} · {source ? <Source s={source} /> : a.type}</>}</span>
             </span>
           </span>
           <span className="hidden w-32 flex-none truncate text-meta text-mute-2 @4xl:block">{a.type}</span>
