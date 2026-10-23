@@ -16,6 +16,7 @@ import { checkBatch, checkPlace, placeAccept, placeLimit } from "@/lib/upload-po
 import { live, plural, type WS } from "@/lib/ws";
 import { useAction, useApp } from "@/components/app/provider";
 import { FileHistory } from "@/components/features/files/file-history";
+import { LinkPreview } from "@/components/features/files/file-preview";
 import { FileGlyph, LINK_BTN } from "@/components/features/files/parts";
 import { Footer, Modal } from "@/components/modals/frame";
 import { MoreMenu, type MoreItem } from "@/components/more-menu";
@@ -123,33 +124,28 @@ function where(url: string) {
 }
 
 /**
- * A framed preview of a link (Google Docs, Slides, Drive, Figma, YouTube,
- * Vimeo, Loom). Nothing loads from the other site until someone asks, as
- * with every link preview in BrandOS.
+ * A link's preview (Google Docs, Slides, Drive, Figma, YouTube, Vimeo, Loom).
+ * A kit can hold many, so nothing loads from the other site until someone
+ * asks; then it is the same preview as everywhere else in BrandOS, with its
+ * sign-in card for private Google files and its Open button.
  */
-function EmbedFrame({ embed, title }: { embed: Embed; title: string }) {
+function EmbedFrame({ embed, url, title }: { embed: Embed; url: string; title: string }) {
   const [on, setOn] = useState(false);
-  const frame = useRef<HTMLIFrameElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const from = new URL(embed.src).hostname.replace(/^www\./, "");
   const video = embed.shape === "video";
   const verb = video ? "Play here" : "Load preview";
-  useEffect(() => { if (on) frame.current?.focus(); }, [on]);
+  useEffect(() => { if (on) box.current?.focus(); }, [on]);
+  if (on) return <div ref={box} tabIndex={-1} className="outline-none" data-embed={embed.provider}><LinkPreview url={url} title={title} bare /></div>;
   return (
     <div className={cx("relative w-full bg-wash", video ? "aspect-video" : "aspect-[4/3] sm:aspect-[16/10]")} data-embed={embed.provider}>
-      {on ? (
-        <iframe ref={frame} src={embed.src} title={title} loading="lazy" allowFullScreen referrerPolicy="strict-origin-when-cross-origin"
-          allow={video ? "autoplay; encrypted-media; fullscreen; picture-in-picture" : "fullscreen; clipboard-write"}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-presentation allow-forms"
-          className="absolute inset-0 block h-full w-full border-0 bg-surface" />
-      ) : (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-          <span className="eyebrow">{embed.provider}</span>
-          <Btn onClick={() => setOn(true)} aria-label={`${verb}: ${title}, from ${from}`}>
-            {video ? <Play aria-hidden size={15} /> : <Maximize2 aria-hidden size={15} />}{verb}
-          </Btn>
-          <p className="m-0 max-w-[40ch] text-small text-mute-2 text-pretty">Nothing loads from {from} until you ask.</p>
-        </div>
-      )}
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <span className="eyebrow">{embed.provider}</span>
+        <Btn onClick={() => setOn(true)} aria-label={`${verb}: ${title}, from ${from}`}>
+          {video ? <Play aria-hidden size={15} /> : <Maximize2 aria-hidden size={15} />}{verb}
+        </Btn>
+        <p className="m-0 max-w-[40ch] text-small text-mute-2 text-pretty">Nothing loads from {from} until you ask.</p>
+      </div>
     </div>
   );
 }
@@ -362,7 +358,7 @@ export function GuidelinesSection({ b }: { b: Brand }) {
           name={title} meta={[g.embed?.provider, where(g.link.url)].filter(Boolean).join(" · ")}
           actions={<><OpenLink href={g.link.url} what={title} /><CopyBtn text={g.link.url} what="the link" />{menu(g)}</>}>
           {g.embed
-            ? <EmbedFrame key={g.link.url} embed={g.embed} title={`${b.name} guidelines: ${title}`} />
+            ? <EmbedFrame key={g.link.url} embed={g.embed} url={g.link.url} title={`${b.name} guidelines: ${title}`} />
             : <p className="m-0 px-4 py-3 text-meta text-mute-2 sm:px-5">This site does not show inside BrandOS. Open it to read the guidelines.</p>}
         </ItemCard>
       );
@@ -492,7 +488,7 @@ export function VideosSection({ b }: { b: Brand }) {
             return (
               <li key={v.id} className="min-w-0">
                 <div className={CARD} data-video={v.id}>
-                  {embed && <EmbedFrame embed={embed} title={title} />}
+                  {embed && <EmbedFrame embed={embed} url={v.url} title={title} />}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-divider px-3.5 py-2.5 first:border-t-0">
                     <span className="min-w-0 flex-1 basis-44">
                       <span className="block truncate text-body font-semibold text-ink">{title}</span>
@@ -798,7 +794,7 @@ export function LegalSection({ b }: { b: Brand }) {
                 {s?.kind === "file" && s.asset && s.file?.key && <FileHistory assetId={s.asset.id} fileKey={s.file.key} className="-mt-1.5 px-4 pb-2.5 sm:px-5 sm:pl-[68px]" />}
                 {open && s && (
                   <div className="border-t border-divider">
-                    {s.kind === "link" ? s.embed && <EmbedFrame embed={s.embed} title={`${b.name}: ${r.title}`} /> : s.file && <PdfFrame f={s.file} title={`${b.name}: ${r.title}`} />}
+                    {s.kind === "link" ? s.embed && <EmbedFrame embed={s.embed} url={s.url} title={`${b.name}: ${r.title}`} /> : s.file && <PdfFrame f={s.file} title={`${b.name}: ${r.title}`} />}
                   </div>
                 )}
               </li>
