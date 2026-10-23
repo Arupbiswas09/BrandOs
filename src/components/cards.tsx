@@ -17,7 +17,7 @@ import { CardMenu, type CardMenuItem } from "./card-menu";
 import { ThumbnailPicker } from "./thumbnail-picker";
 import { fmtDate } from "@/lib/format";
 import { isLinkBroken } from "@/lib/link-health";
-import { linkSource } from "@/lib/embeds";
+import { googleThumbnail, linkSource } from "@/lib/embeds";
 import { LinkStatus } from "./features/links/link-status";
 import { SourceIcon } from "./features/files/parts";
 import { PagePictureButton } from "./features/links/page-picture-button";
@@ -184,7 +184,12 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
   const quiet = variant === "kit" || variant === "font";
   // Logos, guidelines and fonts are shown whole on the page tint; everything else fills its frame.
   const whole = ws.catOf(a) === "master";
-  const preview = ws.previewOf(a);
+  // Its own picture first. A Google Doc or Drive file shows Google's thumbnail, for people with access; anyone else keeps the tile.
+  const [googleFailed, setGoogleFailed] = useState(false);
+  const google = ws.previewOf(a) ? null : googleThumbnail(a.url);
+  const preview = ws.previewOf(a) ?? (google && !googleFailed ? google : null);
+  // The card can be drawn on the server, so Google may already have said no before this page was listening: look once it is.
+  const gone = google ? (el: HTMLImageElement | null) => { if (el?.complete && el.naturalWidth === 0) setGoogleFailed(true); } : undefined;
   const primary = assetPrimary(a);
   const source = linkSource(a.url);
   const code = ws.codeOf(a);
@@ -243,7 +248,8 @@ export function AssetCard({ a, variant = "full", selecting, selected, onToggle, 
             {/* A fixed 4:3 frame, so cards never jump while their pictures load. Purely a picture: the name follows in words. */}
             <span aria-hidden className="relative block aspect-[4/3] w-full flex-none overflow-hidden rounded-t-xl border-b border-divider bg-wash">
               {/* eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; next/image would proxy it through the optimizer. The name sits right under it, so alt stays empty. */}
-              <img src={preview} alt="" loading="lazy" decoding="async" draggable={false} className={cx("h-full w-full", whole ? "object-contain p-5" : "object-cover")} />
+              <img src={preview} alt="" loading="lazy" decoding="async" draggable={false} referrerPolicy="no-referrer" ref={gone} onError={google ? () => setGoogleFailed(true) : undefined}
+                className={cx("h-full w-full", whole ? "object-contain p-5" : "object-cover", google && "object-top")} />
             </span>
             <span className="block min-w-0 px-3.5 pb-3 pt-2.5">{words}</span>
           </>
@@ -303,7 +309,11 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
 }) {
   const { ws, openAsset, toast } = useApp();
   const { canEdit, edit, menu, picking, setPicking } = useAssetTools(a);
-  const preview = ws.previewOf(a);
+  const [googleFailed, setGoogleFailed] = useState(false);
+  const google = ws.previewOf(a) ? null : googleThumbnail(a.url);
+  const preview = ws.previewOf(a) ?? (google && !googleFailed ? google : null);
+  // The card can be drawn on the server, so Google may already have said no before this page was listening: look once it is.
+  const gone = google ? (el: HTMLImageElement | null) => { if (el?.complete && el.naturalWidth === 0) setGoogleFailed(true); } : undefined;
   const color = ws.colorOf(a);
   const code = ws.codeOf(a);
   const st = assetStand(a);
@@ -330,7 +340,8 @@ export function AssetRow({ a, serves, tools, selecting, selected, onToggle }: {
           <span aria-hidden className="flex w-12 flex-none items-center">
             {preview
               // eslint-disable-next-line @next/next/no-img-element -- private, auth-checked file; the name follows in words.
-              ? <img src={preview} alt="" loading="lazy" decoding="async" className="h-9 w-12 rounded-md border border-line bg-wash object-cover" />
+              ? <img src={preview} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" ref={gone} onError={google ? () => setGoogleFailed(true) : undefined}
+                  className={cx("h-9 w-12 rounded-md border border-line bg-wash object-cover", google && "object-top")} />
               : <CodeTile code={code} color={color} size={40} style={{ fontSize: 12 }} />}
           </span>
           <span className="min-w-0 flex-1">

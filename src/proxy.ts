@@ -26,7 +26,8 @@ export function proxy(request: NextRequest) {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
-    "img-src 'self' data: blob:",
+    // Google's thumbnails of Docs and Drive files on asset cards (drive.google.com/thumbnail redirects to *.googleusercontent.com).
+    "img-src 'self' data: blob: https://drive.google.com https://*.googleusercontent.com",
     "media-src 'self' blob:",
     // Hot reload talks over a websocket in development.
     `connect-src 'self'${dev ? " ws: wss:" : ""}`,

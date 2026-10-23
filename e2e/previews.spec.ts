@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { settle, signIn } from "./helpers";
 import { callAction } from "./server-action";
-import { EMBED_ORIGINS, linkEmbed, linkPreview, linkSource } from "../src/lib/embeds";
+import { EMBED_ORIGINS, googleThumbnail, linkEmbed, linkPreview, linkSource } from "../src/lib/embeds";
 
 /*
  * Previews of Google files, Drive folders, PDFs and videos, where people add
@@ -244,7 +244,8 @@ test("a Google Doc previews in the panel: open by default on a document, one cli
   // A post that points at a Doc: folded until asked, then one click shows it. Nothing from Google loads before.
   const post = await linkAsset(page, `Post copy ${run()}`, "Social post", `https://docs.google.com/spreadsheets/d/${DOC}/edit#gid=0`);
   const asked: string[] = [];
-  page.on("request", (r) => { if (/google\.com/.test(r.url())) asked.push(r.url()); });
+  // Cards may show Google's thumbnail; nothing else from Google loads before Preview.
+  page.on("request", (r) => { if (/google\.com/.test(r.url()) && !/drive\.google\.com\/thumbnail/.test(r.url())) asked.push(r.url()); });
   await page.goto(`${PAGE}?asset=${post}`);
   await settle(page);
   drawer = page.getByRole("dialog");
@@ -305,4 +306,32 @@ test("the panel with a preview open meets WCAG 2.2 AA, at 1440 and 390", async (
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
     }
   }
+});
+
+test("cards of Google Docs and Drive files show Google's thumbnail to people with access, and keep their tile otherwise", async ({ page }) => {
+  // The rule: Docs, Sheets, Slides and Drive files have a thumbnail; folders, forms and other sites do not.
+  expect(googleThumbnail(`https://docs.google.com/document/u/1/d/${FILE}/edit?usp=sharing`)).toBe(`https://drive.google.com/thumbnail?id=${FILE}&sz=w640`);
+  expect(googleThumbnail(`https://drive.google.com/file/d/${FILE}/view?usp=drive_link`)).toBe(`https://drive.google.com/thumbnail?id=${FILE}&sz=w640`);
+  expect(googleThumbnail(`https://docs.google.com/spreadsheets/d/${FILE}/edit#gid=0`)).toBe(`https://drive.google.com/thumbnail?id=${FILE}&sz=w640`);
+  expect(googleThumbnail(`drive.google.com/drive/u/2/folders/${FILE}`)).toBeNull();
+  expect(googleThumbnail("https://example.org/brief.pdf")).toBeNull();
+
+  await signIn(page);
+  const stamp = Date.now().toString(36);
+  const seen = `Thumbnail doc ${stamp}`, hidden = `No-access doc ${stamp}`;
+  await linkAsset(page, seen, "Document", `https://docs.google.com/document/d/${FILE}/edit`);
+  await linkAsset(page, hidden, "Document", `https://docs.google.com/document/d/${FILE.slice(0, -4)}zzzz/edit`);
+  // Signed in with access, Google answers with a picture; without access, with an error page.
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  await page.route(new RegExp(`^https://drive\\.google\\.com/thumbnail\\?id=${FILE}&`), (r) => r.fulfill({ status: 200, contentType: "image/png", body: PNG }));
+  await page.route(/^https:\/\/drive\.google\.com\/thumbnail\?id=.*zzzz/, (r) => r.fulfill({ status: 500, contentType: "text/html", body: "<p>No access</p>" }));
+  await page.goto(PAGE);
+  await settle(page);
+  // The cards on the Assets tab (the Key links column lists the same names).
+  const card = (name: string) => page.getByRole("tabpanel", { name: /^Assets/ }).getByRole("button", { name: new RegExp(name) }).first();
+  await card(seen).scrollIntoViewIfNeeded();
+  await expect(card(seen).locator('img[src*="drive.google.com/thumbnail"]')).toHaveJSProperty("naturalWidth", 1);
+  await card(hidden).scrollIntoViewIfNeeded();
+  await expect(card(hidden).locator("img")).toHaveCount(0);
+  await expect(card(hidden)).toContainText("DOC");
 });

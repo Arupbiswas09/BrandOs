@@ -269,3 +269,16 @@ export function linkSource(raw: string | null | undefined): { label: string; kin
   // "Video · YouTube" reads better than "Video · YouTube video"; a Short or a playlist keeps its word.
   return { label: e.label.endsWith(" video") ? e.provider : e.label, kind: e.kind, open: e.open };
 }
+
+/**
+ * A picture of a Google Doc, Sheet, Slides deck or Drive file, for cards:
+ * Google's own thumbnail. It shows only to someone signed in to Google with
+ * access to the file; anyone else gets nothing back, and the card keeps its
+ * tile. Null for folders, forms, published copies and other sites.
+ */
+export function googleThumbnail(raw: string | null | undefined): string | null {
+  const e = linkEmbed(raw);
+  if (!e || !e.provider.startsWith("Google") || !["doc", "sheet", "slides", "file"].includes(e.kind)) return null;
+  const id = e.src.match(/\/d\/([\w-]{19,})\//)?.[1];
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w640` : null;
+}
