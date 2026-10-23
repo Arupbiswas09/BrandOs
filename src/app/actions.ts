@@ -26,6 +26,8 @@ import { recordSecurity } from "@/server/audit";
 import { EV } from "@/lib/audit";
 import { draftNewOfferFunnel } from "@/server/funnel";
 import { fmtDate } from "@/lib/format";
+import { LEGAL_SLOTS, LOGO_VARIANTS, SOCIAL_NETWORKS, cleanAddress, guideLinkProblem, legalLinkProblem, socialAddress, videoProblem } from "@/lib/kit";
+import type { LegalSlot, LogoVariant, SocialNetwork } from "@/db/schema";
 
 export type Result = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -342,15 +344,86 @@ export async function saveKit(input: z.input<typeof kitDraft>) {
     const primary = d.colours.find((c) => c.role === "Primary")?.hex ?? d.colours[0]?.hex ?? b.primary;
     const secondary = d.colours.find((c) => c.role === "Secondary" || c.role === "Accent")?.hex ?? d.colours[1]?.hex ?? b.secondary;
     await db.transaction(async (tx) => {
+      // The editor sends every field it holds; the parts saved from the kit page (links, legal, social, videos, logo labels) stay as they are.
+      const [row] = await tx.select({ kit: s.brands.kit }).from(s.brands).where(eq(s.brands.id, b.id)).for("update");
       await tx.update(s.brands).set({
         voice: d.voice, boilerplate: d.boilerplate, colours: d.colours, fonts: d.fonts,
-        segments: withAllSegments(d.segments), kit: d.kit, primary, secondary, updatedAt: new Date(),
+        segments: withAllSegments(d.segments), kit: { ...(row?.kit ?? {}), ...d.kit }, primary, secondary, updatedAt: new Date(),
       }).where(eq(s.brands.id, b.id));
       for (const [from, to] of d.segmentRenames) {
         if (!from || !to || from === to || from === "All segments") continue;
         await tx.update(s.offers).set({ segment: to }).where(and(eq(s.offers.brandId, b.id), eq(s.offers.segment, from)));
       }
       await log(tx, me.id, "updated", "brand", b.id, b.name, "Brand Kit");
+    });
+  });
+}
+
+/* The parts of a kit saved from the kit page itself. The rules for each are in src/lib/kit.ts. */
+const address = (problem: (u: string) => string | null) =>
+  str(1000).superRefine((u, ctx) => { const p = problem(u); if (p) ctx.addIssue({ code: "custom", message: p }); }).transform(cleanAddress);
+const partId = z.string().trim().min(1).max(40);
+const kitPartDraft = z.object({
+  brandId: z.string(),
+  guideLinks: z.array(z.object({ id: partId, title: str(120), url: address(guideLinkProblem) })).max(20).optional(),
+  videos: z.array(z.object({ id: partId, title: str(120), url: address(videoProblem) })).max(30).optional(),
+  social: z.array(z.object({
+    id: partId, network: z.enum(SOCIAL_NETWORKS.map((n) => n.network) as [SocialNetwork, ...SocialNetwork[]]), url: str(1000), label: str(60).optional(),
+  }).transform((x, ctx) => {
+    const r = socialAddress(x.network, x.url);
+    if (!r.ok) { ctx.addIssue({ code: "custom", message: r.error }); return z.NEVER; }
+    return { ...x, url: r.url, ...(x.network !== "custom" && { label: undefined }) };
+  })).max(30).optional(),
+  legal: z.array(z.object({
+    slot: z.enum(LEGAL_SLOTS.map((l) => l.slot) as [LegalSlot, ...LegalSlot[]]), title: str(80).optional(),
+    url: address(legalLinkProblem).optional(), assetId: z.string().max(40).optional(),
+  })).max(LEGAL_SLOTS.length).optional(),
+  /** Labels by logo asset id; "" takes a label off. */
+  logoVariants: z.record(z.string().max(40), z.union([z.enum(LOGO_VARIANTS.map((v) => v.v) as [LogoVariant, ...LogoVariant[]]), z.literal("")])).optional(),
+});
+
+const PART_NAMES: Record<string, string> = { guideLinks: "Guidelines links", videos: "Videos", social: "Social links", legal: "Legal pages", logoVariants: "Logo variations" };
+
+/**
+ * One part of a Brand Kit saved on its own: guidelines links, videos, social
+ * links, legal pages or logo labels. Each list sent replaces that list; the
+ * rest of the kit is left alone. Managers and admins only, like the editor.
+ */
+export async function saveKitPart(input: z.input<typeof kitPartDraft>) {
+  return run(async () => {
+    const { me, vis, db, all } = await context("kit");
+    const d = kitPartDraft.parse(input);
+    need(vis.brand(d.brandId));
+    const b = all.brands.find((x) => x.id === d.brandId)!;
+    const mine = (id: string, type?: string) => all.assets.some((a) => a.id === id && a.brandId === b.id && (!type || a.type === type) && vis.asset(a.id));
+    // A legal page's file has to be on one of this brand's assets.
+    for (const l of d.legal ?? []) if (l.assetId) need(mine(l.assetId), "That file is not in this brand. Upload it again.");
+    if (new Set((d.legal ?? []).map((l) => l.slot)).size !== (d.legal ?? []).length) throw new Denied("Each legal page goes in once.");
+    const parts = Object.keys(PART_NAMES).filter((k) => d[k as keyof typeof d] !== undefined);
+    if (!parts.length) return;
+    await db.transaction(async (tx) => {
+      const [row] = await tx.select({ kit: s.brands.kit }).from(s.brands).where(eq(s.brands.id, b.id)).for("update");
+      const kit: s.BrandKit = { ...(row?.kit ?? {}) };
+      if (d.guideLinks) kit.guideLinks = d.guideLinks;
+      if (d.videos) kit.videos = d.videos;
+      if (d.social) kit.social = d.social.map(({ label, ...x }) => (label?.trim() ? { ...x, label: label.trim() } : x));
+      if (d.legal) {
+        kit.legal = d.legal
+          .filter((l) => l.url || l.assetId)
+          .map((l) => ({ slot: l.slot, ...(l.slot === "extra" && l.title && { title: l.title }), ...(l.url ? { url: l.url } : { assetId: l.assetId }) }));
+      }
+      if (d.logoVariants) {
+        // Only this brand's logos get labels. Labels of logos not sent (one in the recycle bin, say) are kept.
+        const next = { ...(kit.logoVariants ?? {}) };
+        for (const [id, v] of Object.entries(d.logoVariants)) {
+          if (!mine(id, "Logo")) continue;
+          if (v) next[id] = v;
+          else delete next[id];
+        }
+        kit.logoVariants = next;
+      }
+      await tx.update(s.brands).set({ kit, updatedAt: new Date() }).where(eq(s.brands.id, b.id));
+      await log(tx, me.id, "updated", "brand", b.id, b.name, parts.map((p) => PART_NAMES[p]).join(", "));
     });
   });
 }

@@ -12,7 +12,7 @@ import { ColourInput } from "./forms";
 import { Footer, Modal } from "./frame";
 
 const ROLES: ColourRole[] = ["Primary", "Secondary", "Accent", "Neutral", "Background", "Text"];
-const TABS = [["colour", "Colour"], ["type", "Typography"], ["logo", "Logo"], ["voice", "Voice"], ["rules", "Imagery and rules"], ["segments", "Segments"]] as const;
+const TABS = [["colour", "Colour"], ["type", "Typography"], ["logo", "Logo"], ["tone", "Brand tone"], ["rules", "Imagery and rules"], ["segments", "Segments"]] as const;
 type Tab = (typeof TABS)[number][0];
 export type KitTab = Tab;
 
@@ -159,7 +159,7 @@ export function KitModal({ brandId }: { brandId: string }) {
 
       {tab === "logo" && (
         <section className="flex flex-col gap-3">
-          <p className="m-0 text-meta text-mute-2">Upload the logo files themselves on the Brand Kit page (Add a logo file). Here are the rules for using them.</p>
+          <p className="m-0 text-meta text-mute-2">The logo files themselves, and what each one is, are on the Brand Kit page (Add a logo file, Label variations). Here are the rules for using them.</p>
           <Field label="Clear space" hint={<span className="font-normal text-mute-4">empty space kept around the logo</span>}><input className="field" value={t.clearSpace} onChange={set("clearSpace")} placeholder="The height of the Q on every side" /></Field>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Minimum size, screen"><input className="field" value={t.minDigital} onChange={set("minDigital")} placeholder="24 px tall" /></Field>
@@ -170,19 +170,17 @@ export function KitModal({ brandId }: { brandId: string }) {
         </section>
       )}
 
-      {tab === "voice" && (
+      {tab === "tone" && (
         <section className="flex flex-col gap-3">
-          <Field label="Mission" hint={<span className="font-normal text-mute-4">one or two sentences</span>}><textarea rows={2} className="field leading-[1.55]" value={t.mission} onChange={set("mission")} /></Field>
-          <Field label="Values" hint={<span className="font-normal text-mute-4">one per line</span>}><textarea rows={3} className="field leading-[1.55]" value={t.values} onChange={set("values")} /></Field>
-          <Field label="Voice and tone"><textarea rows={3} className="field leading-[1.55]" value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm and specific. Name the number." /></Field>
+          <Field label="Voice" hint={<span className="font-normal text-mute-4">how the brand sounds, in a sentence or two</span>}><textarea rows={3} className="field leading-[1.55]" value={voice} onChange={(e) => setVoice(e.target.value)} placeholder="Warm and specific. Name the number." /></Field>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="We are" hint={<span className="font-normal text-mute-4">one per line</span>}><textarea rows={4} className="field leading-[1.55]" value={t.weAre} onChange={set("weAre")} placeholder={"Warm\nSpecific"} /></Field>
+            <Field label="We are" hint={<span className="font-normal text-mute-4">tone words, one per line</span>}><textarea rows={4} className="field leading-[1.55]" value={t.weAre} onChange={set("weAre")} placeholder={"Warm\nSpecific"} /></Field>
             <Field label="We are not" hint={<span className="font-normal text-mute-4">one per line</span>}><textarea rows={4} className="field leading-[1.55]" value={t.weAreNot} onChange={set("weAreNot")} placeholder={"Preachy\nVague"} /></Field>
             <Field label="Words we use" hint={<span className="font-normal text-mute-4">comma separated</span>}><input className="field" value={t.wordsUse} onChange={set("wordsUse")} /></Field>
             <Field label="Words we avoid" hint={<span className="font-normal text-mute-4">comma separated</span>}><input className="field" value={t.wordsAvoid} onChange={set("wordsAvoid")} /></Field>
           </div>
           <div>
-            <div className="label">Examples</div>
+            <div className="label">Example lines</div>
             <div className="flex flex-col gap-2">
               {examples.map((e) => (
                 <div key={e.key} className="grid gap-2 sm:grid-cols-[120px_1fr_1fr_auto]">
@@ -196,6 +194,8 @@ export function KitModal({ brandId }: { brandId: string }) {
             </div>
           </div>
           <Field label="Boilerplate"><textarea rows={3} className="field leading-[1.55]" value={boilerplate} onChange={(e) => setBoilerplate(e.target.value)} /></Field>
+          <Field label="Mission" hint={<span className="font-normal text-mute-4">one or two sentences</span>}><textarea rows={2} className="field leading-[1.55]" value={t.mission} onChange={set("mission")} /></Field>
+          <Field label="Values" hint={<span className="font-normal text-mute-4">one per line</span>}><textarea rows={3} className="field leading-[1.55]" value={t.values} onChange={set("values")} /></Field>
         </section>
       )}
 

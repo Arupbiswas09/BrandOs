@@ -71,7 +71,8 @@ sources of truth:
 | The review queue and who it waits on | `ws.ts` (`queue`), `types.ts` (`waitOn`) |
 | Search across everything | `ws.ts` (`search`) |
 | How dates and times read (European: 16 Oct 2026, 14:30, weeks from Monday) | `format.ts` |
-| Upload limits | `upload-policy.ts` |
+| Upload limits (and what the Brand Kit's guidelines and legal pages take) | `upload-policy.ts` |
+| A Brand Kit's completeness, logo variations, legal pages, social links, video and guideline links | `kit.ts` |
 | Funnel board rules and the first draft | `funnel.ts` |
 | Routes and links | `routes.ts` |
 | Whether a link is broken and how to say so | `link-health.ts` |

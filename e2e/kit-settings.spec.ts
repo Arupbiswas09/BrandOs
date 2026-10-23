@@ -12,7 +12,7 @@ test("the Brand Kit shows one section at a time and keeps it in the address", as
   await expect(page.getByRole("heading", { name: "Quokka For Good", level: 1 })).toBeVisible();
   await expect(page.getByText("Brand kit · v2026.1")).toBeVisible();
   const sections = page.getByRole("tablist", { name: "Brand kit sections" });
-  // No guidelines PDF in the demo, so the kit opens on the logo.
+  // No guidelines to read in the demo, so the kit opens on the logo.
   await expect(sections.getByRole("tab", { name: "Logo" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("heading", { name: "Colour", level: 2 })).toHaveCount(0);
 
@@ -36,9 +36,9 @@ test("the Brand Kit shows one section at a time and keeps it in the address", as
   await expect(sections.getByRole("tab", { name: "Typography" })).toHaveAttribute("aria-selected", "true");
 
   // "Edit kit" opens the editor on the section you are reading.
-  await sections.getByRole("tab", { name: "Voice" }).click();
+  await sections.getByRole("tab", { name: "Brand tone" }).click();
   await page.getByRole("button", { name: "Edit kit" }).click();
-  await expect(page.getByRole("dialog").getByRole("tab", { name: "Voice" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("dialog").getByRole("tab", { name: "Brand tone" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("a complete kit says nothing about completeness; an incomplete one says what is missing in one line", async ({ page }) => {

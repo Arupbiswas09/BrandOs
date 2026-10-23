@@ -119,6 +119,32 @@ export function parseSize(s: string | undefined): number {
   return Math.round(n * { B: 1, KB: 1024, MB, GB: 1024 * MB }[m[2].toUpperCase() as "B" | "KB" | "MB" | "GB"]);
 }
 
+/*
+ * The Brand Kit's own places for files, and what each takes. Guidelines are a
+ * PDF or a slide deck; legal pages a PDF or a word-processor document. All of
+ * them are documents, so the size limit is the one for documents (Team and
+ * access → Limits, 50 MB unless an admin changes it). A deck bigger than that
+ * is better kept as a Google Slides link, which also previews in the kit.
+ */
+export type KitPlace = "guidelines" | "legal";
+export const KIT_PLACES: Record<KitPlace, { exts: string[]; label: string }> = {
+  guidelines: { exts: ["pdf", "ppt", "pptx", "key", "odp"], label: "a PDF or a slide deck (PowerPoint, Keynote or OpenDocument)" },
+  legal: { exts: ["pdf", "doc", "docx", "odt", "rtf"], label: "a PDF or a Word document" },
+};
+
+/** For the file picker's `accept`. */
+export const placeAccept = (place: KitPlace) => KIT_PLACES[place].exts.map((e) => `.${e}`).join(",");
+
+/** The largest file a kit place takes for this person, as "50 MB". */
+export const placeLimit = (my: MyUploadLimits) => sizeLabel(my.kinds.document.maxBytes);
+
+/** Why this file cannot go into this place in the kit, or null if it can. */
+export function checkPlace(place: KitPlace, file: { name: string; size: number }, my: MyUploadLimits): string | null {
+  const ext = file.name.toLowerCase().trim().split(".").pop() ?? "";
+  if (!file.name.includes(".") || !KIT_PLACES[place].exts.includes(ext)) return `${file.name} is not ${KIT_PLACES[place].label}. Pick one of those.`;
+  return checkBatch([file], my);
+}
+
 /** Why these files cannot go up, or null if they can. Same wording on both sides. */
 export function checkBatch(files: { name: string; size: number }[], my: MyUploadLimits): string | null {
   if (files.length > my.maxFiles) return `That is ${files.length} files. Upload up to ${my.maxFiles} at a time.`;

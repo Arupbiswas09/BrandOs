@@ -1,40 +1,47 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Check, ChevronRight, Copy, Download, ExternalLink, FileText, Pencil, Plus, Printer, Upload, X } from "lucide-react";
-import type { Asset, Brand, BrandColour, FileRef } from "@/db/schema";
-import { saveAsset } from "@/app/actions";
+import { Check, ChevronRight, Copy, Download, Pencil, Plus, Printer, Tag, Upload, X } from "lucide-react";
+import type { Asset, Brand, BrandColour, FileRef, LogoVariant } from "@/db/schema";
 import { cmykText, onColor, rgbText, wcag } from "@/lib/color";
-import { fmtDate } from "@/lib/format";
-import { defaultScale, kitScore } from "@/lib/kit";
+import { GROUND_HEX, defaultScale, kitScore, logoFiles, logoGround, variantLabel } from "@/lib/kit";
 import { checkBatch } from "@/lib/upload-policy";
-import { live, plural, type WS } from "@/lib/ws";
-import { useAction, useApp } from "@/components/app/provider";
-import { AssetCard } from "@/components/cards";
+import { live, plural } from "@/lib/ws";
+import { useApp } from "@/components/app/provider";
 import { kitStartsOn, type KitTab } from "@/components/modals/kit";
 import { Sections, SectionsHead, SectionTitle, type SectionItem } from "@/components/section-tabs";
 import { Btn, Card, CodeTile, cx } from "@/components/ui";
+import { FileHistory } from "@/components/features/files/file-history";
+import {
+  EmptyLine, GuidelinesSection, KitUploadDialog, LegalSection, LogoVariantsDialog, SocialSection, VideosSection,
+  guideItems, guidePreviewable, sendFiles, usePicker,
+} from "./kit-extras";
 
 /* ---------------------------------------------------------------- sections */
 
-type Key = "pdf" | "logo" | "colour" | "type" | "voice" | "imagery" | "files" | "ctas";
+type Key = "guidelines" | "logo" | "colour" | "type" | "tone" | "imagery" | "videos" | "social" | "legal" | "files" | "ctas";
 
 /** The kit's sections in reading order. The URL hash (#kit-logo) says which one is open. */
 const SECTIONS: SectionItem<Key>[] = [
-  { key: "pdf", label: "Guidelines PDF" },
+  { key: "guidelines", label: "Guidelines" },
   { key: "logo", label: "Logo" },
   { key: "colour", label: "Colour" },
   { key: "type", label: "Typography" },
-  { key: "voice", label: "Voice" },
+  { key: "tone", label: "Brand tone" },
   { key: "imagery", label: "Imagery and rules" },
+  { key: "videos", label: "Videos" },
+  { key: "social", label: "Social links" },
+  { key: "legal", label: "Legal" },
   { key: "files", label: "Files" },
   { key: "ctas", label: "CTAs" },
 ];
 const KEYS = SECTIONS.map((s) => s.key);
+/** Older anchors, so links saved before a section was renamed still land on it. */
+const OLD_KEYS: Record<string, Key> = { rules: "imagery", voice: "tone", pdf: "guidelines" };
 
 /** Which editor tab each section opens on. */
-const EDIT_TAB: Partial<Record<Key, KitTab>> = { logo: "logo", colour: "colour", type: "type", voice: "voice", imagery: "rules" };
+const EDIT_TAB: Partial<Record<Key, KitTab>> = { logo: "logo", colour: "colour", type: "type", tone: "tone", imagery: "rules" };
 
 /** Where each completeness check is filled in: a section of the page, and the editor tab (none for uploads). */
 const FILL: Record<string, { section: Key; tab: KitTab | null }> = {
@@ -44,10 +51,10 @@ const FILL: Record<string, { section: Key; tab: KitTab | null }> = {
   print: { section: "colour", tab: "colour" },
   fonts: { section: "type", tab: "type" },
   scale: { section: "type", tab: "type" },
-  voice: { section: "voice", tab: "voice" },
+  voice: { section: "tone", tab: "tone" },
   imagery: { section: "imagery", tab: "rules" },
   rules: { section: "imagery", tab: "rules" },
-  boilerplate: { section: "voice", tab: "voice" },
+  boilerplate: { section: "tone", tab: "tone" },
 };
 
 /*
@@ -72,7 +79,7 @@ function subscribeHash(cb: () => void) {
 
 function fromHash(hash: string): Key | null {
   const k = /^#kit-([a-z]+)$/.exec(hash)?.[1];
-  if (k === "rules") return "imagery"; // the old "Do's and don'ts" anchor
+  if (k && OLD_KEYS[k]) return OLD_KEYS[k];
   return KEYS.includes(k as Key) ? (k as Key) : null;
 }
 
@@ -107,12 +114,13 @@ export function BrandKit({ b, ctas }: { b: Brand; ctas?: ReactNode }) {
   const k = b.kit ?? {};
   const score = useMemo(() => kitScore(b, ws.d.assets), [b, ws.d.assets]);
   const canEdit = ws.can("kit");
-  const hasPdf = guideFiles(ws, b).some((g) => embeddable(g.file));
+  // The kit opens on its guidelines when there is something to read there.
+  const hasGuide = guideItems(ws, b).some(guidePreviewable);
 
   const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => "");
   const items = ctas ? SECTIONS : SECTIONS.filter((s) => s.key !== "ctas");
   const asked = fromHash(hash);
-  const active: Key = asked && items.some((s) => s.key === asked) ? asked : hasPdf ? "pdf" : "logo";
+  const active: Key = asked && items.some((s) => s.key === asked) ? asked : hasGuide ? "guidelines" : "logo";
   const go = useCallback((key: Key) => {
     window.history.replaceState(null, "", `#kit-${key}`);
     window.dispatchEvent(new Event(HASH_EVENT));
@@ -144,12 +152,15 @@ export function BrandKit({ b, ctas }: { b: Brand; ctas?: ReactNode }) {
         </>}
       />
       <Sections at="xl" idBase="kit" label="Brand kit sections" items={items} active={active} onChange={go}>
-        {active === "pdf" && <GuidelinesPdf b={b} />}
+        {active === "guidelines" && <GuidelinesSection b={b} />}
         {active === "logo" && <LogoSection b={b} />}
         {active === "colour" && <ColourSection b={b} />}
         {active === "type" && <TypeSection b={b} />}
-        {active === "voice" && <VoiceSection b={b} />}
+        {active === "tone" && <ToneSection b={b} onEdit={canEdit ? () => edit("tone") : undefined} />}
         {active === "imagery" && <ImagerySection b={b} />}
+        {active === "videos" && <VideosSection b={b} />}
+        {active === "social" && <SocialSection b={b} />}
+        {active === "legal" && <LegalSection b={b} />}
         {active === "files" && <FilesSection b={b} />}
         {active === "ctas" && ctas}
       </Sections>
@@ -161,27 +172,43 @@ export function BrandKit({ b, ctas }: { b: Brand; ctas?: ReactNode }) {
 
 function LogoSection({ b }: { b: Brand }) {
   const { ws, open } = useApp();
+  const [labelling, setLabelling] = useState(false);
   const k = b.kit ?? {};
-  const logos = live(ws.assetsOf(b.id)).filter((a) => a.type === "Logo");
-  const logoPreview = logos.map((a) => ws.previewOf(a)).find(Boolean) ?? null;
-  // A logo file is an asset, so anyone who creates assets can add one (the rules for using it stay with the kit's editors).
+  const logos = logoFiles(b, ws.d.assets);
+  // A logo file is an asset, so anyone who creates assets can add one; saying what each one is belongs to the kit's editors.
   const canAdd = ws.can("edit");
+  const canLabel = ws.can("kit") && logos.length > 0;
   const add = () => open({ kind: "asset", draft: { brandId: b.id, type: "Logo", status: "Ready", offerIds: [] }, step: 3 });
+  /** The picture of the first logo with one of these labels (or of any logo, last). */
+  const pictureOf = (...want: (LogoVariant | null)[]) => {
+    for (const v of want) {
+      const hit = logos.find((l) => (v === null || l.variant === v) && ws.previewOf(l.asset));
+      if (hit) return ws.previewOf(hit.asset);
+    }
+    return null;
+  };
+  const light = pictureOf("On light", "Primary", null);
+  const reversed = pictureOf("On dark");
+  // A reversed logo also sits on the primary colour when that colour is dark enough for white.
+  const tiles = [
+    { bg: "#FFFFFF", label: "On white", ring: true, src: light },
+    { bg: b.primary, label: "On primary", src: onColor(b.primary) === "#FFFFFF" ? reversed : light },
+    { bg: GROUND_HEX.dark, label: "On dark", src: reversed },
+  ];
   return (
     <section aria-label="Logo">
-      <SectionTitle title="Logo" sub="The master files and the rules for using them."
-        actions={canAdd && <Btn size="sm" onClick={add}><Plus aria-hidden className="h-4 w-4" />Add a logo file</Btn>} />
+      <SectionTitle title="Logo" sub="The master files, what each one is for, and the rules for using them."
+        actions={(canAdd || canLabel) && <>
+          {canLabel && <Btn size="sm" onClick={() => setLabelling(true)}><Tag aria-hidden className="h-4 w-4" />Label variations</Btn>}
+          {canAdd && <Btn size="sm" onClick={add}><Plus aria-hidden className="h-4 w-4" />Add a logo file</Btn>}
+        </>} />
       <div className="grid grid-cols-3 gap-3">
-        {[
-          { bg: "#FFFFFF", label: "On white", ring: true },
-          { bg: b.primary, label: "On primary" },
-          { bg: "#101614", label: "On dark" },
-        ].map((t) => (
+        {tiles.map((t) => (
           <figure key={t.label} className="m-0">
             <div className={cx("flex aspect-[2/1] items-center justify-center rounded-xl sm:aspect-[5/2]", t.ring && "border border-line")} style={{ background: t.bg }}>
-              {logoPreview && t.bg === "#FFFFFF"
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={logoPreview} alt={`${b.name} logo`} className="max-h-[60%] max-w-[70%] object-contain" />
+              {t.src
+                // eslint-disable-next-line @next/next/no-img-element -- a private, auth-checked file
+                ? <img src={t.src} alt={`${b.name} logo ${t.label.toLowerCase()}`} className="max-h-[60%] max-w-[70%] object-contain" />
                 : <LogoMark b={b} bg={t.bg} />}
             </div>
             <figcaption className="mt-1.5 text-center text-small text-mute-2">{t.label}</figcaption>
@@ -210,13 +237,41 @@ function LogoSection({ b }: { b: Brand }) {
         </>
       )}
 
-      <h3 className="mb-2 mt-5 text-meta font-semibold text-ink-3">Logo files</h3>
+      <h3 className="mb-2 mt-5 text-meta font-semibold text-ink-3">Variations</h3>
       {logos.length ? (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {logos.map((a) => <AssetCard key={a.id} a={a} variant="kit" />)}
-        </div>
+        <ul aria-label="Logo variations" className="m-0 grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-3 lg:grid-cols-4">
+          {logos.map(({ asset, variant }) => <li key={asset.id}><LogoTile b={b} a={asset} variant={variant} /></li>)}
+        </ul>
       ) : <EmptyBlock text="No logo files yet. Add the master files so nobody has to ask for them." />}
+      {labelling && <LogoVariantsDialog b={b} onClose={() => setLabelling(false)} />}
     </section>
+  );
+}
+
+/** One logo file on the ground it is made for, with what it is. Opens the file's asset. */
+function LogoTile({ b, a, variant }: { b: Brand; a: Asset; variant: LogoVariant | null }) {
+  const { ws, openAsset } = useApp();
+  // "Not labelled" nudges the people who can label; everyone else just sees a logo file.
+  const unlabelled = ws.can("kit") ? "Not labelled" : "Logo file";
+  const ground = logoGround(variant);
+  const bg = GROUND_HEX[ground];
+  const preview = ws.previewOf(a);
+  const files = a.files.length;
+  return (
+    <button type="button" onClick={() => openAsset(a.id)} data-variant={variant ?? ""} data-ground={ground}
+      className="group flex w-full flex-col overflow-hidden rounded-xl border border-line bg-surface text-left shadow-card transition hover:border-line-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2">
+      <span aria-hidden className={cx("flex aspect-[4/3] w-full items-center justify-center border-b border-divider p-5", ground === "white" && "bg-surface")} style={ground === "white" ? undefined : { background: bg }}>
+        {preview
+          // eslint-disable-next-line @next/next/no-img-element -- a private, auth-checked file; the name follows in words
+          ? <img src={preview} alt="" loading="lazy" decoding="async" className="max-h-full max-w-full object-contain" />
+          : <LogoMark b={b} bg={ground === "dark" ? GROUND_HEX.dark : "#FFFFFF"} compact />}
+      </span>
+      <span className="block min-w-0 px-3.5 pb-3 pt-2.5">
+        <span className="block text-micro font-semibold uppercase tracking-[0.05em] text-mute-2">{variant ? variantLabel(variant) : unlabelled}</span>
+        <span className="mt-0.5 block truncate text-body font-semibold text-ink">{a.name}</span>
+        <span className="block truncate text-small text-mute-2">{files ? `${a.files.map((f) => f.name.split(".").pop()?.toUpperCase()).filter(Boolean).join(", ")} · ${plural(files, "file")}` : "No file yet"}</span>
+      </span>
+    </button>
   );
 }
 
@@ -391,20 +446,38 @@ function TypeSection({ b }: { b: Brand }) {
 
 /* ---------------------------------------------------------------- voice */
 
-function VoiceSection({ b }: { b: Brand }) {
+/**
+ * How the brand sounds: the voice in a sentence or two, the tone words (we
+ * are, we are not), the words to use and avoid, example lines and the
+ * boilerplate. All of it is edited in the kit editor's Brand tone tab.
+ */
+function ToneSection({ b, onEdit }: { b: Brand; onEdit?: () => void }) {
   const { toast } = useApp();
   const k = b.kit ?? {};
   const copy = () => { void navigator.clipboard?.writeText(b.boilerplate).catch(() => {}); toast("Boilerplate copied"); };
+  const any = !!(b.voice || b.boilerplate || k.values?.length || k.weAre?.length || k.weAreNot?.length || k.wordsUse?.length || k.wordsAvoid?.length || k.voiceExamples?.length);
+  const sub = "How the brand sounds. The voice stays the same; the tone shifts with the moment.";
+  if (!any) {
+    return (
+      <section aria-label="Brand tone">
+        <SectionTitle title="Brand tone" sub={sub} />
+        <EmptyLine quiet={!onEdit} text={onEdit ? "No brand tone yet. Describe the voice, the tone words and the words to avoid." : "No brand tone written down yet."}>
+          {onEdit && <Btn size="sm" onClick={onEdit}><Pencil aria-hidden className="h-3.5 w-3.5" />Write the brand tone</Btn>}
+        </EmptyLine>
+      </section>
+    );
+  }
   return (
-    <section aria-label="Voice">
-      <SectionTitle title="Voice and tone" sub="How the brand sounds. The voice stays the same; the tone shifts with the moment." />
+    <section aria-label="Brand tone">
+      <SectionTitle title="Brand tone" sub={sub} />
       <p className="m-0 max-w-[65ch] text-lead leading-[1.55] text-ink text-pretty">{b.voice || <Missing />}</p>
       {!!k.values?.length && (
         <ul aria-label="Values" className="m-0 mt-3 flex list-none flex-wrap gap-1.5 p-0">
           {k.values.map((v) => <li key={v} className="rounded-full bg-soft px-3 py-1 text-meta font-medium text-ink-3">{v}</li>)}
         </ul>
       )}
-      <div className="mt-5 grid gap-3 md:grid-cols-2">
+      <h3 className="mb-2 mt-6 text-meta font-semibold text-ink-3">Tone and words</h3>
+      <div className="grid gap-3 md:grid-cols-2">
         <Card className="px-5 py-4">
           <ListBlock title="We are" items={k.weAre} tone="good" />
           <WordBlock title="Words we use" items={k.wordsUse} tone="good" />
@@ -414,8 +487,9 @@ function VoiceSection({ b }: { b: Brand }) {
           <WordBlock title="Words we avoid" items={k.wordsAvoid} tone="bad" />
         </Card>
       </div>
+      {!!k.voiceExamples?.length && <h3 className="mb-2 mt-6 text-meta font-semibold text-ink-3">Example lines</h3>}
       {!!k.voiceExamples?.length && (
-        <Card className="mt-3 overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="grid grid-cols-[120px_1fr_1fr] gap-4 border-b border-divider px-5 py-2 text-small font-semibold text-mute-2 max-md:hidden">
             <span>Where</span><span>Say this</span><span>Not this</span>
           </div>
@@ -428,7 +502,7 @@ function VoiceSection({ b }: { b: Brand }) {
           ))}
         </Card>
       )}
-      <Card className="mt-3 px-5 py-4">
+      <Card className="mt-6 px-5 py-4">
         <div className="mb-1 flex items-center justify-between gap-3">
           <h3 className="m-0 text-meta font-semibold text-ink-3">Boilerplate</h3>
           {b.boilerplate && <Btn size="sm" onClick={copy}><Copy aria-hidden className="h-3.5 w-3.5" />Copy<span className="sr-only"> the boilerplate</span></Btn>}
@@ -463,22 +537,82 @@ function ImagerySection({ b }: { b: Brand }) {
 
 /* ---------------------------------------------------------------- files */
 
+/**
+ * Font files and the brand's templates, to download. People who may upload
+ * add new ones (as new master assets, or onto one already here) and replace a
+ * file in place: the upload route keeps the earlier one as a version.
+ */
 function FilesSection({ b }: { b: Brand }) {
-  const { ws, open, openAsset } = useApp();
+  const { ws, openAsset, toast } = useApp();
+  const router = useRouter();
+  const [pick, input] = usePicker();
+  const [adding, setAdding] = useState<string | true | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
   const all = live(ws.assetsOf(b.id));
-  // Guideline documents have their own section; this is everything else people come to download.
+  // Guideline documents and logos have their own sections; this is everything else people come to download.
   const files = [...all.filter((a) => a.type === "Font"), ...all.filter((a) => a.isTemplate && a.type !== "Font")];
-  // As with logo files: a font file is an asset, added like one.
-  const add = () => open({ kind: "asset", draft: { brandId: b.id, type: "Font", status: "Ready", offerIds: [] }, step: 3 });
+  const uploads = ws.d.uploadsEnabled && ws.can("upload");
+  const canAdd = uploads && ws.can("edit");
+  const canSwap = (a: Asset) => uploads && ws.canChange(a);
+
+  const replace = (a: Asset, f: FileRef) => pick("", false, async ([next]) => {
+    const problem = checkBatch([{ name: next.name, size: next.size }], ws.d.uploads.mine);
+    if (problem) { toast(problem, "error"); return; }
+    setBusy(f.key ?? null);
+    const r = await sendFiles(a.id, [next], f.key);
+    setBusy(null);
+    if (!r.ok) { toast(r.error, "error"); return; }
+    toast(`Replaced ${f.name}. The earlier file is kept under its earlier versions.`);
+    router.refresh();
+  });
+
   return (
     <section aria-label="Files">
-      <SectionTitle title="Files and templates" sub="Font files and the reusable templates for this brand."
-        actions={ws.can("edit") && <Btn size="sm" onClick={add}><Plus aria-hidden className="h-4 w-4" />Add a font file</Btn>} />
+      <SectionTitle title="Files" sub="Font files and the reusable templates for this brand."
+        actions={canAdd && files.length > 0 && <Btn size="sm" onClick={() => setAdding(true)}><Upload aria-hidden className="h-4 w-4" />Upload files</Btn>} />
+      {input}
       {files.length ? (
         <Card className="overflow-hidden">
-          {files.map((a) => <FileRow key={a.id} a={a} onOpen={() => openAsset(a.id)} />)}
+          <ul aria-label="Kit files" className="m-0 list-none p-0">
+            {files.map((a) => (
+              <li key={a.id} className="border-t border-divider first:border-t-0" data-asset={a.id}>
+                <FileRow a={a} onOpen={() => openAsset(a.id)} />
+                {a.files.length > 0 && (
+                  <ul aria-label={`Files in ${a.name}`} className="m-0 list-none px-4 pb-2.5 pl-16 pt-0 sm:px-5 sm:pl-[68px]">
+                    {a.files.map((f) => (
+                      <li key={f.key ?? f.name} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-divider py-1.5 first:border-t-0">
+                        <span className="min-w-0 flex-1 basis-40">
+                          <span className="block truncate text-meta text-ink-3">{f.name}</span>
+                          <span className="block text-small text-mute-2">{f.url ? f.size : "Listed only. The file was never uploaded here."}</span>
+                          {f.key && <FileHistory assetId={a.id} fileKey={f.key} className="mt-0.5" />}
+                        </span>
+                        {f.url && (
+                          <span className="flex items-center gap-1.5">
+                            {busy === f.key ? <span className="text-small text-mute-2">Uploading…</span> : canSwap(a) && f.key && (
+                              <Btn size="sm" onClick={() => replace(a, f)}><Upload aria-hidden className="h-3.5 w-3.5" />Replace<span className="sr-only"> {f.name}</span></Btn>
+                            )}
+                            <a href={f.url} download={f.name} aria-label={`Download ${f.name}`} title={`Download ${f.name}`} className="inline-flex size-8 items-center justify-center rounded-lg text-mute-2 hover:bg-hover hover:text-ink"><Download aria-hidden className="h-4 w-4" /></a>
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {canSwap(a) && !a.files.some((f) => f.url) && (
+                  <div className="px-4 pb-2.5 pl-16 sm:px-5 sm:pl-[68px]">
+                    <Btn size="sm" onClick={() => setAdding(a.id)}><Upload aria-hidden className="h-3.5 w-3.5" />Upload the files<span className="sr-only"> for {a.name}</span></Btn>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         </Card>
-      ) : <EmptyBlock text="Font files and templates added as master files show up here." />}
+      ) : (
+        <EmptyLine quiet={!canAdd} text={canAdd ? "No font files or templates yet. Upload them so nobody has to ask." : "No font files or templates here yet."}>
+          {canAdd && <Btn size="sm" onClick={() => setAdding(true)}><Upload aria-hidden className="h-4 w-4" />Upload files</Btn>}
+        </EmptyLine>
+      )}
+      {adding && <KitUploadDialog b={b} into={adding === true ? undefined : adding} onClose={() => setAdding(null)} />}
     </section>
   );
 }
@@ -488,7 +622,7 @@ function FileRow({ a, onOpen }: { a: Asset; onOpen: () => void }) {
   const preview = ws.previewOf(a);
   const count = a.files.length;
   return (
-    <button type="button" onClick={onOpen} className="focus-inset flex w-full items-center gap-3 border-t border-divider px-4 py-2.5 text-left transition-colors duration-150 first:border-t-0 hover:bg-hover">
+    <button type="button" onClick={onOpen} className="focus-inset flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 hover:bg-hover sm:px-5">
       {preview
         // eslint-disable-next-line @next/next/no-img-element -- a private, auth-checked file
         ? <img src={preview} alt="" className="size-9 flex-none rounded-lg border border-divider bg-wash object-contain" />
@@ -500,154 +634,6 @@ function FileRow({ a, onOpen }: { a: Asset; onOpen: () => void }) {
       <span className="hidden flex-none text-meta text-mute-2 sm:block">{a.isTemplate ? "Template" : a.type}{count > 0 && ` · ${plural(count, "file")}`}</span>
       <ChevronRight aria-hidden className="h-4 w-4 flex-none text-mute-2" />
     </button>
-  );
-}
-
-/* ---------------------------------------------------------------- guidelines PDF */
-
-type GuideFile = { file: FileRef; asset: Asset | null };
-
-const isPdf = (f: Pick<FileRef, "name" | "type">) => f.type === "application/pdf" || /\.pdf$/i.test(f.name);
-/** Only files BrandOS stores can show inline: the page may frame its own origin and nothing else. */
-const embeddable = (f: FileRef) => !!f.url?.startsWith("/api/files/") && isPdf(f);
-
-/** The brand's live Guidelines assets, most recently changed first. */
-const guideAssets = (ws: WS, b: Brand) =>
-  live(ws.assetsOf(b.id)).filter((a) => a.type === "Guidelines").sort((x, y) => +new Date(y.updatedAt) - +new Date(x.updatedAt));
-
-/**
- * Every guidelines file a brand has: the files on its Guidelines assets
- * (newest asset first, newest upload first), then the files kept on the
- * brand itself.
- */
-function guideFiles(ws: WS, b: Brand): GuideFile[] {
-  return [
-    ...guideAssets(ws, b).flatMap((a) => [...a.files].reverse().map((file) => ({ file, asset: a }))),
-    ...b.guidelines.map((file) => ({ file, asset: null })),
-  ];
-}
-
-/**
- * The brand's guidelines PDF, readable on the page: the newest PDF BrandOS
- * holds for it. People who can upload add one, or a newer version, to the
- * brand's Guidelines asset, which is made for them if there is none yet.
- */
-function GuidelinesPdf({ b }: { b: Brand }) {
-  const { ws, toast } = useApp();
-  const [run] = useAction();
-  const router = useRouter();
-  const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [pick, setPick] = useState<string | null>(null);
-
-  const files = guideFiles(ws, b);
-  const pdfs = files.filter((g) => embeddable(g.file));
-  const shown = pdfs.find((g) => g.file.key === pick) ?? pdfs[0] ?? null;
-  const others = files.filter((g) => g !== shown);
-  // New uploads go to the newest Guidelines asset, so they sit with the files already there.
-  const target = guideAssets(ws, b)[0] ?? null;
-  const canUpload = ws.d.uploadsEnabled && ws.can("upload") && (target ? ws.canChange(target) : ws.can("edit"));
-
-  const upload = async (f: File) => {
-    if (!isPdf({ name: f.name, type: f.type })) { toast("Pick a PDF file.", "error"); return; }
-    const problem = checkBatch([{ name: f.name, size: f.size }], ws.d.uploads.mine);
-    if (problem) { toast(problem, "error"); return; }
-    setBusy(true);
-    try {
-      let id = target?.id;
-      if (!id) {
-        const r = await run(saveAsset, { brandId: b.id, name: "Brand guidelines", type: "Guidelines", channel: "Owned", status: "Ready", offerIds: [] });
-        if (!r.ok || !r.id) return;
-        id = r.id;
-      }
-      const fd = new FormData();
-      fd.append("file", f);
-      const res = await fetch(`/api/assets/${id}/files`, { method: "POST", body: fd });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) { toast(body.error ?? "The PDF did not upload. Try again.", "error"); return; }
-      setPick(null);
-      toast(`${f.name} is up`);
-      router.refresh();
-    } catch {
-      toast("The PDF did not upload. Check your connection and try again.", "error");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const uploadBtn = (label: string, primary = false) => (
-    <Btn size="sm" variant={primary ? "primary" : "secondary"} disabled={busy} onClick={() => input.current?.click()}>
-      <Upload aria-hidden className="h-3.5 w-3.5" />{busy ? "Uploading…" : label}
-    </Btn>
-  );
-  // The guidelines' own version when the kit records one, otherwise the asset's.
-  const version = b.kit?.version ? `v${b.kit.version}` : shown?.asset ? `v${shown.asset.version}` : "";
-  // With a PDF on show, older versions and other files wait behind one line.
-  const wrapOthers = (list: ReactNode) => shown ? (
-    <details className="group mt-4">
-      <summary className="inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 text-body font-medium text-ink-3 hover:text-ink [&::-webkit-details-marker]:hidden">
-        <ChevronRight aria-hidden className="h-4 w-4 text-mute-2 transition-transform duration-150 ease-snap group-open:rotate-90 motion-reduce:transition-none" />
-        {plural(others.length, "other guideline file")}
-      </summary>
-      <div className="mt-2">{list}</div>
-    </details>
-  ) : list;
-  const smallLink = "inline-flex h-8 flex-none items-center gap-1.5 whitespace-nowrap rounded-lg border border-line bg-surface px-3 text-meta font-medium text-ink-3 transition-colors duration-150 hover:border-line-strong hover:bg-wash";
-
-  return (
-    <section aria-label="Guidelines PDF">
-      <SectionTitle title="Guidelines PDF" sub="The full guidelines document, readable here without downloading it."
-        actions={shown && canUpload && uploadBtn("Upload a new version")} />
-      {canUpload && (
-        <input ref={input} type="file" accept="application/pdf,.pdf" className="hidden" tabIndex={-1} aria-hidden
-          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }} />
-      )}
-      {shown ? (
-        <Card className="overflow-hidden">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-3 border-b border-divider px-4 py-3 sm:px-5">
-            <span className="flex size-9 flex-none items-center justify-center rounded-lg bg-soft text-accent"><FileText aria-hidden className="h-5 w-5" /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-body font-semibold">{shown.asset?.name ?? shown.file.name.replace(/\.pdf$/i, "")}</span>
-              <span className="block truncate text-small text-mute-2" suppressHydrationWarning>
-                {[version, shown.asset && `Updated ${fmtDate(shown.asset.updatedAt)}`, shown.file.name, shown.file.size].filter(Boolean).join(" · ")}
-              </span>
-            </span>
-            <span className="flex flex-wrap gap-2">
-              <a href={`${shown.file.url}?inline=1`} target="_blank" rel="noopener" className={smallLink}><ExternalLink aria-hidden className="h-3.5 w-3.5" />Open full screen<span className="sr-only"> (opens in a new tab)</span></a>
-              <a href={shown.file.url} download={shown.file.name} className={smallLink}><Download aria-hidden className="h-3.5 w-3.5" />Download</a>
-            </span>
-          </div>
-          <iframe key={shown.file.key} src={`${shown.file.url}?inline=1`} title={`${b.name} guidelines: ${shown.file.name}`} className="block h-[520px] w-full border-0 bg-wash sm:h-[60vh]" />
-        </Card>
-      ) : (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line-strong px-6 py-8 text-center">
-          <p className="m-0 max-w-[52ch] text-body text-mute-1 text-pretty">There is no guidelines PDF for {b.name} yet{canUpload ? "" : ". Someone who can upload files can add it"}.</p>
-          {canUpload && uploadBtn("Upload the guidelines PDF", true)}
-        </div>
-      )}
-      {others.length > 0 && !shown && <h3 className="mb-2 mt-5 text-meta font-semibold text-ink-3">Guideline files</h3>}
-      {others.length > 0 && wrapOthers(
-          <div className="rounded-xl border border-line bg-surface">
-            {others.map((g, i) => (
-              <div key={`${g.asset?.id ?? "brand"}-${g.file.key ?? g.file.name}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-divider px-4 py-2.5 first:border-t-0 sm:px-5">
-                <FileText aria-hidden className="h-4 w-4 flex-none text-mute-2" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-body font-medium">{g.file.name}</span>
-                  <span className="block truncate text-small text-mute-2">{[g.asset?.name ?? "Kept on the brand", g.file.size].filter(Boolean).join(" · ")}</span>
-                </span>
-                {!g.file.url ? (
-                  <span className="text-small text-mute-2">Not uploaded yet</span>
-                ) : (
-                  <span className="flex items-center gap-1.5">
-                    {embeddable(g.file) && <Btn size="sm" onClick={() => { setPick(g.file.key ?? null); window.scrollTo({ top: 0 }); }}>Show here<span className="sr-only">: {g.file.name}</span></Btn>}
-                    <a href={g.file.url} download={g.file.name} aria-label={`Download ${g.file.name}`} title={`Download ${g.file.name}`} className="inline-flex size-8 items-center justify-center rounded-lg text-mute-2 hover:bg-hover hover:text-ink"><Download aria-hidden className="h-4 w-4" /></a>
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>,
-      )}
-    </section>
   );
 }
 
@@ -663,14 +649,15 @@ function EmptyBlock({ text }: { text: string }) {
   );
 }
 
-function LogoMark({ b, bg }: { b: Brand; bg: string }) {
+/** The brand's mark drawn for a background, where no logo picture is uploaded. `compact` leaves the name out. */
+function LogoMark({ b, bg, compact }: { b: Brand; bg: string; compact?: boolean }) {
   const onPrimary = bg === b.primary;
   const fill = bg === "#FFFFFF" ? b.primary : onPrimary ? onColor(b.primary) : "#FFFFFF";
   const text = bg === "#FFFFFF" ? onColor(b.primary) : onPrimary ? b.primary : "#101614";
   return (
     <span className="flex items-center gap-2">
       <span className="flex size-10 items-center justify-center rounded-xl text-body font-bold" style={{ background: fill, color: text }}>{b.mark}</span>
-      <span className="text-body font-semibold max-sm:hidden" style={{ color: bg === "#FFFFFF" ? "#101614" : fill }}>{b.name}</span>
+      {!compact && <span className="text-body font-semibold max-sm:hidden" style={{ color: bg === "#FFFFFF" ? "#101614" : fill }}>{b.name}</span>}
     </span>
   );
 }
