@@ -1,17 +1,39 @@
 import type { ReactNode } from "react";
-import type { Brand } from "@/db/schema";
+import type { Asset, Brand, FileRef } from "@/db/schema";
 import { cmykText, onColor, rgbText, wcag } from "@/lib/color";
-import { defaultScale } from "@/lib/kit";
+import { linkEmbed, linkParts, webUrl } from "@/lib/embeds";
+import { GROUND_HEX, LEGAL_SLOTS, defaultScale, legalEntry, legalTitle, logoFiles, logoGround, socialHandle, socialName, variantLabel } from "@/lib/kit";
 
 /*
  * The Brand Kit as a document: one long page that prints cleanly to PDF.
- * Rendered on the server, so it works on the public share link too.
+ * Rendered on the server. `assets` are the brand's assets the reader may
+ * see; logo variations, guideline files and legal files come from them.
+ * Sections with nothing in them are left out.
  */
 
 const stack = (name: string, fallback?: string) => `"${name}", ${fallback || "system-ui, sans-serif"}`;
+const IMAGE = /^image\/(png|jpe?g|gif|webp|avif)$/;
+/** The address as it reads on paper: no https://, no www. */
+const printed = (url: string) => { const u = webUrl(url); if (!u) return url; const { host, path } = linkParts(u); return host + path; };
+const newest = (a: Asset | null | undefined): FileRef | null => [...(a?.files ?? [])].reverse().find((f) => f.key && f.url) ?? null;
 
-export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: string | null; toolbar?: ReactNode }) {
+export function GuidelinesDoc({ b, logoUrl, toolbar, assets = [] }: { b: Brand; logoUrl?: string | null; toolbar?: ReactNode; assets?: Asset[] }) {
   const k = b.kit ?? {};
+  const logos = logoFiles(b, assets).map((l) => ({ ...l, src: l.asset.files.find((f) => f.key && IMAGE.test(f.type ?? "")) }));
+  const showVariants = logos.some((l) => l.variant || l.src);
+  const guideDocs = [
+    ...assets.filter((a) => a.type === "Guidelines").flatMap((a) => a.files.filter((f) => f.url).map((f) => ({ name: f.name, sub: a.name, href: f.url! }))),
+    ...(k.guideLinks ?? []).map((l) => ({ name: l.title || linkEmbed(l.url)?.provider || printed(l.url), sub: printed(l.url), href: l.url })),
+  ];
+  const legal = LEGAL_SLOTS.flatMap(({ slot }) => {
+    const l = legalEntry(b, slot);
+    if (!l) return [];
+    if (l.url) return [{ name: legalTitle(l), sub: printed(l.url), href: l.url }];
+    const f = newest(assets.find((a) => a.id === l.assetId));
+    return f ? [{ name: legalTitle(l), sub: f.name, href: f.url! }] : [];
+  });
+  const social = k.social ?? [];
+  const videos = k.videos ?? [];
   const scale = k.typeScale?.length ? k.typeScale : defaultScale(b);
   const families = [...new Set([...b.fonts.map((f) => f.name), ...scale.map((s) => s.font)])].filter(Boolean);
   const fontHref = families.length
@@ -43,7 +65,7 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
         </header>
 
         <div className="px-10 py-12 sm:px-14 [&>section]:mb-14 [&>section]:break-inside-avoid-page">
-          {(k.mission || k.values?.length || b.description) && (
+          {!!(k.mission || k.values?.length || b.description) && (
             <Sec n={num()} title="Who we are">
               {k.mission && <p className="m-0 mb-4 max-w-[60ch] text-title leading-[1.45] text-[#101614]">{k.mission}</p>}
               {!k.mission && b.description && <p className="m-0 mb-4 max-w-[60ch] text-lead leading-[1.55] text-[#3E4A45]">{b.description}</p>}
@@ -76,6 +98,27 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
             </dl>
             {k.logo?.notes && <p className="mb-0 mt-4 text-body leading-[1.55] text-[#3E4A45]">{k.logo.notes}</p>}
             {!!k.logo?.misuse?.length && <Rules title="Never" items={k.logo.misuse} bad />}
+            {showVariants && (
+              <>
+                <h3 className="mb-3 mt-6 text-small font-semibold uppercase tracking-[0.05em] text-[#5E6C66]">Variations</h3>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" data-doc="logo-variations">
+                  {logos.map(({ asset, variant, src }) => {
+                    const ground = logoGround(variant);
+                    return (
+                      <div key={asset.id} className="break-inside-avoid">
+                        <div className="flex aspect-[4/3] items-center justify-center rounded-xl border border-[#E1E7E4] p-4" style={{ background: GROUND_HEX[ground] }}>
+                          {src
+                            // eslint-disable-next-line @next/next/no-img-element -- a private, auth-checked file
+                            ? <img src={`${src.url}?inline=1`} alt="" className="max-h-full max-w-full object-contain" />
+                            : <span className="text-small font-semibold" style={{ color: ground === "dark" ? "#FFFFFF" : "#101614" }}>{b.mark}</span>}
+                        </div>
+                        <div className="mt-1.5 text-small"><span className="font-semibold">{variant ? variantLabel(variant) : "Logo"}</span><span className="text-[#5E6C66]"> · {asset.name}</span></div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </Sec>
 
           {b.colours.length > 0 && (
@@ -123,7 +166,7 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
             </div>
           </Sec>
 
-          <Sec n={num()} title="Voice and tone">
+          <Sec n={num()} title="Brand tone">
             {b.voice && <p className="m-0 mb-5 max-w-[60ch] text-lead leading-[1.5]">{b.voice}</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               {!!k.weAre?.length && <Rules title="We are" items={k.weAre} />}
@@ -140,7 +183,7 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
             {b.boilerplate && <div className="mt-5 rounded-xl bg-[#F7F9F8] p-5"><div className="mb-1 text-micro font-semibold uppercase tracking-[0.05em] text-[#5E6C66]">Boilerplate</div><p className="m-0 text-body leading-[1.6]">{b.boilerplate}</p></div>}
           </Sec>
 
-          {(k.imagery || k.imageryDo?.length || k.imageryDont?.length) && (
+          {!!(k.imagery || k.imageryDo?.length || k.imageryDont?.length) && (
             <Sec n={num()} title="Imagery">
               {k.imagery && <p className="m-0 mb-4 max-w-[60ch] text-lead leading-[1.55]">{k.imagery}</p>}
               <div className="grid gap-4 sm:grid-cols-2">
@@ -156,6 +199,30 @@ export function GuidelinesDoc({ b, logoUrl, toolbar }: { b: Brand; logoUrl?: str
                 {!!k.dos?.length && <Rules title="Do" items={k.dos} />}
                 {!!k.donts?.length && <Rules title="Don't" items={k.donts} bad />}
               </div>
+            </Sec>
+          )}
+
+          {videos.length > 0 && (
+            <Sec n={num()} title="Videos">
+              <Links items={videos.map((v) => ({ name: v.title || linkEmbed(v.url)?.provider || "Video", sub: [linkEmbed(v.url)?.provider, printed(v.url)].filter(Boolean).join(" · "), href: v.url }))} />
+            </Sec>
+          )}
+
+          {social.length > 0 && (
+            <Sec n={num()} title="Social links">
+              <Links items={social.map((s) => ({ name: socialName(s), sub: socialHandle(s) === printed(s.url) ? printed(s.url) : `${socialHandle(s)} · ${printed(s.url)}`, href: s.url }))} />
+            </Sec>
+          )}
+
+          {legal.length > 0 && (
+            <Sec n={num()} title="Legal">
+              <Links items={legal} />
+            </Sec>
+          )}
+
+          {guideDocs.length > 0 && (
+            <Sec n={num()} title="Guidelines documents">
+              <Links items={guideDocs} />
             </Sec>
           )}
         </div>
@@ -174,6 +241,20 @@ function Sec({ n, title, children }: { n: string; title: string; children: React
       </div>
       {children}
     </section>
+  );
+}
+
+/** Named links that still read on paper: the address is printed under each name. */
+function Links({ items }: { items: { name: string; sub: string; href: string }[] }) {
+  return (
+    <ul className="m-0 list-none divide-y divide-[#E1E7E4] rounded-xl border border-[#E1E7E4] p-0">
+      {items.map((x, i) => (
+        <li key={`${x.href}-${i}`} className="break-inside-avoid px-5 py-3">
+          <a href={x.href} className="text-body font-semibold text-[#101614] no-underline hover:underline">{x.name}</a>
+          <div className="break-all font-mono text-small text-[#46534D]">{x.sub}</div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

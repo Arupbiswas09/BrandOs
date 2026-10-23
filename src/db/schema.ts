@@ -67,7 +67,31 @@ export type BrandKit = {
   dos?: string[];
   donts?: string[];
   version?: string;
+  /*
+   * The parts below are saved on their own from the Brand Kit page
+   * (saveKitPart), never by the kit editor. Brands from before them simply
+   * have none. The rules for each live in src/lib/kit.ts.
+   */
+  /** Guidelines kept elsewhere: a Google Doc, Slides deck or Drive file, previewed in the kit. */
+  guideLinks?: KitLink[];
+  /** Privacy policy, terms and one more page, each a link or a file on one of the brand's assets. */
+  legal?: KitLegal[];
+  /** The brand's own profiles and website. */
+  social?: KitSocial[];
+  /** Brand films and explainers: YouTube, Vimeo, Loom or Drive links. */
+  videos?: KitVideo[];
+  /** What each logo file is, by the logo asset's id. Kept when a logo is deleted, so a restored one keeps its label. */
+  logoVariants?: Record<string, LogoVariant>;
 };
+/** A titled link in the Brand Kit. `id` only tells the entries apart. */
+export type KitLink = { id: string; title: string; url: string };
+export type KitVideo = KitLink;
+export type LegalSlot = "privacy" | "terms" | "extra";
+/** One legal page: a web address, or a file on a Document asset of the brand (its newest file is the one shown). */
+export type KitLegal = { slot: LegalSlot; title?: string; url?: string; assetId?: string };
+export type SocialNetwork = "website" | "instagram" | "facebook" | "linkedin" | "x" | "youtube" | "tiktok" | "custom";
+export type KitSocial = { id: string; network: SocialNetwork; url: string; /** Only for "custom": what the profile is, say "Threads". */ label?: string };
+export type LogoVariant = "Primary" | "Secondary" | "Icon" | "Wordmark" | "Mono" | "On dark" | "On light" | "Favicon" | "Other";
 export type FileRef = {
   name: string; size: string; url?: string; key?: string; type?: string;
   /** Exact size, for storage allowances. Older files only have the label. */

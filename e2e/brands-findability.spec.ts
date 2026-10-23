@@ -132,15 +132,18 @@ test("people who create assets can add logo and font files from the Brand Kit", 
   await page.keyboard.press("Escape");
   await page.goto("/brands/br1/kit#kit-files");
   await settle(page);
-  await page.getByRole("button", { name: "Add a font file" }).click();
-  await expect(page.getByRole("dialog", { name: "New font" })).toBeVisible();
+  await page.getByRole("button", { name: "Upload files" }).click();
+  await expect(page.getByRole("dialog", { name: "Upload to the Brand Kit" })).toBeVisible();
   await page.keyboard.press("Escape");
 
   // A viewer only reads.
   await signIn(page, "Marta Vieira");
   await page.goto("/brands/br4/kit#kit-logo");
   await settle(page);
-  await expect(page.getByRole("button", { name: /^Add a (logo|font) file$/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^(Add a logo file|Upload files)$/ })).toHaveCount(0);
+  await page.goto("/brands/br4/kit#kit-files");
+  await settle(page);
+  await expect(page.getByRole("button", { name: /^(Add a logo file|Upload files)$/ })).toHaveCount(0);
 });
 
 test("on a phone, a brand's Assets keeps Add asset on screen, and Import looks like a button", async ({ page }) => {
