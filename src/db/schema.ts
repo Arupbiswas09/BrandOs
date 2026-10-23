@@ -75,6 +75,14 @@ export type FileRef = {
   /** Who uploaded it, so each person's allowance can be counted. */
   uploadedBy?: string;
 };
+/** A file kept on a client's page (contract, brief, deck). Replacing it keeps the one before in `earlier`, newest first. */
+export type ClientFile = FileRef & {
+  id: string;
+  addedAt: string;
+  earlier?: (FileRef & { replacedAt: string; replacedBy?: string })[];
+};
+/** A video link on a client's page (YouTube, Vimeo, Loom, Drive). Nothing is stored; the player loads from the link. */
+export type ClientVideo = { id: string; title: string; url: string; addedBy?: string; addedAt: string };
 /** The result of opening an asset's link: whether it answered, with what, and when. */
 export type LinkCheck = { ok: boolean; status: number | null; error?: string; checkedAt: string; finalUrl?: string; /** The address as it was when checked, so a result never sticks to an edited link. */ url?: string };
 /** Per-person exceptions to their role: true grants, false blocks. Missing means "as the role says". */
@@ -137,6 +145,10 @@ export const clients = pgTable("clients", {
   since: text("since").notNull().default(""),
   note: text("note").notNull().default(""),
   archived: boolean("archived").notNull().default(false),
+  /** Files kept for this client: contracts, briefs, decks. Served by /api/files to whoever can see the client. */
+  files: jsonb("files").$type<ClientFile[]>().notNull().default([]),
+  /** Video links for this client, each with a title. */
+  videos: jsonb("videos").$type<ClientVideo[]>().notNull().default([]),
   ...stamps,
 });
 
@@ -346,6 +358,8 @@ export const comments = pgTable("comments", {
   fileKey: text("file_key"),
   pinX: real("pin_x"),
   pinY: real("pin_y"),
+  /** Pictures added to the note (pasted, dropped or picked). Stored files, served by /api/files to whoever can see the note's item. */
+  images: jsonb("images").$type<FileRef[]>().notNull().default([]),
 }, (t) => [index("comments_item_idx").on(t.kind, t.itemId)]);
 
 export const activity = pgTable("activity", {

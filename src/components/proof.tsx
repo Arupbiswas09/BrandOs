@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Asset } from "@/db/schema";
 import { postComment } from "@/app/actions";
 import { useAction, useApp } from "@/components/app/provider";
-import { CommentText, NoteActions, NoteEditor } from "@/components/discussion";
+import { CommentText, NoteActions, NoteEditor, NoteImages } from "@/components/discussion";
 import { Avatar, Btn, Hint, Pills, cx } from "@/components/ui";
 import { pinsOn, proofFiles, type PinnedComment } from "./proof-link";
 
@@ -281,9 +281,12 @@ function PinNote({ c, n, on, onPick, onHover }: { c: PinnedComment; n: number; o
       {editing ? (
         <NoteEditor c={c} label={`Edit note ${n}`} onDone={() => setEditing(false)} />
       ) : (
-        <div onClick={onPick} className="cursor-pointer">
-          <CommentText c={c} />
-        </div>
+        <>
+          <div onClick={onPick} className="cursor-pointer">
+            <CommentText c={c} />
+          </div>
+          <NoteImages c={c} className="mt-2" />
+        </>
       )}
     </div>
   );

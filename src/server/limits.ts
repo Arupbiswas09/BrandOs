@@ -19,7 +19,7 @@ export async function putUploadPolicy(policy: UploadPolicy, userId: string) {
     .onConflictDoUpdate({ target: s.settings.key, set: { value: policy, updatedBy: userId, updatedAt: new Date() } });
 }
 
-type Stored = Pick<All, "assets"> & Partial<Pick<All, "fileVersions">>;
+type Stored = Pick<All, "assets"> & Partial<Pick<All, "fileVersions" | "comments" | "clients">>;
 
 /**
  * Bytes stored, across everything and for one person. Older files are counted from their size label.
@@ -48,6 +48,17 @@ export function storageUsage(all: Stored, userId?: string) {
       workspaceBytes += b;
       if (userId && (v.file.uploadedBy ?? owner.get(v.assetId)) === userId) personBytes += b;
     }
+  }
+  // Pictures in notes, and files on client pages (earlier versions too), count against whoever added them.
+  const extra = [
+    ...(all.comments ?? []).flatMap((c) => (c.images ?? []).map((f) => ({ f, by: f.uploadedBy ?? c.userId }))),
+    ...(all.clients ?? []).flatMap((c) => (c.files ?? []).flatMap((f) => [f, ...(f.earlier ?? [])]).map((f) => ({ f, by: f.uploadedBy }))),
+  ];
+  for (const { f, by } of extra) {
+    if (!f.key) continue;
+    const b = f.bytes ?? parseSize(f.size);
+    workspaceBytes += b;
+    if (userId && by === userId) personBytes += b;
   }
   return { workspaceBytes, personBytes };
 }

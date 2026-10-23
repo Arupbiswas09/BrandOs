@@ -41,7 +41,9 @@ and every screen agrees.
   `link-check.ts` (broken links), `page-picture.ts` (a landing page's share
   picture) and `site-scan.ts` (a brand from its website) all go through it.
 - `trash.ts`: the recycle bin. A file is only removed from storage when no
-  asset, earlier version or folder still uses it (`unreferenced`).
+  asset, earlier version, folder, note picture or client file still uses it
+  (`unreferenced`). Any new place that keeps stored files is added to
+  `fileKeys` and `unreferenced`.
 
 ## Actions and routes — `src/app`
 
@@ -50,7 +52,13 @@ and every screen agrees.
   item, and — for contributors — do they own it. Hiding a button is never the
   security; the action refuses on its own.
 - Clients, brands, services and offers are archived, never deleted. Assets and
-  files can be deleted by admins and go to the recycle bin for 30 days.
+  files can be deleted by admins and go to the recycle bin for 30 days, as do
+  deleted notes (with their pictures) and files taken off a client's page.
+- Uploads go through routes, not actions: `/api/assets/[id]/files`,
+  `/api/clients/[id]/files` (managers and admins: `structure` plus `upload`)
+  and `/api/notes/images` (anyone who comments; the note itself is then
+  written by `postComment` or `editComment`, which accept only pictures that
+  person stored for that item).
 - One file per area: `actions.ts` (the core records), `file-actions.ts`
   (versions), `folder-actions.ts`, `link-actions.ts`, `star-actions.ts`,
   `results-actions.ts`, `import-actions.ts` and `onboarding-actions.ts`.
@@ -78,6 +86,8 @@ sources of truth:
 | Stars (what can be starred, the limit of 30) | `stars.ts` |
 | Results per offer: totals, conversion, trend, what worked | `results.ts` |
 | Earlier versions of a file | `file-versions.ts` |
+| Pictures in notes (who may add them, how many, which types) | `note-images.ts` |
+| A client's files (earlier versions) and video links | `client-files.ts` |
 | Tracked links (UTM) | `utm.ts` |
 | Spreadsheet import: parsing and the plan | `csv.ts`, `import-plan.ts` |
 

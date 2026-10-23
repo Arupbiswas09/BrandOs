@@ -8,7 +8,7 @@ import { Btn, Card, Empty, Page, PageHead, cx } from "@/components/ui";
 
 type Entry = { id: string; kind: string; label: string; context: string; deletedBy: string | null; deletedAt: number; contains: string[] };
 
-const KIND: Record<string, string> = { client: "Client", brand: "Brand", service: "Service", offer: "Offer", asset: "Asset", cta: "CTA", person: "Person", group: "Group" };
+const KIND: Record<string, string> = { client: "Client", brand: "Brand", service: "Service", offer: "Offer", asset: "Asset", cta: "CTA", person: "Person", group: "Group", note: "Note", file: "File" };
 
 export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: boolean; days: number }) {
   const { ws, toast } = useApp();
@@ -36,7 +36,7 @@ export function Trash({ entries, allowed, days }: { entries: Entry[]; allowed: b
         actions={allowed && removable > 0 && (
           <Btn variant="danger" disabled={pending} onClick={() => void empty()}><Trash2 aria-hidden className="h-4 w-4" />Empty the bin</Btn>
         )}
-        sub={<>Deleted {ws.can("access") ? "assets, CTAs, people and groups" : "assets and CTAs"} wait here for {days} days. Restore puts one back exactly as it was, files and notes included. Clients, brands, services and offers are never deleted: they are archived instead.</>}
+        sub={<>Deleted {ws.can("access") ? "assets, CTAs, notes, client files, people and groups" : "assets, CTAs, notes and client files"} wait here for {days} days. Restore puts one back exactly as it was, files and notes included. Clients, brands, services and offers are never deleted: they are archived instead.</>}
       />
       {!allowed && <Empty title="Only admins can see the bin" body="Deleting and restoring is an admin job. Ask an admin if something went missing." />}
       {allowed && !entries.length && <Empty title="The bin is empty" body={`Nothing has been deleted in the last ${days} days.`} />}

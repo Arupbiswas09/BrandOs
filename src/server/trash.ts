@@ -3,10 +3,14 @@ import { inArray, lt } from "drizzle-orm";
 import { removeStoredFile } from "./storage";
 import { schema as s, type DB } from "@/db";
 import type { All } from "./data";
+import type { ClientFile } from "@/db/schema";
+import { clientFileKeys } from "@/lib/client-files";
+import { picturesLabel } from "@/lib/note-images";
 
 type Tx = DB | Parameters<Parameters<DB["transaction"]>[0]>[0];
 export type Snapshot = Record<string, Record<string, unknown>[]>;
-export type TrashKind = "client" | "brand" | "service" | "offer" | "asset" | "cta" | "person" | "group";
+/** "note" is one note (with its pictures); "file" is one file from a client's page (with its earlier versions). */
+export type TrashKind = "client" | "brand" | "service" | "offer" | "asset" | "cta" | "person" | "group" | "note" | "file";
 
 /** Table registry in the order rows must be restored (parents first). */
 const TABLES = {
@@ -78,6 +82,22 @@ export async function snapshot(db: Tx, all: All, kind: TrashKind, id: string): P
       await withBrands(all.brands.filter((b) => b.clientId === id).map((b) => b.id));
       return { label: c.name, context: c.kind, rows: out };
     }
+    case "note": {
+      const c = all.comments.find((x) => x.id === id)!;
+      put("comments", rows([c]));
+      const where = c.kind === "offer" ? all.offers.find((o) => o.id === c.itemId)?.name : all.assets.find((a) => a.id === c.itemId)?.name;
+      const words = c.text.trim().replace(/\s+/g, " ");
+      const label = words ? (words.length > 80 ? words.slice(0, 79) + "…" : words) : `Note with ${picturesLabel(c.images)}`;
+      const pics = c.images?.length ? picturesLabel(c.images) : "";
+      return { label, context: [where ? `Note on ${where}` : "Note", pics].filter(Boolean).join(" · "), rows: out };
+    }
+    case "file": {
+      // A file on a client's page goes back on that page, earlier versions and all.
+      const client = all.clients.find((c) => (c.files ?? []).some((f) => f.id === id))!;
+      const file = client.files.find((f) => f.id === id)!;
+      put("clientFiles", [{ clientId: client.id, file }]);
+      return { label: file.name, context: client.name, rows: out };
+    }
     case "person": { const u = all.users.find((x) => x.id === id)!; put("users", rows([u])); return { label: u.name, context: u.role, rows: out }; }
     case "group": {
       const g = all.groups.find((x) => x.id === id)!;
@@ -108,6 +128,11 @@ export async function restoreSnapshot(tx: Tx, snap: Snapshot, groupId?: string) 
     const col = (t as unknown as Record<string, Parameters<typeof isNull>[0]>)[ref.field];
     await tx.update(t).set({ [ref.field]: snap.ctas?.[0]?.id } as never).where(and(eq(t.id, ref.id), isNull(col)));
   }
+  // A client's file goes back at the end of its list, unless it is somehow there already.
+  for (const entry of (snap.clientFiles ?? []) as { clientId: string; file: ClientFile }[]) {
+    const [c] = await tx.select({ files: s.clients.files }).from(s.clients).where(eq(s.clients.id, entry.clientId));
+    if (c && !c.files.some((f) => f.id === entry.file.id)) await tx.update(s.clients).set({ files: [...c.files, entry.file], updatedAt: new Date() }).where(eq(s.clients.id, entry.clientId));
+  }
   const svc = snap.services?.[0]?.id as string | undefined;
   for (const o of (snap.serviceOffers ?? []) as { id: string }[]) {
     if (svc) await tx.update(s.offers).set({ serviceId: svc }).where(and(eq(s.offers.id, o.id), isNull(s.offers.serviceId)));
@@ -132,6 +157,11 @@ export function fileKeys(snap: Snapshot): string[] {
     ...(snap.fileVersions ?? []).map((v) => (v.file as { key?: string } | undefined)?.key),
     // Files removed from an asset stay in its history, so History can put them back.
     ...(snap.assetVersions ?? []).flatMap((v) => historyKeys(v.data as Record<string, unknown> | undefined)),
+    // Pictures in the notes that went with it, or in the one note deleted.
+    ...(snap.comments ?? []).flatMap((c) => ((c.images as { key?: string }[] | undefined) ?? []).map((i) => i?.key)),
+    // Files on a client's page: a whole client from before clients were undeletable, or one file and its earlier versions.
+    ...(snap.clients ?? []).flatMap((c) => clientFileKeys(c.files as ClientFile[] | undefined)),
+    ...(snap.clientFiles ?? []).flatMap((e) => clientFileKeys([e.file as ClientFile])),
   ];
   return [...new Set(keys.filter((k): k is string => !!k))];
 }
@@ -144,7 +174,10 @@ function historyKeys(data: Record<string, unknown> | null | undefined): string[]
   return [...files.map((f) => f?.key), thumb?.key].filter((k): k is string => !!k);
 }
 
-/** Keys from `keys` that no live asset, file version, asset history or folder still uses (clones can share a stored file). */
+/**
+ * Keys from `keys` that no live asset, file version, asset history, folder,
+ * note picture or client file still uses (clones can share a stored file).
+ */
 export async function unreferenced(db: DB, keys: string[]): Promise<string[]> {
   if (!keys.length) return [];
   const want = new Set(keys);
@@ -157,6 +190,8 @@ export async function unreferenced(db: DB, keys: string[]): Promise<string[]> {
   for (const f of await db.select({ thumbnail: s.assetFolders.thumbnail }).from(s.assetFolders)) if (f.thumbnail?.key && want.has(f.thumbnail.key)) used.add(f.thumbnail.key);
   // A live asset's history may still need the file to restore it.
   for (const v of await db.select({ data: s.assetVersions.data }).from(s.assetVersions)) for (const k of historyKeys(v.data)) if (want.has(k)) used.add(k);
+  for (const c of await db.select({ images: s.comments.images }).from(s.comments)) for (const i of c.images ?? []) if (i.key && want.has(i.key)) used.add(i.key);
+  for (const c of await db.select({ files: s.clients.files }).from(s.clients)) for (const k of clientFileKeys(c.files)) if (want.has(k)) used.add(k);
   return keys.filter((k) => !used.has(k));
 }
 

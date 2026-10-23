@@ -15,6 +15,7 @@ import { MoreMenu } from "@/components/more-menu";
 import { ActivityRow } from "@/components/activity-row";
 import { StarButton } from "@/components/features/stars/star-button";
 import { useStarShortcut } from "@/components/features/stars/use-star-shortcut";
+import { FilesAndVideos } from "@/components/features/clients/files-and-videos";
 import { NotHere, useVisit } from "./common";
 
 export function ClientPage({ id }: { id: string }) {
@@ -153,6 +154,9 @@ export function ClientPage({ id }: { id: string }) {
         )}
         <ArchExpander items={archivedOnly(bs)} noun="brand" onOpen={(b) => router.push(href.brand(b.id))} />
       </div>
+
+      {/* Contracts, briefs, decks and call recordings: the client's own material, beside its brands. */}
+      <FilesAndVideos c={c} />
 
       <div className="mt-10 grid items-start gap-6 md:grid-cols-[1.3fr_1fr]">
         <div>
