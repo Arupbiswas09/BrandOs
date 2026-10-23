@@ -32,7 +32,7 @@ export function proxy(request: NextRequest) {
     `connect-src 'self'${dev ? " ws: wss:" : ""}`,
     "worker-src 'self'",
     "manifest-src 'self'",
-    // Link previews (src/lib/embeds.ts) frame exactly these, and only after someone presses "Load preview".
+    // Link previews (src/lib/embeds.ts) frame exactly these hosts, and the frame is only made in the browser.
     "frame-src 'self' https://www.figma.com https://docs.google.com https://drive.google.com https://www.youtube-nocookie.com https://player.vimeo.com https://www.loom.com",
     "frame-ancestors 'self'",
     "object-src 'none'",
