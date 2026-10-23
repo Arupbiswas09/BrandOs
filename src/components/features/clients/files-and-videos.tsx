@@ -300,7 +300,7 @@ function linkNote(raw: string): { error?: string; note?: string } {
   const u = webUrl(t);
   if (!u) return { error: "Paste a full web address, for example youtube.com/watch?v=…" };
   const e = linkEmbed(u.href);
-  return { note: e ? `${e.provider}: plays here once you press Load preview.` : "No player for this site. It shows as a link that opens in a new tab." };
+  return { note: e ? `${e.provider}: plays here.` : "No player for this site. It shows as a link that opens in a new tab." };
 }
 
 function VideoForm({ c, video, onDone, className }: { c: Client; video?: ClientVideo; onDone?: () => void; className?: string }) {

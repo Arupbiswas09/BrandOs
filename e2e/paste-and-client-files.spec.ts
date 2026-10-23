@@ -393,12 +393,12 @@ test.describe("a client's files and videos", () => {
 
     const title = `Kick-off call ${Date.now()}`;
     await form.getByRole("textbox", { name: /^Video link/ }).fill("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-    await expect(form.getByText("YouTube: plays here once you press Load preview.")).toBeVisible();
+    await expect(form.getByText("YouTube: plays here.")).toBeVisible();
     await form.getByRole("textbox", { name: "Title" }).fill(title);
     await form.getByRole("button", { name: "Add video" }).click();
     await expect(page.getByText("Video link added to Northgate Athletics Trust")).toBeVisible();
     const video = section.getByRole("listitem").filter({ hasText: title });
-    await video.getByRole("button", { name: "Load preview from youtube-nocookie.com" }).click();
+    // The player is there straight away, like every other link preview.
     await expect(video.locator("iframe")).toHaveAttribute("src", "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
 
     await video.getByRole("button", { name: `Edit the link to ${title}` }).click();
