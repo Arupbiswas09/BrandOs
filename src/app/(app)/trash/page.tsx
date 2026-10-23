@@ -26,7 +26,8 @@ export default async function Page() {
   const entries = rows.filter((e) => team || !TEAM_KINDS.includes(e.kind)).map(({ rows: r, ...e }) => ({
     ...e,
     deletedAt: e.deletedAt.getTime(),
-    contains: Object.entries(r).filter(([k, v]) => ["brands", "services", "offers", "assets", "comments"].includes(k) && v.length).map(([k, v]) => `${v.length} ${k === "assets" ? "asset" : k.replace(/s$/, "")}${v.length === 1 ? "" : "s"}`),
+    // A deleted note is itself the one comment, so it does not say so again.
+    contains: Object.entries(r).filter(([k, v]) => ["brands", "services", "offers", "assets", "comments"].includes(k) && v.length && !(e.kind === "note" && k === "comments")).map(([k, v]) => `${v.length} ${k === "assets" ? "asset" : k.replace(/s$/, "")}${v.length === 1 ? "" : "s"}`),
   }));
   return <Trash entries={entries} allowed days={BIN_DAYS} />;
 }

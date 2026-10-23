@@ -14,7 +14,11 @@ import { DEFAULT_GOALS, ASSET_TYPES, freshBrandPair, offerTypesOf } from "@/lib/
 import { isHex, onColor } from "@/lib/color";
 import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { authMode, endSession, getViewer, startSession } from "@/server/session";
-import { removeStoredFile } from "@/server/storage";
+import { humanSize, removeStoredFile } from "@/server/storage";
+import { storedSize } from "@/server/stored-range";
+import { MAX_NOTE_IMAGES, NOTE_IMAGE_TYPES, mayAddNoteImages, noteImageOwner, noteImagePrefix } from "@/lib/note-images";
+import { putBack, withVideo } from "@/lib/client-files";
+import { linkEmbed, webUrl } from "@/lib/embeds";
 import { putUploadPolicy } from "@/server/limits";
 import { fileKeys, restoreSnapshot, snapshot, unreferenced } from "@/server/trash";
 import { appUrl } from "@/server/mail";
@@ -198,6 +202,83 @@ export async function saveClient(input: z.input<typeof clientDraft>) {
     return ok(id);
   });
   return r;
+}
+
+/*
+ * Files and video links on a client's page. Changing them is setting up the
+ * client, so it takes `structure` (managers and admins by default), as Edit
+ * on the client does; everyone who can see the client can open them.
+ * Uploads and replacing go through /api/clients/[id]/files.
+ */
+
+async function clientToChange(clientId: string) {
+  const ctx = await context("structure");
+  need(ctx.vis.client(clientId), "That client is not here.");
+  const client = ctx.all.clients.find((c) => c.id === clientId);
+  need(client, "That client is not here.");
+  return { ...ctx, client: client! };
+}
+
+/** Takes a file off a client's page. It goes to the recycle bin with its earlier versions, so an admin can put it back. */
+export async function removeClientFile(clientId: string, fileId: string) {
+  return run(async () => {
+    const { me, db, all, client } = await clientToChange(clientId);
+    const f = client.files.find((x) => x.id === fileId);
+    need(f, "That file is not on this client any more. Refresh and try again.");
+    await db.transaction(async (tx) => {
+      const snap = await snapshot(tx, all, "file", fileId);
+      await tx.insert(s.trash).values({ id: newId("tr"), kind: "file", itemId: fileId, label: snap.label, context: snap.context, rows: snap.rows, deletedBy: me.id });
+      await tx.update(s.clients).set({ files: client.files.filter((x) => x.id !== fileId), updatedAt: new Date() }).where(eq(s.clients.id, clientId));
+      await log(tx, me.id, "removed a file from", "client", clientId, client.name, f!.name);
+    });
+  });
+}
+
+/** Puts an earlier version of a client's file back. The file it replaces is kept as an earlier version in turn. */
+export async function restoreClientFileVersion(clientId: string, fileId: string, key: string) {
+  return run(async () => {
+    const { me, db, client } = await clientToChange(clientId);
+    const next = putBack(client.files, fileId, key, { by: me.id, at: new Date().toISOString() });
+    need(next, "That version is not here any more. Refresh and try again.");
+    const name = next!.find((f) => f.id === fileId)?.name ?? "";
+    await db.update(s.clients).set({ files: next!, updatedAt: new Date() }).where(eq(s.clients.id, clientId));
+    await log(db, me.id, "put back an earlier version on", "client", clientId, client.name, name);
+  });
+}
+
+const videoDraft = z.object({
+  id: z.string().max(40).optional(),
+  title: str(200).default(""),
+  url: z.string().trim().min(1, "Paste the video's link first.").max(2000, "That link is too long."),
+});
+
+/** Adds a video link to a client's page, or changes one. One link per video; the title defaults to where it plays. */
+export async function saveClientVideo(clientId: string, input: z.input<typeof videoDraft>) {
+  return run(async () => {
+    const { me, db, client } = await clientToChange(clientId);
+    const d = videoDraft.parse(input);
+    const issue = linkAddressIssue(d.url);
+    if (issue === "Two links in one address") throw new Denied("That is two links in one field. Add each video on its own.");
+    if (issue) throw new Denied("There is a space in the link. Copy it again and paste it on its own.");
+    const u = webUrl(d.url);
+    need(u, "Paste a full web address, for example youtube.com/watch?v=…");
+    if (!d.id && client.videos.length >= 50) throw new Denied("A client can hold up to 50 video links. Remove one first.");
+    const title = d.title || (linkEmbed(u!.href) ? `${linkEmbed(u!.href)!.provider} video` : u!.hostname.replace(/^www\./, ""));
+    const next = withVideo(client.videos, { id: d.id, title, url: u!.href }, { by: me.id, at: new Date().toISOString() });
+    await db.update(s.clients).set({ videos: next, updatedAt: new Date() }).where(eq(s.clients.id, clientId));
+    await log(db, me.id, d.id ? "changed a video link on" : "added a video link to", "client", clientId, client.name, title);
+  });
+}
+
+/** Takes a video link off a client's page. Nothing is stored for a link, so there is nothing to keep. */
+export async function removeClientVideo(clientId: string, videoId: string) {
+  return run(async () => {
+    const { me, db, client } = await clientToChange(clientId);
+    const v = client.videos.find((x) => x.id === videoId);
+    need(v, "That video link is not here any more.");
+    await db.update(s.clients).set({ videos: client.videos.filter((x) => x.id !== videoId), updatedAt: new Date() }).where(eq(s.clients.id, clientId));
+    await log(db, me.id, "removed a video link from", "client", clientId, client.name, v!.title);
+  });
 }
 
 /* ================================================================ brands */
@@ -1146,12 +1227,47 @@ const pinSchema = z.object({
   y: z.number().finite().min(0).max(100),
 });
 
-export async function postComment(kind: "offer" | "asset", itemId: string, text: string, refs: string[], mentions: string[], pin?: Pin | null) {
+/** A picture for a note, as the note box sends it: the key /api/notes/images stored it under, and its file name. */
+export type NoteImageInput = { key: string; name: string };
+
+const noteImagesSchema = z.array(z.object({ key: z.string().min(1).max(600), name: str(300) })).max(MAX_NOTE_IMAGES, `A note holds up to ${MAX_NOTE_IMAGES} pictures.`);
+
+/**
+ * The pictures a note will hold. Ones it already had stay as they were; a
+ * new one has to be a picture this person stored for this item's notes
+ * (/api/notes/images), and its size and type are read from storage, never
+ * taken from the browser.
+ */
+async function noteImages(input: NoteImageInput[] | undefined, at: { kind: "offer" | "asset"; itemId: string }, me: Parameters<typeof mayAddNoteImages>[0] & { id: string }, had: s.FileRef[] = []): Promise<s.FileRef[]> {
+  const list = noteImagesSchema.parse(input ?? []);
+  const out: s.FileRef[] = [];
+  const seen = new Set<string>();
+  for (const i of list) {
+    if (seen.has(i.key)) continue;
+    seen.add(i.key);
+    const kept = had.find((h) => h.key === i.key);
+    if (kept) { out.push(kept); continue; }
+    if (!mayAddNoteImages(me)) throw new Denied("Your role does not allow pictures in notes. Ask an admin if you need it.");
+    const owner = noteImageOwner(i.key);
+    const lost = "A picture did not upload. Add it again.";
+    need(owner && i.key.startsWith(noteImagePrefix(at.kind, at.itemId, me.id)) && !i.key.includes(".."), lost);
+    const type = NOTE_IMAGE_TYPES[i.key.toLowerCase().split(".").pop() ?? ""];
+    need(type, lost);
+    const bytes = await storedSize(i.key);
+    need(bytes !== null, lost);
+    out.push({ name: i.name || i.key.split("/").pop()!.slice(9), size: humanSize(bytes!), bytes: bytes!, type, key: i.key, url: `/api/files/${i.key}`, uploadedBy: me.id });
+  }
+  return out;
+}
+
+export async function postComment(kind: "offer" | "asset", itemId: string, text: string, refs: string[], mentions: string[], pin?: Pin | null, images?: NoteImageInput[]) {
   return run(async () => {
     const { me, vis, db, all } = await context("comment");
     need(kind === "offer" ? vis.offer(itemId) : vis.asset(itemId));
     const t = text.trim();
-    if (!t) throw new Denied("Write something first.");
+    const pics = await noteImages(images, { kind, itemId }, me);
+    // A note can be only pictures: a screenshot often says it all.
+    if (!t && !pics.length) throw new Denied("Write something first.");
     if (t.length > 8000) throw new Denied("That note is too long. Split it up.");
     // A pin has to land on an image that is really attached to this asset.
     let at: { fileKey: string; pinX: number; pinY: number } | null = null;
@@ -1164,7 +1280,7 @@ export async function postComment(kind: "offer" | "asset", itemId: string, text:
     // Keep only the tags and mentions that survived editing.
     const keepRefs = [...new Set(refs)].filter((r) => vis.offer(r) && t.includes("#" + (all.offers.find((o) => o.id === r)?.name ?? "\u0000")));
     const keepMentions = [...new Set(mentions)].filter((m) => t.includes("@" + (all.users.find((u) => u.id === m)?.name ?? "\u0000")));
-    await db.insert(s.comments).values({ id: newId("cm"), kind, itemId, userId: me.id, text: t, refs: keepRefs, mentions: keepMentions, ...at });
+    await db.insert(s.comments).values({ id: newId("cm"), kind, itemId, userId: me.id, text: t, refs: keepRefs, mentions: keepMentions, images: pics, ...at });
     const where = (kind === "offer" ? all.offers : all.assets).find((x) => x.id === itemId)?.name ?? "";
     notify(all, "mention", keepMentions, (first) => ({
       subject: `${me.name.split(" ")[0]} mentioned you on ${where}`,
@@ -1325,29 +1441,43 @@ export async function setDue(kind: "offer" | "asset", id: string, date: string |
   });
 }
 
-export async function editComment(commentId: string, text: string) {
+/** `images` is the note's whole list of pictures after the edit; leave it out to keep them as they are. */
+export async function editComment(commentId: string, text: string, images?: NoteImageInput[]) {
   return run(async () => {
     const { me, db, all } = await context("comment");
     const c = all.comments.find((x) => x.id === commentId);
     need(c, "That note no longer exists.");
     if (c!.userId !== me.id) throw new Denied("You can only edit your own notes.");
     const t = text.trim();
-    if (!t) throw new Denied("A note cannot be empty. Delete it instead.");
+    const had = c!.images ?? [];
+    const pics = images === undefined ? had : await noteImages(images, { kind: c!.kind, itemId: c!.itemId }, me, had);
+    if (!t && !pics.length) throw new Denied("A note cannot be empty. Delete it instead.");
     // Tags and mentions stay only while their text is still in the note.
     const refs = c!.refs.filter((r) => t.includes("#" + (all.offers.find((o) => o.id === r)?.name ?? "\u0000")));
     const mentions = c!.mentions.filter((m) => t.includes("@" + (all.users.find((u) => u.id === m)?.name ?? "\u0000")));
-    await db.update(s.comments).set({ text: t.slice(0, 8000), refs, mentions, editedAt: new Date() }).where(eq(s.comments.id, commentId));
+    await db.update(s.comments).set({ text: t.slice(0, 8000), refs, mentions, images: pics, editedAt: new Date() }).where(eq(s.comments.id, commentId));
+    // A picture taken out of a note while editing it is gone for good, unless something else still shows it.
+    const dropped = had.map((h) => h.key).filter((k): k is string => !!k && !pics.some((p) => p.key === k));
+    for (const k of await unreferenced(db, dropped)) await removeStoredFile(k);
   });
 }
 
+/**
+ * Deletes a note. It goes to the recycle bin first, pictures and all, so an
+ * admin can put it back for 30 days; its pictures stay in storage until then.
+ */
 export async function deleteComment(commentId: string) {
   return run(async () => {
     const { me, db, all } = await context("comment");
     const c = all.comments.find((x) => x.id === commentId);
     need(c, "That note no longer exists.");
     if (c!.userId !== me.id && !can(me, "del")) throw new Denied("Only the author or an admin can delete a note.");
-    await db.delete(s.comments).where(eq(s.comments.id, commentId));
-    await db.delete(s.reads).where(eq(s.reads.commentId, commentId));
+    await db.transaction(async (tx) => {
+      const snap = await snapshot(tx, all, "note", commentId);
+      await tx.insert(s.trash).values({ id: newId("tr"), kind: "note", itemId: commentId, label: snap.label, context: snap.context, rows: snap.rows, deletedBy: me.id });
+      await tx.delete(s.comments).where(eq(s.comments.id, commentId));
+      await tx.delete(s.reads).where(eq(s.reads.commentId, commentId));
+    });
   });
 }
 
@@ -1355,6 +1485,19 @@ export async function deleteComment(commentId: string) {
 
 /** Removed people and groups: bringing them back or deleting them for good is managing the team, so admins only. */
 const TEAM_KINDS = ["person", "group"];
+
+/**
+ * What the activity line about a bin entry belongs to, so it shows only to
+ * people who can see that: a note's offer or asset, a file's client.
+ */
+function binTarget(e: s.TrashEntry): { type: string; itemId: string } {
+  if (e.kind === "group") return { type: "person", itemId: e.itemId };
+  const note = e.kind === "note" ? e.rows.comments?.[0] : undefined;
+  if (note) return { type: String(note.kind), itemId: String(note.itemId) };
+  const file = e.kind === "file" ? e.rows.clientFiles?.[0] : undefined;
+  if (file) return { type: "client", itemId: String(file.clientId) };
+  return { type: e.kind, itemId: e.itemId };
+}
 
 export async function restoreFromTrash(entryId: string) {
   return run(async () => {
@@ -1368,7 +1511,8 @@ export async function restoreFromTrash(entryId: string) {
     await db.transaction(async (tx) => {
       await restoreSnapshot(tx, e!.rows, e!.kind === "group" ? e!.itemId : undefined);
       await tx.delete(s.trash).where(eq(s.trash.id, entryId));
-      await log(tx, me.id, "restored", e!.kind === "group" ? "person" : e!.kind, e!.itemId, e!.label, "from the recycle bin");
+      const at = binTarget(e!);
+      await log(tx, me.id, "restored", at.type, at.itemId, e!.label, e!.kind === "note" ? "a note, from the recycle bin" : e!.kind === "file" ? "a file, from the recycle bin" : "from the recycle bin");
     });
   });
 }
@@ -1391,7 +1535,8 @@ export async function deleteForever(entryId: string | "all") {
     await db.transaction(async (tx) => {
       for (const e of list) {
         await tx.delete(s.trash).where(eq(s.trash.id, e.id));
-        await log(tx, me.id, EV.deletedForever, e.kind === "group" ? "person" : e.kind, e.itemId, e.label, entryId === "all" ? "emptied the recycle bin" : "from the recycle bin");
+        const at = binTarget(e);
+        await log(tx, me.id, EV.deletedForever, at.type, at.itemId, e.label, entryId === "all" ? "emptied the recycle bin" : "from the recycle bin");
       }
     });
     for (const k of await unreferenced(db, list.flatMap((e) => fileKeys(e.rows)))) await removeStoredFile(k);

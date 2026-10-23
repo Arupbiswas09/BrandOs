@@ -3,6 +3,8 @@ import { readAll, makeVisibility, scopeFor, type All } from "@/server/data";
 import { getViewer } from "@/server/session";
 import { readStoredFile } from "@/server/storage";
 import { parseRange, readStoredRange, storedSize } from "@/server/stored-range";
+import { noteImageOwner } from "@/lib/note-images";
+import { clientFileByKey } from "@/lib/client-files";
 
 /** Streams an uploaded file to someone who is allowed to see its asset. */
 const PREVIEWABLE = /^image\/(png|jpe?g|gif|webp|avif)$/;
@@ -22,9 +24,25 @@ const PDF_CSP = "default-src 'none'; object-src 'self'; img-src 'self' data:; st
 /**
  * The file behind a key, if this person may have it: one of the asset's
  * files now, or an earlier version kept when it was replaced. Either way the
- * asset has to be one they can see.
+ * asset has to be one they can see. Note pictures and client files follow
+ * the note's item and the client.
  */
 function findFile(all: All, vis: ReturnType<typeof makeVisibility>, key: string): FileRef | null {
+  // A picture in a note: anyone who can see the note's offer or asset, while a note still shows it.
+  if (key.startsWith("notes/")) {
+    const owner = noteImageOwner(key);
+    if (!owner) return null;
+    const note = all.comments.find((c) => c.kind === owner.kind && c.itemId === owner.itemId && (c.images ?? []).some((i) => i.key === key));
+    if (!note || !(note.kind === "offer" ? vis.offer(note.itemId) : vis.asset(note.itemId))) return null;
+    return note.images.find((i) => i.key === key) ?? null;
+  }
+  // A file on a client's page, current or an earlier version: anyone who can see the client.
+  if (key.startsWith("clients/")) {
+    const [, clientId] = key.split("/");
+    const client = all.clients.find((c) => c.id === clientId);
+    if (!client || !vis.client(client.id)) return null;
+    return clientFileByKey(client.files ?? [], key);
+  }
   const [, assetId] = key.split("/");
   const asset = all.assets.find((a) => a.id === assetId);
   const current = asset?.files.find((f) => f.key === key);
